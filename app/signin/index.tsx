@@ -13,6 +13,8 @@ import Facebook from "@/assets/images/login/facebook.svg";
 import Google from "@/assets/images/login/google.svg";
 import X from "@/assets/images/login/x.svg";
 import SocialButton from "@/components/common/SocialButton";
+import { useSession } from "@/providers/SessionContext/Index";
+import { useEffect } from "react";
 
 
 export default function SignIn() {
@@ -20,6 +22,14 @@ export default function SignIn() {
   const { theme, currentTheme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
+  const { session, user} = useSession();
+
+  useEffect(() => {
+    if (session) {
+      router.replace("/(tabs)/home");
+    }
+  }, [session, router]);
+
 
   const handleSingUp = () => {
     router.push("/signup");

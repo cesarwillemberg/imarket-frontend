@@ -27,36 +27,45 @@ const authService = {
   },
 
   signUp: async (input: SignUpAttributes) => {
+    try {
+      const [day, month, year] = input.date_birth.split("/").map(Number);
+      const date_birth = new Date(year, month - 1, day).toISOString().split("T")[0];
+      const phone = input.phone.replace(/\D/g, "");
 
-    const [day, month, year] = input.date_birth.split("/").map(Number);
-    const date_birth = new Date(year, month - 1, day).toISOString().split("T")[0];
-    const phone = input.phone.replace(/\D/g, "");
-    
-    if (!phone || !date_birth) {
-      Alert.alert("Error", "Telefone ou data de nascimento inválidos");
-      return;
-    }
-    
-    const { data, error } = await supabase.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        data: {
-          name: input.name,
-          phone: phone,
-          cpf: input.cpf,
-          date_birth: date_birth,
+      if (!phone || !date_birth) {
+        Alert.alert("Error", "Telefone ou data de nascimento inválidos");
+        return { data: null, error: new Error("Telefone ou data inválidos") };
+      }
+
+      const { data, error } = await supabase.auth.signUp({
+        email: input.email,
+        password: input.password,
+        options: {
+          data: {
+            name: input.name,
+            phone: phone,
+            cpf: input.cpf,
+            date_birth: date_birth,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      console.log(error);
-      Alert.alert("Error", "Something went wrong.");
+      console.log({data, error});
+      
+      if (error) {
+        console.log(error);
+        Alert.alert("Error", "Algo deu errado no cadastro.");
+        return;
+      }
+
+      return data;
+
+    } catch (err: any) {
+      console.error("signUp exception:", err);
+      Alert.alert("Erro inesperado", err.message || "Something went wrong");
+      return { data: null, error: err };
     }
-
-    return data;
-  },
+  }
 };
 
 export default authService;

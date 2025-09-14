@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import authService from "@/services/auth-service";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
 import {
@@ -15,6 +16,7 @@ interface SessionContextProps {
   session: Session | null;
   user: User | null;
   isLoading: boolean;
+  isFirstAccess: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (input: {
     name: string;
@@ -31,6 +33,7 @@ const SessionContext = createContext<SessionContextProps>({
   session: null,
   user: null,
   isLoading: true,
+  isFirstAccess: false,
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
@@ -38,6 +41,7 @@ const SessionContext = createContext<SessionContextProps>({
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
+  const [isFirstAccess, SetIsFirstAccess] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -46,7 +50,14 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
     const init = async () => {
       const { data } = await supabase.auth.getSession();
+      const value = await AsyncStorage.getItem("isFirstAccess")
+
       if (mounted) {
+        if (value === null) {
+          SetIsFirstAccess(true);
+        } else {
+          SetIsFirstAccess(value === "true");
+        }
         setSession(data.session);
         setIsLoading(false);
       }
@@ -87,7 +98,8 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const signOut = async () => {
     await supabase.auth.signOut();
     // router.dismissAll();
-    router.replace("/");
+    // router.replace("/");
+    router.replace("/signin");
     setSession(null);
   };
 
@@ -97,6 +109,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         session,
         user,
         isLoading,
+        isFirstAccess,
         signIn,
         signUp,
         signOut,

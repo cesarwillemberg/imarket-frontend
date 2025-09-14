@@ -1,12 +1,14 @@
-import { Theme } from "@/theme/ThemeContext";
+
+import { Theme } from "@/themes/ThemeContext";
 import { StyleSheet } from "react-native";
 
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     tabBar: {
       height: 90,
-      borderColor: "#FB0202",
       borderTopWidth: 3,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.background
     },
     tabBarItem: {
       borderRadius: 50,

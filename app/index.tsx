@@ -1,21 +1,29 @@
 import SplashScreenLoading from "@/components/splashscreenloading";
+import { useSession } from "@/providers/SessionContext/Index";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function Index() {
-    const router = useRouter();
+  const router = useRouter();
+  const { user, session, isFirstAccess, isLoading } = useSession();
 
-    const [isFirstAccess, SetIsFirstAccess] = useState(false);
+  useEffect(() => {
+    // ⚠️ Garante que só roda depois do carregamento inicial
+    if (isLoading || isFirstAccess === null) return;
 
-    useEffect(() => {
-        setTimeout(() => {
-        if (isFirstAccess) {
-            // router.push("/onboarding");
-        } else {
-            router.push("/signin");
-        }
-        }, 2500)
-    })
-    
-  return <SplashScreenLoading  />
+    const timer = setTimeout(() => {
+      if (session && user) {
+        router.replace("/(tabs)/home");
+      } else if (isFirstAccess) {
+        router.replace("/onboarding");
+      } else {
+
+        router.replace("/signin");
+      }
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [isFirstAccess, isLoading, session, user]);
+
+  return <SplashScreenLoading />;
 }

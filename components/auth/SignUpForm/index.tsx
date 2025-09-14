@@ -47,7 +47,7 @@ export const SignUpForm = () => {
             return;
         }
 
-        await signUp({ 
+        const data = await signUp({ 
             name, 
             cpf, 
             date_birth: dateOfBirth, 
@@ -56,7 +56,10 @@ export const SignUpForm = () => {
             password,
         });
 
-        // router.push("/confirm-email");
+        router.push({
+          pathname: "/confirmemailscreen",
+          params: {email: email}
+        });
         
     }
 
