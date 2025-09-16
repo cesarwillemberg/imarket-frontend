@@ -13,8 +13,8 @@ import PhoneInput from "@/components/common/PhoneInput";
 import { useSession } from "@/providers/SessionContext/Index";
 import Checkbox from "expo-checkbox";
 import { useRouter } from "expo-router";
-import { useState } from "react";
-import { Alert, Text, TouchableOpacity, View } from "react-native";
+import { useRef, useState } from "react";
+import { Alert, findNodeHandle, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";
 
 export const SignUpForm = () => {
@@ -31,6 +31,16 @@ export const SignUpForm = () => {
     const [password, setPassword] = useState<string>("");
     const [confirmPassword, setConfirmPassword] = useState<string>("");
     const [isChecked, setIsChecked] = useState<boolean>(false);
+
+    const inputNameRef = useRef<TextInput>(null);
+    const inputCPFRf = useRef<TextInput>(null);
+    const inputDateOfBirthRef = useRef<TextInput>(null);
+    const inputPhoneRef = useRef<TextInput>(null);
+    const inputEmailRef = useRef<TextInput>(null);
+    const inputPasswordRef = useRef<TextInput>(null);
+    const inputConfirmPasswordRef = useRef<TextInput>(null);
+
+    const scrollViewRef = useRef<ScrollView>(null);
 
     const handleDateChange = (date: Date, formattedDate: string) => {
         setDateOfBirth(formattedDate);
@@ -63,17 +73,54 @@ export const SignUpForm = () => {
         
     }
 
+    const scrollToInput = (inputRef: React.RefObject<TextInput>) => {
+      if (!inputRef.current || !scrollViewRef.current) return;
+
+      const inputHandle = findNodeHandle(inputRef.current);
+      if (!inputHandle) return;
+
+      scrollViewRef.current.scrollResponderScrollNativeHandleToKeyboard(
+        inputHandle,
+        20,
+        true
+      );
+    };
+
     return (
         <View>
             <Title align="center" style={{marginBottom: 0}}>CADASTRE-SE</Title>
             <Subtitle align="center">Por favor, cadastre-se para começar</Subtitle>
             <View style={styles.input_group}>
                 <Text style={styles.label}>NOME COMPLETO</Text>
-                <Input placeholder="Nome completo" value={name} onChangeText={setName} />
+                <Input 
+                  placeholder="Nome completo" 
+                  value={name} 
+                  onChangeText={setName} 
+                  onSubmitEditing={() => {
+                    inputCPFRf.current?.focus();
+                    scrollToInput(inputCPFRf);
+                  }}
+                  onFocus={() => scrollToInput(inputNameRef)}
+                  ref={inputNameRef}
+                  returnKeyType={"next"}
+                  inputMode="text"
+                />
             </View>
             <View style={styles.input_group}>
                 <Text style={styles.label}>CPF</Text>
-                <Input placeholder="000.000.000-00" value={cpf} onChangeText={setCPF} />
+                <Input 
+                  placeholder="000.000.000-00" 
+                  value={cpf} 
+                  onChangeText={setCPF} 
+                  onSubmitEditing={() => {
+                    inputDateOfBirthRef.current?.focus();
+                    scrollToInput(inputDateOfBirthRef);
+                  }}
+                  onFocus={() => scrollToInput(inputCPFRf)}
+                  ref={inputCPFRf}
+                  returnKeyType={"next"}
+                  inputMode="text"
+                />
             </View>
             <View style={styles.input_group}>
                 <Text style={styles.label}>DATA DE NASCIMENTO</Text>
@@ -81,26 +128,40 @@ export const SignUpForm = () => {
                     value={dateOfBirth}
                     onDateChange={handleDateChange}
                     placeholder="Data de Nascimento (DD/MM/YYYY)"
-                    // inputRef={inputDateOfBirthRef}
-                    // scrollToInput={scrollToInput}
-                    // nextInputRef={inputPhoneRef}
                     maximumDate={new Date()}
                     minimumDate={new Date('1900-01-01')} 
+                    nextInputRef={inputPhoneRef}
+                    inputRef={inputDateOfBirthRef}
+                    scrollToInput={scrollToInput}
+                    returnKeyType={"next"}
+                    inputMode="text"
                 />
             </View>
             <View style={styles.input_group}>
                 <Text style={styles.label}>TELEFONE</Text>
                 <PhoneInput
-                    value={phone}
-                    onChangeText={setPhone}
-                    label="TELEFONE"
-                    // ref={inputPhoneRef}
-                    // ... outros props
+                  value={phone}
+                  onChangeText={setPhone}
+                  label="TELEFONE"
+                  ref={inputPhoneRef}
+                  onSubmitEditing={() => {
+                    inputEmailRef.current?.focus();
+                    scrollToInput(inputEmailRef);
+                  }}
+                  onFocus={() => scrollToInput(inputEmailRef)}
+                  returnKeyType={"next"}
+                  keyboardType="numeric"
                 />
             </View>
             <View style={styles.input_group}>
                 <Text style={styles.label}>EMAIL</Text>
-                <EmailInput  value={email} onValueChange={setEmail}  />
+                <EmailInput  
+                  value={email} 
+                  onValueChange={setEmail}  
+                  ref={inputEmailRef}
+                  passwordRef={inputPasswordRef}
+                  scrollToInput={scrollToInput}
+                />
             </View>
             <View style={styles.input_group}>
                 <Text style={styles.label}>SENHA</Text>
@@ -109,6 +170,13 @@ export const SignUpForm = () => {
                     onValueChange={setPassword}
                     placeholder="Digite sua senha"
                     isRegistration={true}
+                    ref={inputPasswordRef}
+                    onSubmitEditing={() => {
+                      inputConfirmPasswordRef.current?.focus();
+                      scrollToInput(inputConfirmPasswordRef);
+                    }}
+                    onFocus={() => scrollToInput(inputPasswordRef)}
+                    returnKeyType="next"
                 />
             </View>
             <View style={styles.input_group}>
@@ -118,6 +186,8 @@ export const SignUpForm = () => {
                     onValueChange={setConfirmPassword}
                     placeholder="Confirmar senha"
                     isRegistration={true}
+                    returnKeyType="done"
+                    ref={inputConfirmPasswordRef}
                 />
             </View>
             <View style={styles.options_row}>

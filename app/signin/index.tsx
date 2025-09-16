@@ -4,14 +4,13 @@ import { useRouter } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";
 
-import LogoLight from "@/assets/images/splashscreen/logo.svg";
-import LogoDark from "@/assets/images/splashscreen/logo_dark.svg";
 import { SignInForm } from "@/components/auth/SignInForm";
 
 import Apple from "@/assets/images/login/apple.svg";
 import Facebook from "@/assets/images/login/facebook.svg";
 import Google from "@/assets/images/login/google.svg";
 import X from "@/assets/images/login/x.svg";
+import Logo from "@/components/common/Logo";
 import SocialButton from "@/components/common/SocialButton";
 import { useSession } from "@/providers/SessionContext/Index";
 import { useEffect } from "react";
@@ -37,15 +36,15 @@ export default function SignIn() {
 
 
   return (
-    <ScreenContainer style={{ flex: 1, alignItems: "center", justifyContent: "center"}}>
+    <ScreenContainer 
+      style={{ 
+        flex: 1, 
+        alignItems: "center", 
+        justifyContent: "center", 
+      }}
+    >
       <>
-        <View style={styles.logo_wrapper}>
-          {currentTheme === "light" ? (
-            <LogoLight width={250} height={250} />
-          ) : (
-            <LogoDark width={250} height={250} />
-          )}
-        </View>
+        <Logo />
         <View style={styles.form_wrapper}>
           <SignInForm />
           <View style={styles.register_container}>

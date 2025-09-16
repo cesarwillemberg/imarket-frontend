@@ -44,53 +44,33 @@ const InputPassword = forwardRef<TextInput, PasswordInputProps>(
     const [errorMessage, setErrorMessage] = React.useState<string>("");
     const [successMessage, setSuccessMessage] = React.useState<string>("");
 
-
-    // Password validation function for registration
     const validatePassword = (password: string): boolean => {
-      if (!isRegistration) return true; // Skip validation for login
+      if (!isRegistration) return true;
 
       const minLength = password.length >= 8;
       const hasUpperCase = /[A-Z]/.test(password);
       const hasNumbers = (password.match(/[0-9]/g) || []).length >= 2;
       const hasSpecialChars = (password.match(/[!@#$%^&*(),.?":{}|<>]/g) || []).length >= 2;
 
-      if(password === "") {
-        setSuccessMessage("");
-        setErrorMessage("A senha deve conter pelo menos 8 caracetres, sendo 1 letra maiúscula, 2 números e 2 caracteres especiais.")
-        return false;
-      }
-
-      if (!minLength) {
-        setSuccessMessage("");
-        setErrorMessage("A senha deve ter pelo menos 8 caracteres.");
-        return false;
-      }
-      if (!hasUpperCase) {
-        setSuccessMessage("");
-        setErrorMessage("A senha deve conter pelo menos 1 letra maiúscula.");
-        return false;
-      }
-      if (!hasNumbers) {
-        setSuccessMessage("");
-        setErrorMessage("A senha deve conter pelo menos 2 números.");
-        return false;
-      }
-      if (!hasSpecialChars) {
-        setSuccessMessage("");
-        setErrorMessage("A senha deve conter pelo menos 2 caracteres especiais.");
-        return false;
-      }
-
-      if(minLength && hasUpperCase && hasNumbers && hasSpecialChars) {
+      if (password === "") {
         setErrorMessage("");
-        setSuccessMessage("Atende aos requisitos minimos");
+        setSuccessMessage("");
+        return false;
       }
 
-      setErrorMessage(""); // Clear error if all criteria are met
+      if (!(minLength && hasUpperCase && hasNumbers && hasSpecialChars)) {
+        setErrorMessage(
+          "A senha deve conter pelo menos 8 caracteres, sendo 1 letra maiúscula, 2 números e 2 caracteres especiais."
+        );
+        setSuccessMessage("");
+        return false;
+      }
+
+      setErrorMessage("");
+      setSuccessMessage("Atende aos requisitos mínimos");
       return true;
     };
 
-    // Validate password whenever the value changes during registration
     React.useEffect(() => {
       if (isRegistration) {
         validatePassword(value);
@@ -113,6 +93,7 @@ const InputPassword = forwardRef<TextInput, PasswordInputProps>(
             secureTextEntry={!showPassword}
             returnKeyType={returnKeyType}
             onSubmitEditing={onSubmitEditing}
+            
             placeholderTextColor={theme.colors.disabled}
             style={[
               styles.input,

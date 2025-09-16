@@ -24,7 +24,6 @@ const EmailInput: React.FC<EmailInputProps> = ({
   const inputEmailRef = useRef<any>(null);
   const [emailError, setEmailError] = useState<string>('');
 
-  // Função de validação tipada
   const validateEmail = (emailText: string): boolean => {
     const regex: RegExp = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
     return regex.test(emailText);
