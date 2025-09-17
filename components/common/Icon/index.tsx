@@ -11,8 +11,8 @@ type MaterialCommunityName = ComponentProps<
   typeof MaterialCommunityIcons
 >["name"];
 
-type IconType = "fontawesome" | "MaterialCommunityIcons" | "feather";
-type IconName = FontAwesomeName | FeatherName | MaterialCommunityName;
+export type IconType = "fontawesome" | "MaterialCommunityIcons" | "feather";
+export type IconName = FontAwesomeName | FeatherName | MaterialCommunityName;
 
 type IconProps = {
   type: IconType;

@@ -8,6 +8,7 @@ import createStyles from "./styled";
 
 import LogoLight from "@/assets/images/splashscreen/logo.svg";
 import LogoDark from "@/assets/images/splashscreen/logo_dark.svg";
+import HeaderScreen from "@/components/common/HeaderScreen";
 
 export default function ConfirmEmailScreen() {;
     const { email } = useLocalSearchParams();
@@ -15,6 +16,7 @@ export default function ConfirmEmailScreen() {;
     const styles = createStyles(theme);
     return (
         <ScreenContainer style={{ justifyContent: "center" }}>
+            <HeaderScreen />
             <View style={styles.logo_wrapper}>
                 {currentTheme === "light" ? (
                     <LogoLight width={250} height={250} />
@@ -27,7 +29,7 @@ export default function ConfirmEmailScreen() {;
                 <Title align="center" >{email}</Title>
             </View>
 
-             <Button title="Back to Sign In" onPress={() => router.replace("/signin") } />
+            <Button title="Back to Sign In" onPress={() => router.replace("/signin") } />
         </ScreenContainer>
     )
 }

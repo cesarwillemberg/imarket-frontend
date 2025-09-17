@@ -1,4 +1,5 @@
 import { SignUpForm } from "@/components/auth/SignUpForm";
+import HeaderScreen from "@/components/common/HeaderScreen";
 import Logo from "@/components/common/Logo";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
 import { useTheme } from "@/themes/ThemeContext";
@@ -16,6 +17,7 @@ const SignUpScreen = () => {
                 contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center" }}
                 keyboardShouldPersistTaps="handled"  // Opcional: melhora a interação com o teclado no formulário
             >
+                <HeaderScreen  />
                 <Logo />
                 <View style={styles.form_wrapper}>
                     <SignUpForm />

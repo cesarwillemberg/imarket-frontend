@@ -9,6 +9,10 @@ const createStyles = (theme: Theme) =>
       paddingVertical: theme.spacing.xl,
       backgroundColor: theme.colors.background,
     },
+    safe_area_view_wrapper: { 
+      flex: 1, 
+      backgroundColor: theme.colors.background 
+    }
   });
 
 export default createStyles;
