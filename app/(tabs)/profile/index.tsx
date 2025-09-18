@@ -1,13 +1,13 @@
 import { Button } from "@/components/common/Button";
 import ProfileButton from "@/components/common/ProfileButton";
+import ProfielPictureAndName from "@/components/common/ProfilePictureandName";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
-import { Title } from "@/components/common/Title/Index";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/SessionContext/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Image, View } from "react-native";
+import { View } from "react-native";
 import createStyles from "./stylde";
 
 export default function Profile() {
@@ -39,26 +39,9 @@ export default function Profile() {
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <View style={{
-          alignItems: "center", 
-          // justifyContent: "center", 
-          // flexDirection: "row", 
-          marginVertical: 30
-        }}>
-          <View style={{marginBottom: 10}}>
-            <Image 
-              source={require("@/assets/images/profile/img_profile.jpg")}
-              style={{
-                width: 120, 
-                height: 120, 
-                borderRadius: 999, 
-                borderWidth: 2,
-                borderColor: theme.colors.primary
-              }}
-            />    
-          </View>
-          <Title style={{ marginLeft: 10, fontSize: theme.fontSizes.lg}}>{name}</Title>
-        </View>
+        <ProfielPictureAndName 
+          name={name} 
+        />
 
         <View style={{
           marginVertical: 5
