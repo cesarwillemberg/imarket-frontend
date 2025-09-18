@@ -1,4 +1,4 @@
-import { Theme } from "@/theme/ThemeContext";
+import { Theme } from "@/themes/ThemeContext";
 import { StyleSheet } from "react-native";
 
 const createStyles = (theme: Theme) =>
@@ -12,7 +12,7 @@ const createStyles = (theme: Theme) =>
     },
     text: {
       fontWeight: "bold",
-      color: theme.colors.onPrimary,
+      color: theme.colors.text,
       fontSize: theme.fontSizes.md,
     },
   });

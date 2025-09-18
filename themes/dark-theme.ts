@@ -2,7 +2,7 @@ export const DARK_COLORS = {
   primary: "#FB0202",
   onPrimary: "#FFFFFF",
 
-  secondary: "#CCC2DC",
+  secondary: "#222222ff",
   onSecondary: "#332D41",
 
   background: "#121212",

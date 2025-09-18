@@ -7,6 +7,8 @@ export default function ProfileLayout() {
       <Stack.Screen name="seeprofile/index" options={{ headerShown: false }} />
       <Stack.Screen name="chats/index" options={{ headerShown: false }} />
       <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
+      <Stack.Screen name="payments/index" options={{ headerShown: false }} />
+      <Stack.Screen name="address/index" options={{ headerShown: false }} />
     </Stack>
   );
 }

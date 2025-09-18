@@ -18,14 +18,16 @@ export default function Profile() {
 
   const [name, setName] = useState<string>();
 
+  const [userData, setUserData] = useState<JSON | null>(null);
+
   const handleGetInfoUser = async () => {
-    const { data:user_data, error } = await supabase
+    const { data, error } = await supabase
       .from("perfis")
       .select("*")
       .eq("id", user?.id)
       .single();
-      
-      setName(user_data?.nome)
+      setName(data?.nome)
+      setUserData(data); 
   }
 
   const handleSignOut = () => {
@@ -42,7 +44,6 @@ export default function Profile() {
         <ProfielPictureAndName 
           name={name} 
         />
-
         <View style={{
           marginVertical: 5
         }}>
@@ -63,6 +64,18 @@ export default function Profile() {
             iconType="MaterialCommunityIcons" 
             title="Informações do Perfil"
             linkPage="/(tabs)/profile/seeprofile"
+          />
+          <ProfileButton
+            iconName="credit-card" 
+            iconType="fontawesome" 
+            title="Formas de Pagamento"
+            linkPage="/(tabs)/profile/payments"
+          />
+          <ProfileButton
+            iconName="map-marker-outline" 
+            iconType="MaterialCommunityIcons" 
+            title="Meus Endereços"
+            linkPage="/(tabs)/profile/address"
           />
         </View>
 
