@@ -70,7 +70,7 @@ export default function ViewProfile() {
   }
 
   const handleEditProfile = () => {
-    router.push("/(tabs)/profile/payments");
+    router.push("/(tabs)/profile/editprofile");
   }
 
   return (
