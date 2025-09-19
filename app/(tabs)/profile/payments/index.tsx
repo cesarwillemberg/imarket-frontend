@@ -5,16 +5,16 @@ import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
 import createStyles from "./styled";
 
-export default function SeeProfile() {
+export default function Payments() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
 
   return (
     <ScreenContainer>
-      <HeaderScreen title="Meu Perfil" />
+      <HeaderScreen title={"Formas de Pagamentos"} />
       <View style={styles.container}>
-        <Text style={{color: theme.colors.text}}>Ver Perfil</Text>
+        <Text style={{color: theme.colors.text}}>Pagamentos</Text>
       </View>
     </ScreenContainer>
   );

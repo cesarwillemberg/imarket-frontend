@@ -15,7 +15,7 @@ const SignUpScreen = () => {
             <ScrollView
                 style={{ flex: 1 }}
                 contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center" }}
-                keyboardShouldPersistTaps="handled"  // Opcional: melhora a interação com o teclado no formulário
+                keyboardShouldPersistTaps="handled"
             >
                 <HeaderScreen  />
                 <Logo />

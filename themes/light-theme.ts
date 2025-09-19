@@ -2,7 +2,7 @@ export const COLORS = {
   primary: "#FB0202",
   onPrimary: "#FFFFFF",
 
-  secondary: "#625B71",
+  secondary: "#F5F5F5",
   onSecondary: "#FFFFFF",
 
   background: "#F6F4F6",

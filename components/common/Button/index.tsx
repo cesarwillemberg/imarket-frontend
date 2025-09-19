@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import createStyles from "./Styled";
 
-type ButtonVariant = "primary" | "outline" | "danger" | "success";
+type ButtonVariant = "primary" | "secondary" | "outline" | "danger" | "success";
 
 interface Props {
   title: string;
@@ -38,6 +38,9 @@ export const Button: FC<Props> = ({
     primary: {
       backgroundColor: theme.colors.primary,
     },
+    secondary: {
+      backgroundColor: theme.colors.secondary
+    },  
     outline: {
       borderColor: theme.colors.primary,
       borderWidth: 2,

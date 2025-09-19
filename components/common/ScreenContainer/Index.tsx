@@ -35,7 +35,7 @@ export const ScreenContainer: FC<Props> = ({ children, style, statusBarHidden, s
     <>
       <SafeAreaView 
         style={styles.safe_area_view_wrapper} 
-        edges={safeAreaEdges || ['top', 'bottom']}
+        edges={safeAreaEdges || ['top']}
       >
         <StatusBar
             barStyle={currentTheme === 'light' ? 'dark-content' : 'light-content'}
