@@ -43,6 +43,7 @@ const authService = {
         options: {
           data: {
             name: input.name,
+            email: input.email,
             phone: phone,
             cpf: input.cpf,
             date_birth: date_birth,

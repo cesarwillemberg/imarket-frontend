@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 
 const createStyles = (theme: Theme) => StyleSheet.create({
     container: {
+        paddingVertical: 20
     },
     label_infos: { 
         color: theme.colors.text, 
@@ -20,15 +21,13 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     label: {
         color: theme.colors.text,
         fontSize: 15,
-        marginVertical: 1
     },
     text: {
         color: theme.colors.text,
         fontSize: 22,
-        marginVertical: 2,
     },
     wrapper_buttons: {  
-        marginVertical: 40, 
+        marginVertical: 30, 
     },
     wrapper_buttons_address_payments: {
         flexDirection: "row", 

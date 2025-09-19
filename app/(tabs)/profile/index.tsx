@@ -63,7 +63,7 @@ export default function Profile() {
             iconName="card-account-details-outline" 
             iconType="MaterialCommunityIcons" 
             title="Informações do Perfil"
-            linkPage="/(tabs)/profile/seeprofile"
+            linkPage="/(tabs)/profile/viewprofile"
           />
           <ProfileButton
             iconName="credit-card" 
