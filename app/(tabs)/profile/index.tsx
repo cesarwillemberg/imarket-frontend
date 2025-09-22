@@ -1,6 +1,6 @@
+import ProfielPictureAndName from "@/components/auth/profile/ProfilePictureandName";
 import { Button } from "@/components/common/Button";
 import ProfileButton from "@/components/common/ProfileButton";
-import ProfielPictureAndName from "@/components/common/ProfilePictureandName";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/SessionContext/Index";

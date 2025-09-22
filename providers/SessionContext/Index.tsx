@@ -27,6 +27,7 @@ interface SessionContextProps {
     date_birth: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
+  getInfoUser: (input: { id: string; }) => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -37,6 +38,8 @@ const SessionContext = createContext<SessionContextProps>({
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
+  getInfoUser: async () => {},
+  
 });
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -103,6 +106,11 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setSession(null);
   };
 
+  const getInfoUser = async (input: { id: string }) => {
+    const data = await authService.getInfoUser(input);
+    return data;
+  }
+
   return (
     <SessionContext.Provider
       value={{
@@ -113,6 +121,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         signIn,
         signUp,
         signOut,
+        getInfoUser
       }}
     >
       {children}

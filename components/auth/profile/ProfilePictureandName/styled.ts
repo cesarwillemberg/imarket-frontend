@@ -7,14 +7,14 @@ const createStyles = (theme: Theme) =>
             alignItems: "center", 
             // justifyContent: "center", 
             // flexDirection: "row", 
-            marginVertical: 30
+            // marginVertical: 30
         },
         img: {
             width: 120, 
             height: 120, 
             borderRadius: 999, 
             borderWidth: 2,
-            resizeMode: "contain",
+            resizeMode: "cover",
             borderColor: theme.colors.primary
         },
         title: {

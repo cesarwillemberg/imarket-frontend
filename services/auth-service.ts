@@ -15,6 +15,10 @@ interface SignUpAttributes {
   date_birth: string;
 }
 
+interface getInfoUserAttributes {
+  id: string;
+}
+
 const authService = {
   signIn: async (input: SignInAttributes) => {
     const { data, error } = await supabase.auth.signInWithPassword(input);
@@ -66,7 +70,24 @@ const authService = {
       Alert.alert("Erro inesperado", err.message || "Something went wrong");
       return { data: null, error: err };
     }
-  }
+  },
+
+  getInfoUser: async (input: getInfoUserAttributes) => {
+    const { data, error } = await supabase
+      .from("perfis")
+      .select("*")
+      .eq("id", input)
+      .single();
+
+    if (error) {
+      console.log(error);
+      Alert.alert("Error", "Something went wrong.");
+    }
+
+    console.log(data);
+    
+    return JSON.stringify(data);
+  },
 };
 
 export default authService;

@@ -1,6 +1,6 @@
+import ProfielPictureAndName from "@/components/auth/profile/ProfilePictureandName";
 import { Button } from "@/components/common/Button";
 import HeaderScreen from "@/components/common/HeaderScreen";
-import ProfielPictureAndName from "@/components/common/ProfilePictureandName";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
 import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/SessionContext/Index";
@@ -14,7 +14,7 @@ export default function ViewProfile() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
-  const { user } = useSession();
+  const { user, getInfoUser } = useSession();
 
   // const { data } = useLocalSearchParams();
   // const user = data ? JSON.parse(data) : null;
@@ -147,7 +147,6 @@ export default function ViewProfile() {
             </>
           )}
         </ScrollView>
-
       </View>
     </ScreenContainer>
   );

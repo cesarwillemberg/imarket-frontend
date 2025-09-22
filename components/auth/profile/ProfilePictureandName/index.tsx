@@ -1,7 +1,7 @@
 import { useTheme } from "@/themes/ThemeContext";
 import { FC } from "react";
 import { Image, View } from "react-native";
-import { Title } from "../Title/Index";
+import { Title } from "../../../common/Title/Index";
 import createStyles from "./styled";
 
 
@@ -32,7 +32,9 @@ const ProfielPictureAndName: FC<Props> = ({ name, pathImage}) => {
                         />    
                     )}
                 </View>
-                <Title style={styles.title}>{name}</Title>
+                {name ? (
+                    <Title style={styles.title}>{name}</Title>
+                ) : ("")}
             </View>
         </>
     )

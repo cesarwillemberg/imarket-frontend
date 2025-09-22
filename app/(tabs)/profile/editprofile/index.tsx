@@ -1,18 +1,18 @@
+import EditProfileForm from "@/components/auth/EditProfileForm";
 import HeaderScreen from "@/components/common/HeaderScreen";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
-import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/SessionContext/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, findNodeHandle, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, findNodeHandle, RefreshControl, ScrollView, TextInput, View } from "react-native";
 import createStyles from "./styled";
 
 export default function EditProfile() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
-  const { user } = useSession();
+  const { user, getInfoUser } = useSession();
 
   const [name, setName] = useState<string>("");
   const [cpf, setCPF] = useState<string>("");
@@ -27,12 +27,11 @@ export default function EditProfile() {
   const inputDateOfBirthRef = useRef<TextInput>(null);
 
   const handleGetInfoUser = async () => {
-    const { data, error } = await supabase
-      .from("perfis")
-      .select("*")
-      .eq("id", user?.id)
-      .single();
+    if (!user) return null;
+    const data = getInfoUser(user.id)
 
+    console.log(data);
+    
       // setUserData(data);
       // setName(data?.nome);
       // setCPF(data?.cpf);
@@ -77,7 +76,6 @@ export default function EditProfile() {
         <HeaderScreen title="Editar Perfil" />
         <ScrollView
           contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
-          scrollEnabled={false}
           refreshControl={
             <RefreshControl   
               refreshing={refreshing}
@@ -93,10 +91,8 @@ export default function EditProfile() {
             <ActivityIndicator size="large" color={theme.colors.primary} />
           ) : (
             <>
-              <View>
-                <View>
-                  <Text style={{ color: theme.colors.text}}>IMG PERFIL</Text>
-                </View>
+              <View style={{width: "100%", height: "100%"}}>
+                <EditProfileForm/>
               </View>
             </>
           )}
