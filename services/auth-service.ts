@@ -19,6 +19,16 @@ interface getInfoUserAttributes {
   id: string;
 }
 
+export interface UserInfo {
+  id: string;
+  profile_picture?: string;
+  nome?: string;
+  cpf?: string;
+  data_nascimento?: string;
+  email?: string;
+  telefone?: string | number;
+}
+
 const authService = {
   signIn: async (input: SignInAttributes) => {
     const { data, error } = await supabase.auth.signInWithPassword(input);
@@ -54,8 +64,6 @@ const authService = {
           },
         },
       });
-
-      console.log({data, error});
       
       if (error) {
         console.log(error);
@@ -72,11 +80,11 @@ const authService = {
     }
   },
 
-  getInfoUser: async (input: getInfoUserAttributes) => {
+  getInfoUser: async (input: getInfoUserAttributes): Promise<UserInfo> => {
     const { data, error } = await supabase
       .from("perfis")
       .select("*")
-      .eq("id", input)
+      .eq("id", input.id)
       .single();
 
     if (error) {
@@ -84,9 +92,7 @@ const authService = {
       Alert.alert("Error", "Something went wrong.");
     }
 
-    console.log(data);
-    
-    return JSON.stringify(data);
+    return data;
   },
 };
 

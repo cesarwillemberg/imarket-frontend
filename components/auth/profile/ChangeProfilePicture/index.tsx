@@ -13,7 +13,7 @@ interface Props {
     image: string | null;
     modalVisible: boolean;
     setImage: Dispatch<SetStateAction<string | null>>;
-    setModalVisible: () => Dispatch<SetStateAction<boolean>>;
+    setModalVisible: Dispatch<SetStateAction<boolean>>;
     openImageOptions: () => void;
 
 }
@@ -24,7 +24,6 @@ const ChangeProfilePicture: FC<Props> = ({
     openImageOptions, 
     setModalVisible, 
     setImage
-
 }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);

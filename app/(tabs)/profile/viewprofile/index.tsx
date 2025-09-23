@@ -2,7 +2,6 @@ import ProfielPictureAndName from "@/components/auth/profile/ProfilePictureandNa
 import { Button } from "@/components/common/Button";
 import HeaderScreen from "@/components/common/HeaderScreen";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
-import { supabase } from "@/lib/supabase";
 import { useSession } from "@/providers/SessionContext/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
@@ -10,39 +9,42 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from "react-native";
 import createStyles from "./styled";
 
+
 export default function ViewProfile() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
   const { user, getInfoUser } = useSession();
 
-  // const { data } = useLocalSearchParams();
-  // const user = data ? JSON.parse(data) : null;
+  const [profilePicture, setProfilePicture] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [cpf, setCPF] = useState<string>("");
+  const [date_of_birth, set_date_of_birth] = useState<string>("");
+  const [email, set_email] = useState<string>("");
+  const [phone, set_phone] = useState<string>("");
 
-  
-  const [name, setName] = useState<string>();
-  const [cpf, setCPF] = useState<string>();
-  const [date_of_birth, set_date_of_birth] = useState<string>();
-  const [email, set_email] = useState<string>();
-  const [phone, set_phone] = useState<string>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [userData, setUserData] = useState<JSON | null>(null);
-  
-  const handleGetInfoUser = async () => {
-    const { data, error } = await supabase
-      .from("perfis")
-      .select("*")
-      .eq("id", user?.id)
-      .single();
 
-      setUserData(data);
-      setName(data?.nome);
-      setCPF(data?.cpf);
-      set_date_of_birth(data?.data_nascimento);
-      set_email(data?.email);
-      set_phone(data?.telefone);
-    
+  const handleGetInfoUser = async () => {
+    if (!user || !user.id) {
+      console.warn("Usuário não disponível ou ID indefinido.");
+      return;
+    }
+
+    try {
+      const data = await getInfoUser({id: user.id});
+
+      setProfilePicture(data.profile_picture || "")
+      setName(data.nome || "");
+      setCPF(data.cpf || "");
+      set_date_of_birth(data.data_nascimento || "");
+      set_email(data.email || "");
+      set_phone(data.telefone || "");
+      
+    } catch (error) {
+      console.error("Erro ao buscar informações do usuário:", error);
+    }
   }
 
   const fetchData = async () => {
@@ -79,7 +81,7 @@ export default function ViewProfile() {
         <HeaderScreen title="Informações do Perfil" />
         <ScrollView
           contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
-          scrollEnabled={false}
+          // scrollEnabled={false}
           refreshControl={
             <RefreshControl   
               refreshing={refreshing}
@@ -95,7 +97,7 @@ export default function ViewProfile() {
             <ActivityIndicator size="large" color={theme.colors.primary} />
           ) : (
             <>
-              <ProfielPictureAndName name={name} />
+              <ProfielPictureAndName pathImage={profilePicture} />
               <View>
                 <Text style={styles.label_infos}>Informações Pessoais</Text>
                 <View style={styles.wrapper_informations}>

@@ -4,54 +4,63 @@ import { Button } from "@/components/common/Button";
 import DatePickerInput from "@/components/common/DatePickerInput";
 import { Input } from "@/components/common/Input/Index";
 import EmailInput from "@/components/common/InputEmail";
-import InputPassword from "@/components/common/InputPassword";
 import PhoneInput from "@/components/common/PhoneInput";
 import { useSession } from "@/providers/SessionContext/Index";
+import { UserInfo } from "@/services/auth-service";
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { findNodeHandle, ScrollView, Text, TextInput, View } from "react-native";
 import ChangeProfilePicture from "../profile/ChangeProfilePicture";
 import createStyles from "./styled";
 
-const EditProfileForm: React.FC = () => {
+interface EditProfileProps {
+    userData: UserInfo;
+}
+
+const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
     const router = useRouter();
     const { user, getInfoUser } = useSession();
-
-    const [image, setImage] = useState<string | null>(null);
-    const [modalVisible, setModalVisible] = useState<boolean>(false);
-
-    const openImageOptions = () => {
-        setModalVisible(true);
-    };
-
-    const [name, setName] = useState<string>("");
-    const [cpf, setCPF] = useState<string>("");
-    const [dateOfBirth, setDateOfBirth] = useState<string>("");
-    const [phone, setPhone] = useState<string>("");
-    const [email, setEmail] = useState<string>("");
-    const [password, setPassword] = useState<string>("");
-    const [confirmPassword, setConfirmPassword] = useState<string>("");
-    const [isChecked, setIsChecked] = useState<boolean>(false);
     
+
+    const [profilePicture, setProfilePicture] = useState<string>(userData.profile_picture || "");
+    const [name, setName] = useState<string>(userData.nome || "");
+    const [cpf, setCPF] = useState<string>(userData.cpf || "");
+    const [dateOfBirth, setDateOfBirth] = useState<string>(userData.data_nascimento || "");
+    const [phone, setPhone] = useState<string>(String(userData.telefone?.toString() ?? ""));
+
+    console.log(userData.telefone);
+    console.log(phone);
+    
+
+    const [email, setEmail] = useState<string>(userData.email || "");
+    
+
+    // const [password, setPassword] = useState<string>("");
+    // const [confirmPassword, setConfirmPassword] = useState<string>("");
+
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
+    const [modalVisible, setModalVisible] = useState<boolean>(false);
 
     const inputNameRef = useRef<TextInput>(null);
     const inputCPFRf = useRef<TextInput>(null);
     const inputDateOfBirthRef = useRef<TextInput>(null);
     const inputPhoneRef = useRef<TextInput>(null);
     const inputEmailRef = useRef<TextInput>(null);
-    const inputPasswordRef = useRef<TextInput>(null);
-    const inputConfirmPasswordRef = useRef<TextInput>(null);
-    
+    // const inputPasswordRef = useRef<TextInput>(null);
+    // const inputConfirmPasswordRef = useRef<TextInput>(null);
     const scrollViewRef = useRef<ScrollView>(null);
+
+    const openImageOptions = () => {
+        setModalVisible(true);
+    };
+
     
     const handleDateChange = (date: Date, formattedDate: string) => {
         setDateOfBirth(formattedDate);
     };
-    
     
     const scrollToInput = (inputRef: React.RefObject<TextInput>) => {
         if (!inputRef.current || !scrollViewRef.current) return;
@@ -74,43 +83,43 @@ const EditProfileForm: React.FC = () => {
 
     }
 
-    const handleGetInfoUser = async () => {
-        if(!user) return null;
-        const data = getInfoUser(user.id)
+    // const handleGetInfoUser = async () => {
+    //     if(!user) return null;
+    //     const data = getInfoUser(user.id)
 
-        // setUserData(data);
-        // setName(data?.nome);
-        // setCPF(data?.cpf);
-        // set_date_of_birth(data?.data_nascimento);
-        // set_email(data?.email);
-        // set_phone(data?.telefone);
+    //     // setUserData(data);
+    //     // setName(data?.nome);
+    //     // setCPF(data?.cpf);
+    //     // set_date_of_birth(data?.data_nascimento);
+    //     // set_email(data?.email);
+    //     // set_phone(data?.telefone);
     
-    }
+    // }
 
 
-    const fetchData = async () => {
-        setIsLoading(true);
-        await handleGetInfoUser();
-        setIsLoading(false);
-    };
+    // const fetchData = async () => {
+    //     setIsLoading(true);
+    //     await handleGetInfoUser();
+    //     setIsLoading(false);
+    // };
 
-    useEffect(()=>{
-        fetchData();
-    },[])
+    // useEffect(()=>{
+    //     fetchData();
+    // },[])
 
-    const onRefresh = async () => {
-        setRefreshing(true);
-        await handleGetInfoUser();
-        setRefreshing(false);
-    };
+    // const onRefresh = async () => {
+    //     setRefreshing(true);
+    //     await handleGetInfoUser();
+    //     setRefreshing(false);
+    // };
 
 
     return (
         <ScrollView>
             <View style={{marginVertical: 20}}>
                 <ChangeProfilePicture 
-                    image={image} 
-                    setImage={setImage}
+                    image={profilePicture} 
+                    setImage={setProfilePicture}
                     modalVisible={modalVisible}
                     setModalVisible={setModalVisible}
                     openImageOptions={openImageOptions}
@@ -167,17 +176,17 @@ const EditProfileForm: React.FC = () => {
                 <View style={styles.input_group}>
                     <Text style={styles.label}>TELEFONE</Text>
                     <PhoneInput
-                    value={phone}
-                    onChangeText={setPhone}
-                    label="TELEFONE"
-                    ref={inputPhoneRef}
-                    onSubmitEditing={() => {
-                        inputEmailRef.current?.focus();
-                        scrollToInput(inputEmailRef);
-                    }}
-                    onFocus={() => scrollToInput(inputEmailRef)}
-                    returnKeyType={"next"}
-                    keyboardType="numeric"
+                        value={phone}
+                        onChangeText={setPhone}
+                        label="TELEFONE"
+                        ref={inputPhoneRef}
+                        onSubmitEditing={() => {
+                            inputEmailRef.current?.focus();
+                            scrollToInput(inputEmailRef);
+                        }}
+                        onFocus={() => scrollToInput(inputEmailRef)}
+                        returnKeyType={"next"}
+                        keyboardType="numeric"
                     />
                 </View>
                 <View style={styles.input_group}>
@@ -186,11 +195,11 @@ const EditProfileForm: React.FC = () => {
                     value={email} 
                     onValueChange={setEmail}  
                     ref={inputEmailRef}
-                    passwordRef={inputPasswordRef}
+                    // passwordRef={inputPasswordRef}
                     scrollToInput={scrollToInput}
                     />
                 </View>
-                <View style={styles.input_group}>
+                {/* <View style={styles.input_group}>
                     <Text style={styles.label}>SENHA</Text>
                     <InputPassword
                         value={password}
@@ -216,7 +225,7 @@ const EditProfileForm: React.FC = () => {
                         returnKeyType="done"
                         ref={inputConfirmPasswordRef}
                     />
-                </View>
+                </View> */}
                 <View style={{marginTop: 20}}>
                     <Button 
                         title="Salvar Alterações" 

@@ -6,7 +6,7 @@ import createStyles from './styled';
 
 // Props interface for the component
 interface PhoneInputProps {
-  value?: string;
+  value?: string | number;
   onChangeText?: (phoneNumber: string) => void;
   label?: string;
   style?: ViewStyle;
@@ -73,7 +73,7 @@ const PhoneInput = forwardRef<PhoneInputRef, PhoneInputProps>(
       // define limite de acordo com o país
       const maxDigits = currentCountry ? maxDigitsPerCountry[currentCountry.code] || 15 : 15;
       const truncated = digitsOnly.slice(0, maxDigits);
-      setInputValue(truncated);
+      // setInputValue(truncated);
 
       const fullNumber = currentCountry ? `${currentCountry.idd.root} ${truncated}` : truncated;
       onChangeText?.(fullNumber);

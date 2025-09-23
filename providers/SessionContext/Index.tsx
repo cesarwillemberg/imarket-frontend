@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import authService from "@/services/auth-service";
+import authService, { UserInfo } from "@/services/auth-service";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
@@ -27,7 +27,7 @@ interface SessionContextProps {
     date_birth: string;
   }) => Promise<void>;
   signOut: () => Promise<void>;
-  getInfoUser: (input: { id: string; }) => Promise<void>;
+  getInfoUser: (input: { id: string; }) => Promise<UserInfo>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -106,7 +106,9 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setSession(null);
   };
 
-  const getInfoUser = async (input: { id: string }) => {
+  const getInfoUser = async (input: { id: string }): Promise<UserInfo> => {
+    console.log(input);
+    
     const data = await authService.getInfoUser(input);
     return data;
   }
@@ -121,7 +123,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         signIn,
         signUp,
         signOut,
-        getInfoUser
+        getInfoUser,
       }}
     >
       {children}

@@ -2,6 +2,7 @@ import EditProfileForm from "@/components/auth/EditProfileForm";
 import HeaderScreen from "@/components/common/HeaderScreen";
 import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
 import { useSession } from "@/providers/SessionContext/Index";
+import { UserInfo } from "@/services/auth-service";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -14,12 +15,10 @@ export default function EditProfile() {
   const router = useRouter();
   const { user, getInfoUser } = useSession();
 
-  const [name, setName] = useState<string>("");
-  const [cpf, setCPF] = useState<string>("");
+  const [userData, setUserData] = useState<UserInfo>();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [dateOfBirth, setDateOfBirth] = useState<string>("");
   
   const scrollViewRef = useRef<ScrollView>(null);
   const inputNameRef = useRef<TextInput>(null);
@@ -27,18 +26,18 @@ export default function EditProfile() {
   const inputDateOfBirthRef = useRef<TextInput>(null);
 
   const handleGetInfoUser = async () => {
-    if (!user) return null;
-    const data = getInfoUser(user.id)
+    if (!user || !user.id) {
+      console.warn("Usuário não disponível ou ID indefinido.");
+      return;
+    }
 
-    console.log(data);
-    
-      // setUserData(data);
-      // setName(data?.nome);
-      // setCPF(data?.cpf);
-      // set_date_of_birth(data?.data_nascimento);
-      // set_email(data?.email);
-      // set_phone(data?.telefone);
+    try {
+      const data = await getInfoUser({id: user.id});
+      setUserData(data);
       
+    } catch (error) {
+      console.error("Erro ao buscar informações do usuário:", error);
+    }
   }
 
   const fetchData = async () => {
@@ -91,8 +90,8 @@ export default function EditProfile() {
             <ActivityIndicator size="large" color={theme.colors.primary} />
           ) : (
             <>
-              <View style={{width: "100%", height: "100%"}}>
-                <EditProfileForm/>
+              <View>
+                <EditProfileForm userData={userData}/>
               </View>
             </>
           )}
