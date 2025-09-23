@@ -10,7 +10,7 @@ interface Props {
     pathImage?: string;
 }
 
-const ProfielPictureAndName: FC<Props> = ({ name, pathImage}) => {
+const ProfilePictureandName: FC<Props> = ({ name, pathImage}) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
 
@@ -40,4 +40,4 @@ const ProfielPictureAndName: FC<Props> = ({ name, pathImage}) => {
     )
 }
 
-export default ProfielPictureAndName;
+export default ProfilePictureandName;

@@ -3,19 +3,20 @@ import { Subtitle } from "@/components/common/subtitle/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { Camera } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { Dispatch, FC, SetStateAction } from "react";
+import { FC } from "react";
 import { Modal, TouchableOpacity, View } from "react-native";
-import ProfielPictureAndName from "../ProfilePictureandName";
+import ProfilePictureandName from "../ProfilePictureandName";
 import createStyles from "./styled";
 
 
 interface Props {
     image: string | null;
     modalVisible: boolean;
-    setImage: Dispatch<SetStateAction<string | null>>;
-    setModalVisible: Dispatch<SetStateAction<boolean>>;
+    profilePictureBase64: string;
+    setImage: (uri: string) => void;
+    setModalVisible: (visible: boolean) => void;
     openImageOptions: () => void;
-
+    setImageBase64: (base64: string) => void;
 }
 
 const ChangeProfilePicture: FC<Props> = ({ 
@@ -23,10 +24,13 @@ const ChangeProfilePicture: FC<Props> = ({
     modalVisible, 
     openImageOptions, 
     setModalVisible, 
-    setImage
+    setImage,
+    setImageBase64,
+    profilePictureBase64
 }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
+    
 
     const requestCameraPermission = async () => {
         const { status } = await Camera.requestCameraPermissionsAsync();
@@ -47,10 +51,12 @@ const ChangeProfilePicture: FC<Props> = ({
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
+            base64: true,
         });
 
         if (!result.canceled) {
             setImage(result.assets[0].uri);
+            setImageBase64(result.assets[0].base64);
         }
         setModalVisible(false);
     }
@@ -64,9 +70,11 @@ const ChangeProfilePicture: FC<Props> = ({
             allowsEditing: true,
             aspect: [4, 3],
             quality: 1,
+            base64: true,
         });
-
+        
         if (!result.canceled) {
+            setImageBase64(result.assets[0].base64);
             setImage(result.assets[0].uri);
         }
         setModalVisible(false);
@@ -79,9 +87,9 @@ const ChangeProfilePicture: FC<Props> = ({
             <TouchableOpacity onPress={openImageOptions}>
                 {
                     image === null ? (
-                        <ProfielPictureAndName />
+                        <ProfilePictureandName />
                     ) : ( 
-                        <ProfielPictureAndName  pathImage={image}/>
+                        <ProfilePictureandName  pathImage={image}/>
                     )
                 }
             </TouchableOpacity>
@@ -90,13 +98,12 @@ const ChangeProfilePicture: FC<Props> = ({
                 transparent={true}
                 visible={modalVisible}
                 onRequestClose={() => setModalVisible(false)}
-                
             >
                 <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
                         <View>
                             <Subtitle align="center">Escolha uma opção para carregar a foto de perfil</Subtitle>
                         </View>
-                    <View style={styles.modalContent}>
                         <Button 
                             style={styles.optionButton}
                             title="Tirar Foto" 

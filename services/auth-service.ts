@@ -20,8 +20,9 @@ interface getInfoUserAttributes {
 }
 
 export interface UserInfo {
-  id: string;
+  id?: string;
   profile_picture?: string;
+  profile_picture_base64?: string;
   nome?: string;
   cpf?: string;
   data_nascimento?: string;
@@ -94,6 +95,65 @@ const authService = {
 
     return data;
   },
+
+  updateProfile: async (input: UserInfo) => {
+    const { 
+      id, 
+      profile_picture, 
+      profile_picture_base64,
+      cpf, 
+      data_nascimento, 
+      email, 
+      nome, 
+      telefone,
+    } = input
+    const path = `profile_picture/${id}/avatar.jpg`;
+
+    if (profile_picture?.startsWith('file://')) {
+      try {
+        // const response = await fetch(profile_picture); 
+        // const arrayBuffer = await response.arrayBuffer();
+        // console.log(response);
+        // const base64 = await FileSystem.readAsStringAsync(profile_picture, { encoding: 'base64' });
+        
+        const { data, error } = await supabase.storage.from('profile_picture').upload(
+          path, 
+          profile_picture_base64, 
+          { contentType: "image/jpeg", upsert: true, type: "base64" }
+        );
+        
+        const { data: { publicUrl } } = await supabase.storage.from('profile_picture').getPublicUrl(path);    
+      
+        const { data: dataUpdate, error: ErrorUpdate } = await supabase
+          .from('perfis')
+          .update({
+            cpf,
+            telefone,
+            nome,
+            data_nascimento,
+            email,
+            profile_picture: publicUrl,
+          })
+          .eq("id", id);
+
+        // const { data, error } = await supabase.auth.updateUser({ email: email});
+        // console.log(data);
+      } catch (error) {
+        console.error("Erro no upload:", error);
+      }
+    } else if (profile_picture?.startsWith('http')) {
+      try {
+        
+      } catch (error) {
+        console.error("Erro no upload:", error);
+      }
+    }
+
+    // const createPath = await supabase.storage.from('')
+    
+    // const { data, error } = await supabase.storage.from('profile_picture').cr
+  }
+
 };
 
 export default authService;

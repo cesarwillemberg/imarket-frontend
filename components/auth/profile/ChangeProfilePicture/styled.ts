@@ -8,14 +8,14 @@ const createStyles = (theme: Theme) => StyleSheet.create({
         alignItems: 'center',
     },
     modalContainer: {
-        flex: 1,
+        flexGrow: 1,
         justifyContent: 'flex-end',
         alignItems: 'center',
-        width: "100%",
     },
     modalContent: {
-        backgroundColor: '#fff',
-        borderRadius: 10,
+        backgroundColor: theme.colors.background_forms,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
         padding: 20,
         width: '100%',
         alignItems: 'center',

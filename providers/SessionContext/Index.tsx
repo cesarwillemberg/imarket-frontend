@@ -28,6 +28,16 @@ interface SessionContextProps {
   }) => Promise<void>;
   signOut: () => Promise<void>;
   getInfoUser: (input: { id: string; }) => Promise<UserInfo>;
+  updateProfile: (input: {
+    id?: string; 
+    profile_picture?: string;
+    profile_picture_base64?: string;
+    name?: string;
+    cpf?: string;
+    date_birth?: string;
+    phone?: string;
+    email?: string;
+  }) => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -39,6 +49,8 @@ const SessionContext = createContext<SessionContextProps>({
   signUp: async () => {},
   signOut: async () => {},
   getInfoUser: async () => {},
+  updateProfile: async () => {},
+
   
 });
 
@@ -107,9 +119,21 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   };
 
   const getInfoUser = async (input: { id: string }): Promise<UserInfo> => {
-    console.log(input);
-    
     const data = await authService.getInfoUser(input);
+    return data;
+  }
+
+  const updateProfile = async (input: {
+    profile_picture: string;
+    profile_picture_base64?: string;
+    name: string;
+    phone: string;
+    email: string;
+    password: string;
+    cpf: string;
+    date_birth: string;
+  }) => {
+    const data = await authService.updateProfile(input);
     return data;
   }
 
@@ -124,6 +148,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         signUp,
         signOut,
         getInfoUser,
+        updateProfile
       }}
     >
       {children}

@@ -6,7 +6,7 @@ import { UserInfo } from "@/services/auth-service";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, findNodeHandle, RefreshControl, ScrollView, TextInput, View } from "react-native";
+import { findNodeHandle, ScrollView, TextInput, View } from "react-native";
 import createStyles from "./styled";
 
 export default function EditProfile() {
@@ -74,27 +74,27 @@ export default function EditProfile() {
       <View style={styles.container}>
         <HeaderScreen title="Editar Perfil" />
         <ScrollView
-          contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
-          refreshControl={
-            <RefreshControl   
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              title="Carregando..."
-              colors={['#ff0000', '#00ff00', '#0000ff']}
-              tintColor="#ff0000"
-              titleColor="#00ff00" 
-            />
-          }
+          // contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
+          // refreshControl={
+          //   <RefreshControl   
+          //     refreshing={refreshing}
+          //     onRefresh={onRefresh}
+          //     title="Carregando..."
+          //     colors={['#ff0000', '#00ff00', '#0000ff']}
+          //     tintColor="#ff0000"
+          //     titleColor="#00ff00" 
+          //   />
+          // }
         >
-          {isLoading ? (
+          {/* {isLoading ? (
             <ActivityIndicator size="large" color={theme.colors.primary} />
           ) : (
-            <>
+            <> */}
               <View>
-                <EditProfileForm userData={userData}/>
+                <EditProfileForm />
               </View>
-            </>
-          )}
+            {/* </>
+          )} */}
         </ScrollView>
       </View>
     </ScreenContainer>

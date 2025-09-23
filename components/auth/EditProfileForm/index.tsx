@@ -6,40 +6,33 @@ import { Input } from "@/components/common/Input/Index";
 import EmailInput from "@/components/common/InputEmail";
 import PhoneInput from "@/components/common/PhoneInput";
 import { useSession } from "@/providers/SessionContext/Index";
-import { UserInfo } from "@/services/auth-service";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
-import { findNodeHandle, ScrollView, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { findNodeHandle, RefreshControl, ScrollView, Text, TextInput, View } from "react-native";
 import ChangeProfilePicture from "../profile/ChangeProfilePicture";
 import createStyles from "./styled";
 
-interface EditProfileProps {
-    userData: UserInfo;
-}
-
-const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
+const EditProfileForm: FC = () => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
     const router = useRouter();
-    const { user, getInfoUser } = useSession();
+    const { user, getInfoUser, updateProfile } = useSession();
     
-
-    const [profilePicture, setProfilePicture] = useState<string>(userData.profile_picture || "");
-    const [name, setName] = useState<string>(userData.nome || "");
-    const [cpf, setCPF] = useState<string>(userData.cpf || "");
-    const [dateOfBirth, setDateOfBirth] = useState<string>(userData.data_nascimento || "");
-    const [phone, setPhone] = useState<string>(String(userData.telefone?.toString() ?? ""));
-
-    console.log(userData.telefone);
-    console.log(phone);
+    const [userId, setUserId] = useState<string>("");
+    const [profilePicture, setProfilePicture] = useState<string>("");
+    const [profilePictureBase64, setProfilePictureBase64] = useState<string>("");
     
-
-    const [email, setEmail] = useState<string>(userData.email || "");
+    const [name, setName] = useState<string>("");
+    const [cpf, setCPF] = useState<string>("");
+    const [dateOfBirth, setDateOfBirth] = useState<string>("");
+    const [phone, setPhone] = useState<string>(String(""));
+    const [email, setEmail] = useState<string>("");
     
 
     // const [password, setPassword] = useState<string>("");
     // const [confirmPassword, setConfirmPassword] = useState<string>("");
 
+    const [isLoadingBtnSave, setIsLoadingBtnSave] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
     const [modalVisible, setModalVisible] = useState<boolean>(false);
@@ -75,47 +68,81 @@ const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
         );
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        setIsLoadingBtnSave(true);
+        let params = {
+            id: userId,
+            profile_picture: profilePicture,
+            profile_picture_base64: profilePictureBase64,
+            name: name,
+            cpf: cpf,
+            date_birth: dateOfBirth,
+            phone: phone,
+            email: email,
+        }
 
+        const data = await updateProfile(params);
+        
+        setIsLoadingBtnSave(false);
     }
 
     const handleCancel = () => {
-
+        router.back();
     }
 
-    // const handleGetInfoUser = async () => {
-    //     if(!user) return null;
-    //     const data = getInfoUser(user.id)
+    const handleGetInfoUser = async () => {
+        if (!user || !user.id) {
+            console.warn("Usuário não disponível ou ID indefinido.");
+            return;
+        }
 
-    //     // setUserData(data);
-    //     // setName(data?.nome);
-    //     // setCPF(data?.cpf);
-    //     // set_date_of_birth(data?.data_nascimento);
-    //     // set_email(data?.email);
-    //     // set_phone(data?.telefone);
-    
-    // }
+        try {
+            const data = await getInfoUser({id: user.id});
+            setUserId(data.id);
+            setProfilePicture(data.profile_picture);
+            setName(data.nome);
+            setCPF(data.cpf);
+            setDateOfBirth(data.data_nascimento);
+            setPhone(data.telefone);
+            setEmail(data.email)
+        
+        } catch (error) {
+            console.error("Erro ao buscar informações do usuário:", error);
+        }
+    }
 
+    const fetchData = async () => {
+        setIsLoading(true);
+        await handleGetInfoUser();
+        setIsLoading(false);
+    };
 
-    // const fetchData = async () => {
-    //     setIsLoading(true);
-    //     await handleGetInfoUser();
-    //     setIsLoading(false);
-    // };
+    useEffect(()=>{
+        fetchData();
+    },[])
 
-    // useEffect(()=>{
-    //     fetchData();
-    // },[])
-
-    // const onRefresh = async () => {
-    //     setRefreshing(true);
-    //     await handleGetInfoUser();
-    //     setRefreshing(false);
-    // };
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await handleGetInfoUser();
+        setRefreshing(false);
+    };
 
 
     return (
-        <ScrollView>
+        <ScrollView
+            contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
+            scrollEnabled={true}
+            refreshControl={
+                <RefreshControl   
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    title="Carregando..."
+                    colors={['#ff0000', '#00ff00', '#0000ff']}
+                    tintColor="#ff0000"
+                    titleColor="#00ff00" 
+                />
+            }
+        >
             <View style={{marginVertical: 20}}>
                 <ChangeProfilePicture 
                     image={profilePicture} 
@@ -123,6 +150,8 @@ const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
                     modalVisible={modalVisible}
                     setModalVisible={setModalVisible}
                     openImageOptions={openImageOptions}
+                    profilePictureBase64={profilePictureBase64}
+                    setImageBase64={setProfilePictureBase64}
                 />
             </View>
             <View>
@@ -145,17 +174,21 @@ const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
                 <View style={styles.input_group}>
                     <Text style={styles.label}>CPF</Text>
                     <Input 
-                    placeholder="000.000.000-00" 
-                    value={cpf} 
-                    onChangeText={setCPF} 
-                    onSubmitEditing={() => {
-                        inputDateOfBirthRef.current?.focus();
-                        scrollToInput(inputDateOfBirthRef);
-                    }}
-                    onFocus={() => scrollToInput(inputCPFRf)}
-                    ref={inputCPFRf}
-                    returnKeyType={"next"}
-                    inputMode="text"
+                        placeholder="000.000.000-00"
+                        inputMode="text"
+                        returnKeyType={"next"}
+                        pointerEvents="none"
+                        editable={false}
+                        selectTextOnFocus={false}
+                        caretHidden={false} 
+                        ref={inputCPFRf}
+                        value={cpf} 
+                        onChangeText={setCPF} 
+                        onSubmitEditing={() => {
+                            inputDateOfBirthRef.current?.focus();
+                            scrollToInput(inputDateOfBirthRef);
+                        }}
+                        onFocus={() => scrollToInput(inputCPFRf)}
                     />
                 </View>
                 <View style={styles.input_group}>
@@ -177,7 +210,7 @@ const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
                     <Text style={styles.label}>TELEFONE</Text>
                     <PhoneInput
                         value={phone}
-                        onChangeText={setPhone}
+                        onChangePhoneNumber={setPhone}
                         label="TELEFONE"
                         ref={inputPhoneRef}
                         onSubmitEditing={() => {
@@ -186,7 +219,6 @@ const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
                         }}
                         onFocus={() => scrollToInput(inputEmailRef)}
                         returnKeyType={"next"}
-                        keyboardType="numeric"
                     />
                 </View>
                 <View style={styles.input_group}>
@@ -229,7 +261,9 @@ const EditProfileForm: React.FC<EditProfileProps> = ({ userData }) => {
                 <View style={{marginTop: 20}}>
                     <Button 
                         title="Salvar Alterações" 
-                        onPress={handleSave} 
+                        onPress={handleSave}
+                        loading={isLoadingBtnSave} 
+                        disabled={isLoadingBtnSave}
                     />
                 </View>
                 <View style={{marginTop: 30}}>

@@ -6,8 +6,8 @@ import createStyles from './styled';
 
 // Props interface for the component
 interface PhoneInputProps {
-  value?: string | number;
-  onChangeText?: (phoneNumber: string) => void;
+  value?: string;
+  onChangePhoneNumber?: (phoneNumber: string) => void;
   label?: string;
   style?: ViewStyle;
   inputStyle?: TextStyle;
@@ -42,7 +42,7 @@ const PhoneInput = forwardRef<PhoneInputRef, PhoneInputProps>(
   (
     {
       value,
-      onChangeText,
+      onChangePhoneNumber,
       label = 'TELEFONE',
       style,
       inputStyle,
@@ -64,34 +64,27 @@ const PhoneInput = forwardRef<PhoneInputRef, PhoneInputProps>(
 
     // Sync external value changes
     useEffect(() => {
-      setInputValue(value || '');
+      setInputValue(value ? String(value) : '');
     }, [value]);
 
     const handleInputValue = useCallback((phoneNumber: string) => {
-      // remove caracteres não numéricos
-      const digitsOnly = phoneNumber.replace(/\D/g, '');
-      // define limite de acordo com o país
-      const maxDigits = currentCountry ? maxDigitsPerCountry[currentCountry.code] || 15 : 15;
-      const truncated = digitsOnly.slice(0, maxDigits);
-      // setInputValue(truncated);
-
-      const fullNumber = currentCountry ? `${currentCountry.idd.root} ${truncated}` : truncated;
-      onChangeText?.(fullNumber);
-    }, [currentCountry, onChangeText]);
+      setInputValue(phoneNumber);
+      onChangePhoneNumber?.(phoneNumber);
+    }, [onChangePhoneNumber]);
 
     const handleSelectedCountry = useCallback((country: ICountry) => {
       setCurrentCountry(country);
       onChangeSelectedCountry?.(country);
       // Reformat current input if needed
-      if (inputValue) {
+      if (inputValue && typeof inputValue === 'string') {
         const digitsOnly = inputValue.replace(/\D/g, '');
         const maxDigits = maxDigitsPerCountry[country.code] || 15;
         const truncated = digitsOnly.slice(0, maxDigits);
         const fullNumber = `${country.idd.root} ${truncated}`;
-        onChangeText?.(fullNumber);
+        onChangePhoneNumber?.(fullNumber);
         setInputValue(truncated);
       }
-    }, [inputValue, onChangeSelectedCountry, onChangeText]);
+    }, [inputValue, onChangeSelectedCountry, onChangePhoneNumber]);
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
@@ -113,6 +106,7 @@ const PhoneInput = forwardRef<PhoneInputRef, PhoneInputProps>(
         onChangePhoneNumber={handleInputValue}
         selectedCountry={currentCountry}
         onChangeSelectedCountry={handleSelectedCountry}
+        maxLength={currentCountry ? maxDigitsPerCountry[currentCountry.code] || 15 : 15} 
         onSubmitEditing={onSubmitEditing}
         onFocus={onFocus}
         returnKeyType={returnKeyType}
