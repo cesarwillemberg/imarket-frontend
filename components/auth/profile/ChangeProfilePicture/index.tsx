@@ -1,4 +1,5 @@
 import { Button } from "@/components/common/Button";
+import { Icon } from "@/components/common/Icon";
 import { Subtitle } from "@/components/common/subtitle/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { Camera } from 'expo-camera';
@@ -74,18 +75,28 @@ const ChangeProfilePicture: FC<Props> = ({
         setModalVisible(false);
     };
 
+    const handelRemovePhoto = async () => {
+        setImage("");
+        setModalVisible(false);
+    }
 
 
     return (
-        <>
-            <TouchableOpacity onPress={openImageOptions}>
-                {
-                    image === null ? (
-                        <ProfilePictureandName />
-                    ) : ( 
-                        <ProfilePictureandName  pathImage={image}/>
-                    )
-                }
+        <View style={{width: "50%"}}>
+            <TouchableOpacity onPress={openImageOptions} style={{ justifyContent: "center", alignItems: "center" }}>
+                <View style={{ position: 'relative' }}>
+                    <ProfilePictureandName pathImage={image || undefined} />
+                    
+                    {/* Ícone sobreposto */}
+                    <View style={{
+                        position: 'absolute',
+                        bottom: 0,      // canto inferior da imagem
+                        right: 0,
+                        padding: 6,
+                    }}>
+                        <Icon type="fontawesome" name="pencil" size={25} color={theme.colors.text} />
+                    </View>
+                </View>
             </TouchableOpacity>
             <Modal
                 animationType="slide"
@@ -110,6 +121,12 @@ const ChangeProfilePicture: FC<Props> = ({
                         />
                         <Button 
                             style={styles.optionButton}
+                            title="Remover Foto de Perfil" 
+                            onPress={handelRemovePhoto} 
+                            variant="outline" 
+                        />
+                        <Button 
+                            style={styles.optionButton}
                             title="Cancelar" 
                             onPress={() => setModalVisible(false)} 
                             variant="outline" 
@@ -117,7 +134,7 @@ const ChangeProfilePicture: FC<Props> = ({
                     </View>
                 </View>
             </Modal>
-        </>
+        </View>
     )
 }
 

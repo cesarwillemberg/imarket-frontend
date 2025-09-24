@@ -5,8 +5,9 @@ import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
 import { useSession } from "@/providers/SessionContext/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, View } from "react-native";
+import LottieView from "lottie-react-native";
+import { useEffect, useRef, useState } from "react";
+import { RefreshControl, ScrollView, View } from "react-native";
 import createStyles from "./stylde";
 
 export default function Profile() {
@@ -21,6 +22,8 @@ export default function Profile() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
+  const animationLoading = useRef<LottieView>(null);
+
   const handleGetInfoUser = async () => {
     if (!user) return null;    
     const data = await getInfoUser({id: user.id});
@@ -30,6 +33,7 @@ export default function Profile() {
 
   const fetchData = async () => {
     setIsLoading(true);
+    animationLoading.current?.play();
     await handleGetInfoUser();
     setIsLoading(false);
   };
@@ -53,7 +57,7 @@ export default function Profile() {
     <ScreenContainer>
       <View style={{ flex: 1, paddingVertical: 20}}>
         <ScrollView
-          contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
+          contentContainerStyle={[styles.container, isLoading || refreshing ? { justifyContent: "center", alignItems: "center" } : {}]}
           // scrollEnabled={false}
           refreshControl={
             <RefreshControl   
@@ -67,8 +71,16 @@ export default function Profile() {
           }
         >
           {
-            isLoading ? (
-              <ActivityIndicator size="large" color={theme.colors.primary} />
+            isLoading || refreshing ? (
+              // <ActivityIndicator size="large" color={theme.colors.primary} />
+              <LottieView
+                  source={require("@/assets/animations/loading/loading-cart.json")}
+                  style={{ width: 150, height: 150 }}
+                  loop={true}
+                  autoPlay={true}
+                  ref={animationLoading}
+              />
+
             ) : (
               <>
                 <View style={{marginVertical: 20}}>

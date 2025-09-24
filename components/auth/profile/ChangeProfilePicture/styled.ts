@@ -21,9 +21,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
         alignItems: 'center',
     },
     optionButton: {
-        padding: 15,
-        borderRadius: 5,
-        marginVertical: 5,
+        paddingVertical: 12,
+        borderRadius: 10,
+        marginVertical: 8,
         width: '100%',
         alignItems: 'center',
     },

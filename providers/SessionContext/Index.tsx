@@ -36,7 +36,12 @@ interface SessionContextProps {
     date_birth?: string;
     phone?: string;
     email?: string;
-  }) => Promise<void>;
+  }) => Promise<{ dataUpdate: any; errorUpdate: any }>;
+  updateProfilePicture: (input: {   
+    localFilePath: string;
+    storageFilePath: string; 
+  }) => Promise<string>;
+  removeProfilePicture: (input: { storageFilePath: string; }) => Promise<boolean>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -47,15 +52,34 @@ const SessionContext = createContext<SessionContextProps>({
   signIn: async () => {},
   signUp: async () => {},
   signOut: async () => {},
-  getInfoUser: async () => {},
-  updateProfile: async () => {},
+  getInfoUser: async (_input: { id: string }): Promise<UserInfo> => {
+    throw new Error("getInfoUser not implemented");
+  },
+  updateProfile: async (_input: {
+    id?: string;
+    profile_picture?: string;
+    name?: string;
+    cpf?: string;
+    date_birth?: string;
+    phone?: string;
+    email?: string;
+  }): Promise<{ dataUpdate: any; errorUpdate: any }> => {
+    throw new Error("updateProfile not implemented");
+  },
+  updateProfilePicture: async (_input: { localFilePath: string; storageFilePath: string }): Promise<string> => {
+    throw new Error("updateProfilePicture not implemented");
+  },
+  removeProfilePicture: async (_input: { storageFilePath: string }): Promise<boolean> => {
+    throw new Error("removeProfilePicture not implemented");
+  },
+
 
   
 });
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [isFirstAccess, SetIsFirstAccess] = useState<boolean | null>(null);
+  const [isFirstAccess, SetIsFirstAccess] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
@@ -105,7 +129,15 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     cpf: string;
     date_birth: string;
   }) => {
-    const { session, user } = await authService.signUp(input);
+    const { data, error } = await authService.signUp(input);
+    if (error) {
+      throw error;
+    }
+    if (!data) {
+      throw new Error("No data returned from signUp");
+    }
+
+    const { session, user } = data;
     setSession(session);
   };
 
@@ -123,17 +155,30 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }
 
   const updateProfile = async (input: {
-    profile_picture: string;
-    name: string;
-    phone: string;
-    email: string;
-    password: string;
-    cpf: string;
-    date_birth: string;
+    id?: string;
+    profile_picture?: string;
+    name?: string;
+    cpf?: string;
+    date_birth?: string;
+    phone?: string;
+    email?: string;
   }) => {
-    const data = await authService.updateProfile(input);
-    return data;
+    const { dataUpdate, errorUpdate } = await authService.updateProfile({ 
+      userInfo: input, 
+      profilePictureUrl: input.profile_picture || "" 
+    });
+    return { dataUpdate, errorUpdate };
   }
+
+  const updateProfilePicture = async (input: { localFilePath: string; storageFilePath: string }) => {
+    const publicUrl = await authService.UploadProfilePicture(input);
+    return publicUrl;
+  };
+
+  const removeProfilePicture = async (input: { storageFilePath: string }) => {
+    const success = await authService.RemoveProfilePicture(input);
+    return success;
+  };
 
   return (
     <SessionContext.Provider
@@ -141,12 +186,14 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         session,
         user,
         isLoading,
-        isFirstAccess,
+        isFirstAccess: isFirstAccess ?? false,
         signIn,
         signUp,
         signOut,
         getInfoUser,
-        updateProfile
+        updateProfile,
+        updateProfilePicture,
+        removeProfilePicture,
       }}
     >
       {children}

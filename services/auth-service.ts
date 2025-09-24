@@ -31,6 +31,20 @@ export interface UserInfo {
   telefone?: string | number;
 }
 
+interface RemoveProfilePictureProps {
+  storageFilePath: string;
+}
+
+interface UploadProfilePictureProps {
+  localFilePath: string;
+  storageFilePath: string;
+}
+
+interface UpdateProfileProps {
+  userInfo: UserInfo;
+  profilePictureUrl: string
+}
+
 const authService = {
   signIn: async (input: SignInAttributes) => {
     const { data, error } = await supabase.auth.signInWithPassword(input);
@@ -38,7 +52,6 @@ const authService = {
       console.log(error);
       Alert.alert("Error", "Something went wrong.");
     }
-
     return data;
   },
 
@@ -70,10 +83,10 @@ const authService = {
       if (error) {
         console.log(error);
         Alert.alert("Error", "Algo deu errado no cadastro.");
-        return;
+        throw error;
       }
 
-      return data;
+      return { session: data.session, user: data.user };
 
     } catch (err: any) {
       console.error("signUp exception:", err);
@@ -97,51 +110,10 @@ const authService = {
     return data;
   },
 
-  updateProfile: async (input: UserInfo) => {
-    const { 
-      id, 
-      profile_picture, 
-      cpf, 
-      data_nascimento, 
-      email, 
-      nome, 
-      telefone,
-    } = input;
-
-    const path = `${id}/avatar.jpg`;
-    let finalProfilePictureUrl = profile_picture; // começa com o valor original
-
+  updateProfile: async (input: UpdateProfileProps) => {
+    const { id, cpf, data_nascimento, email, nome, telefone,  } = input.userInfo;
     try {
-      // Se for uma imagem local, faz upload para Supabase Storage
-      if (profile_picture?.startsWith('file://')) {
-        const base64 = await FileSystem.readAsStringAsync(
-          profile_picture, 
-          { encoding: FileSystem.EncodingType.Base64 }
-        );
-
-        const { data: uploadData, error: uploadError } = await supabase
-          .storage
-          .from("profile_picture")
-          .upload(path, decode(base64), {
-            contentType: "image/jpeg",
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error("Erro ao fazer upload:", uploadError);
-          return;
-        }
-
-        const { data } = await supabase
-          .storage
-          .from('profile_picture')
-          .getPublicUrl(path);
-
-        finalProfilePictureUrl = data.publicUrl;
-      }
-
-      // Agora faz o update no perfil
-       const { data: dataUpdate, error: errorUpdate } = await supabase
+      const { data: dataUpdate, error: errorUpdate } = await supabase
         .from('perfis')
         .update({
           cpf,
@@ -149,17 +121,61 @@ const authService = {
           nome,
           data_nascimento,
           email,
-          profile_picture: finalProfilePictureUrl,
+          profile_picture: input.profilePictureUrl,
         })
         .eq("id", id)
-        .select();
+        .select()
+        .throwOnError();
 
-        console.log({dataUpdate, errorUpdate});
+        return { dataUpdate, errorUpdate }
         
     } catch (error) {
       console.error("Erro no update:", error);
+      throw error;
     }
-  }
+  },
+
+  UploadProfilePicture: async (input: UploadProfilePictureProps) => {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(
+        input.localFilePath, 
+        { encoding: FileSystem.EncodingType.Base64 }
+      );
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from("profile_picture")
+        .upload(input.storageFilePath, decode(base64), {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = await supabase
+        .storage
+        .from('profile_picture')
+        .getPublicUrl(input.storageFilePath);
+
+      return publicUrl
+    } catch (error) {
+      console.error("Erro ao salver arquivo no storage:", error);
+      throw error;
+    }
+  },
+
+  RemoveProfilePicture: async (input: RemoveProfilePictureProps) => {
+    try {
+      const { data, error } =  await supabase
+        .storage
+        .from('profile_picture')
+        .remove([input.storageFilePath]);
+        if (error) throw error
+        return true
+    } catch (error) {
+      console.error("Erro ao exluir arquivo do storage:", error);
+      throw error
+    }
+  },
 
 
 };

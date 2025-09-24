@@ -5,8 +5,9 @@ import { ScreenContainer } from "@/components/common/ScreenContainer/Index";
 import { useSession } from "@/providers/SessionContext/Index";
 import { useTheme } from "@/themes/ThemeContext";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from "react-native";
+import LottieView from "lottie-react-native";
+import { useEffect, useRef, useState } from "react";
+import { RefreshControl, ScrollView, Text, View } from "react-native";
 import createStyles from "./styled";
 
 
@@ -25,6 +26,7 @@ export default function ViewProfile() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const animationLoading = useRef<LottieView>(null);
 
   const handleGetInfoUser = async () => {
     if (!user || !user.id) {
@@ -80,7 +82,7 @@ export default function ViewProfile() {
       <View style={styles.container}>
         <HeaderScreen title="Informações do Perfil" />
         <ScrollView
-          contentContainerStyle={[styles.container, isLoading ? { justifyContent: "center" } : {}]}
+          contentContainerStyle={[styles.container, isLoading || refreshing ? { justifyContent: "center", alignItems: "center" } : {}]}
           // scrollEnabled={false}
           refreshControl={
             <RefreshControl   
@@ -93,8 +95,15 @@ export default function ViewProfile() {
             />
           }
         >
-          {isLoading ? (
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+          {isLoading || refreshing ? (
+            // <ActivityIndicator size="large" color={theme.colors.primary} />
+            <LottieView
+                source={require("@/assets/animations/loading/loading-cart.json")}
+                style={{ width: 150, height: 150 }}
+                loop={true}
+                autoPlay={true}
+                ref={animationLoading}
+            />
           ) : (
             <>
               <ProfielPictureAndName pathImage={profilePicture} />
