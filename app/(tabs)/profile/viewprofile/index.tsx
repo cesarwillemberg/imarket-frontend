@@ -106,7 +106,9 @@ export default function ViewProfile() {
             />
           ) : (
             <>
-              <ProfielPictureAndName pathImage={profilePicture} />
+              <View style={{marginVertical: 15}}>
+                <ProfielPictureAndName name={name} pathImage={profilePicture} />
+              </View>
               <View>
                 <Text style={styles.label_infos}>Informações Pessoais</Text>
                 <View style={styles.wrapper_informations}>

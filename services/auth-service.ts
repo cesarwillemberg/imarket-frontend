@@ -141,6 +141,7 @@ const authService = {
         input.localFilePath, 
         { encoding: FileSystem.EncodingType.Base64 }
       );
+
       const { data: uploadData, error: uploadError } = await supabase
         .storage
         .from("profile_picture")
@@ -156,7 +157,7 @@ const authService = {
         .from('profile_picture')
         .getPublicUrl(input.storageFilePath);
 
-      return publicUrl
+      return publicUrl + `?t=${Date.now()}`;
     } catch (error) {
       console.error("Erro ao salver arquivo no storage:", error);
       throw error;

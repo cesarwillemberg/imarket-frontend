@@ -72,12 +72,16 @@ const EditProfileForm: FC = () => {
 
     const handleSave = async () => {
         setIsLoadingBtnSave(true);
-        const path = `${userId}/avatar.jpg`;
+        const path = `${userId}/${userId}-avatar.jpg`;
         let publicUrl = profilePicture;
-
+        console.log(profilePicture);
+        
         try {
             if (profilePicture && profilePicture.startsWith("file://")) {
-                publicUrl = await updateProfilePicture({ localFilePath: profilePicture, storageFilePath: path });
+                publicUrl = await updateProfilePicture({ 
+                    localFilePath: profilePicture, 
+                    storageFilePath: path 
+                });
             } else if (profilePicture === "") {
                 await removeProfilePicture({ storageFilePath: path });
                 publicUrl = "";
@@ -98,9 +102,13 @@ const EditProfileForm: FC = () => {
             email: email,
         }
 
+        console.log(params);
+        
+
         const { dataUpdate, errorUpdate } = await updateProfile(params);
 
         if (errorUpdate) {
+            console.error("Erro updateProfile:", errorUpdate);
             Alert.alert("Erro ao atualizar perfil");
             setIsLoadingBtnSave(false);
             return;
