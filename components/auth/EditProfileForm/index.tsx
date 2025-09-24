@@ -20,7 +20,6 @@ const EditProfileForm: FC = () => {
     
     const [userId, setUserId] = useState<string>("");
     const [profilePicture, setProfilePicture] = useState<string>("");
-    const [profilePictureBase64, setProfilePictureBase64] = useState<string>("");
     
     const [name, setName] = useState<string>("");
     const [cpf, setCPF] = useState<string>("");
@@ -73,7 +72,6 @@ const EditProfileForm: FC = () => {
         let params = {
             id: userId,
             profile_picture: profilePicture,
-            profile_picture_base64: profilePictureBase64,
             name: name,
             cpf: cpf,
             date_birth: dateOfBirth,
@@ -150,8 +148,6 @@ const EditProfileForm: FC = () => {
                     modalVisible={modalVisible}
                     setModalVisible={setModalVisible}
                     openImageOptions={openImageOptions}
-                    profilePictureBase64={profilePictureBase64}
-                    setImageBase64={setProfilePictureBase64}
                 />
             </View>
             <View>

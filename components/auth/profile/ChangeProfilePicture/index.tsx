@@ -12,11 +12,9 @@ import createStyles from "./styled";
 interface Props {
     image: string | null;
     modalVisible: boolean;
-    profilePictureBase64: string;
     setImage: (uri: string) => void;
     setModalVisible: (visible: boolean) => void;
     openImageOptions: () => void;
-    setImageBase64: (base64: string) => void;
 }
 
 const ChangeProfilePicture: FC<Props> = ({ 
@@ -25,8 +23,6 @@ const ChangeProfilePicture: FC<Props> = ({
     openImageOptions, 
     setModalVisible, 
     setImage,
-    setImageBase64,
-    profilePictureBase64
 }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
@@ -56,7 +52,6 @@ const ChangeProfilePicture: FC<Props> = ({
 
         if (!result.canceled) {
             setImage(result.assets[0].uri);
-            setImageBase64(result.assets[0].base64);
         }
         setModalVisible(false);
     }
@@ -74,7 +69,6 @@ const ChangeProfilePicture: FC<Props> = ({
         });
         
         if (!result.canceled) {
-            setImageBase64(result.assets[0].base64);
             setImage(result.assets[0].uri);
         }
         setModalVisible(false);

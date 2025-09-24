@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system/legacy';
+// import { File } from 'expo-file-system';
 import { Alert } from "react-native";
-
 interface SignInAttributes {
   email: string;
   password: string;
@@ -22,7 +24,6 @@ interface getInfoUserAttributes {
 export interface UserInfo {
   id?: string;
   profile_picture?: string;
-  profile_picture_base64?: string;
   nome?: string;
   cpf?: string;
   data_nascimento?: string;
@@ -100,59 +101,66 @@ const authService = {
     const { 
       id, 
       profile_picture, 
-      profile_picture_base64,
       cpf, 
       data_nascimento, 
       email, 
       nome, 
       telefone,
-    } = input
-    const path = `profile_picture/${id}/avatar.jpg`;
+    } = input;
 
-    if (profile_picture?.startsWith('file://')) {
-      try {
-        // const response = await fetch(profile_picture); 
-        // const arrayBuffer = await response.arrayBuffer();
-        // console.log(response);
-        // const base64 = await FileSystem.readAsStringAsync(profile_picture, { encoding: 'base64' });
-        
-        const { data, error } = await supabase.storage.from('profile_picture').upload(
-          path, 
-          profile_picture_base64, 
-          { contentType: "image/jpeg", upsert: true, type: "base64" }
+    const path = `${id}/avatar.jpg`;
+    let finalProfilePictureUrl = profile_picture; // começa com o valor original
+
+    try {
+      // Se for uma imagem local, faz upload para Supabase Storage
+      if (profile_picture?.startsWith('file://')) {
+        const base64 = await FileSystem.readAsStringAsync(
+          profile_picture, 
+          { encoding: FileSystem.EncodingType.Base64 }
         );
-        
-        const { data: { publicUrl } } = await supabase.storage.from('profile_picture').getPublicUrl(path);    
-      
-        const { data: dataUpdate, error: ErrorUpdate } = await supabase
-          .from('perfis')
-          .update({
-            cpf,
-            telefone,
-            nome,
-            data_nascimento,
-            email,
-            profile_picture: publicUrl,
-          })
-          .eq("id", id);
 
-        // const { data, error } = await supabase.auth.updateUser({ email: email});
-        // console.log(data);
-      } catch (error) {
-        console.error("Erro no upload:", error);
+        const { data: uploadData, error: uploadError } = await supabase
+          .storage
+          .from("profile_picture")
+          .upload(path, decode(base64), {
+            contentType: "image/jpeg",
+            upsert: true,
+          });
+
+        if (uploadError) {
+          console.error("Erro ao fazer upload:", uploadError);
+          return;
+        }
+
+        const { data } = await supabase
+          .storage
+          .from('profile_picture')
+          .getPublicUrl(path);
+
+        finalProfilePictureUrl = data.publicUrl;
       }
-    } else if (profile_picture?.startsWith('http')) {
-      try {
+
+      // Agora faz o update no perfil
+       const { data: dataUpdate, error: errorUpdate } = await supabase
+        .from('perfis')
+        .update({
+          cpf,
+          telefone,
+          nome,
+          data_nascimento,
+          email,
+          profile_picture: finalProfilePictureUrl,
+        })
+        .eq("id", id)
+        .select();
+
+        console.log({dataUpdate, errorUpdate});
         
-      } catch (error) {
-        console.error("Erro no upload:", error);
-      }
+    } catch (error) {
+      console.error("Erro no update:", error);
     }
-
-    // const createPath = await supabase.storage.from('')
-    
-    // const { data, error } = await supabase.storage.from('profile_picture').cr
   }
+
 
 };
 

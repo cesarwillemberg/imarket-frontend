@@ -31,7 +31,6 @@ interface SessionContextProps {
   updateProfile: (input: {
     id?: string; 
     profile_picture?: string;
-    profile_picture_base64?: string;
     name?: string;
     cpf?: string;
     date_birth?: string;
@@ -125,7 +124,6 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const updateProfile = async (input: {
     profile_picture: string;
-    profile_picture_base64?: string;
     name: string;
     phone: string;
     email: string;
