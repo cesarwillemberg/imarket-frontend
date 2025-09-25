@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 
 const createStyles = (theme: Theme) => StyleSheet.create({
     container: {
+        flex: 1,
         paddingVertical: 20
     },
     label_infos: { 

@@ -1,6 +1,8 @@
 import { supabase } from "@/lib/supabase";
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from 'expo-file-system/legacy';
+// import { File } from 'expo-file-system';
 import { Alert } from "react-native";
-
 interface SignInAttributes {
   email: string;
   password: string;
@@ -15,6 +17,34 @@ interface SignUpAttributes {
   date_birth: string;
 }
 
+interface getInfoUserAttributes {
+  id: string;
+}
+
+export interface UserInfo {
+  id?: string;
+  profile_picture?: string;
+  nome?: string;
+  cpf?: string;
+  data_nascimento?: string;
+  email?: string;
+  telefone?: string | number;
+}
+
+interface RemoveProfilePictureProps {
+  storageFilePath: string;
+}
+
+interface UploadProfilePictureProps {
+  localFilePath: string;
+  storageFilePath: string;
+}
+
+interface UpdateProfileProps {
+  userInfo: UserInfo;
+  profilePictureUrl: string
+}
+
 const authService = {
   signIn: async (input: SignInAttributes) => {
     const { data, error } = await supabase.auth.signInWithPassword(input);
@@ -22,7 +52,6 @@ const authService = {
       console.log(error);
       Alert.alert("Error", "Something went wrong.");
     }
-
     return data;
   },
 
@@ -33,8 +62,8 @@ const authService = {
       const phone = input.phone.replace(/\D/g, "");
 
       if (!phone || !date_birth) {
-        Alert.alert("Error", "Telefone ou data de nascimento inválidos");
-        return { data: null, error: new Error("Telefone ou data inválidos") };
+        Alert.alert("Error", "Invalid phone number or date of birth.");
+        return { data: null, error: new Error("Invalid phone number or date.") };
       }
 
       const { data, error } = await supabase.auth.signUp({
@@ -50,23 +79,106 @@ const authService = {
           },
         },
       });
-
-      console.log({data, error});
       
       if (error) {
         console.log(error);
-        Alert.alert("Error", "Algo deu errado no cadastro.");
-        return;
+        Alert.alert("Error", "Something went wrong with registration.");
+        throw error;
       }
 
-      return data;
+      return { session: data.session, user: data.user };
 
     } catch (err: any) {
       console.error("signUp exception:", err);
-      Alert.alert("Erro inesperado", err.message || "Something went wrong");
+      Alert.alert("Unexpected error", err.message || "Something went wrong.");
       return { data: null, error: err };
     }
-  }
+  },
+
+  getInfoUser: async (input: getInfoUserAttributes): Promise<UserInfo> => {
+    const { data, error } = await supabase
+      .from("perfis")
+      .select("*")
+      .eq("id", input.id)
+      .single();
+
+    if (error) {
+      console.log(error);
+      Alert.alert("Error", "Something went wrong.");
+    }
+
+    return data;
+  },
+
+  updateProfile: async (input: UpdateProfileProps) => {
+    const { id, cpf, data_nascimento, email, nome, telefone,  } = input.userInfo;
+    try {
+      const { data: dataUpdate, error: errorUpdate } = await supabase
+        .from('perfis')
+        .update({
+          cpf,
+          telefone,
+          nome,
+          data_nascimento,
+          email,
+          profile_picture: input.profilePictureUrl,
+        })
+        .eq("id", id)
+        .select()
+        .throwOnError();
+
+        return { dataUpdate, errorUpdate }
+        
+    } catch (error) {
+      console.error("Error in update:", error);
+      throw error;
+    }
+  },
+
+  UploadProfilePicture: async (input: UploadProfilePictureProps) => {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(
+        input.localFilePath, 
+        { encoding: FileSystem.EncodingType.Base64 }
+      );
+
+      const { data: uploadData, error: uploadError } = await supabase
+        .storage
+        .from("profile_picture")
+        .upload(input.storageFilePath, decode(base64), {
+          contentType: "image/jpeg",
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = await supabase
+        .storage
+        .from('profile_picture')
+        .getPublicUrl(input.storageFilePath);
+
+      return publicUrl + `?t=${Date.now()}`;
+    } catch (error) {
+      console.error("Error saving file to storage:", error);
+      throw error;
+    }
+  },
+
+  RemoveProfilePicture: async (input: RemoveProfilePictureProps) => {
+    try {
+      const { data, error } =  await supabase
+        .storage
+        .from('profile_picture')
+        .remove([input.storageFilePath]);
+        if (error) throw error
+        return true
+    } catch (error) {
+      console.error("Error deleting file from storage:", error);
+      throw error
+    }
+  },
+
+
 };
 
 export default authService;
