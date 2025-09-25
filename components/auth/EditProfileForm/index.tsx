@@ -74,8 +74,7 @@ const EditProfileForm: FC = () => {
         setIsLoadingBtnSave(true);
         const path = `${userId}/${userId}-avatar.jpg`;
         let publicUrl = profilePicture;
-        console.log(profilePicture);
-        
+
         try {
             if (profilePicture && profilePicture.startsWith("file://")) {
                 publicUrl = await updateProfilePicture({ 
@@ -102,13 +101,10 @@ const EditProfileForm: FC = () => {
             email: email,
         }
 
-        console.log(params);
-        
-
         const { dataUpdate, errorUpdate } = await updateProfile(params);
 
         if (errorUpdate) {
-            console.error("Erro updateProfile:", errorUpdate);
+            console.error("Error in updateProfile:", errorUpdate);
             Alert.alert("Erro ao atualizar perfil");
             setIsLoadingBtnSave(false);
             return;

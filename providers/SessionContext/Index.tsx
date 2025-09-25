@@ -53,7 +53,7 @@ const SessionContext = createContext<SessionContextProps>({
   signUp: async () => {},
   signOut: async () => {},
   getInfoUser: async (_input: { id: string }): Promise<UserInfo> => {
-    throw new Error("getInfoUser not implemented");
+    throw new Error("getInfoUser not implemented.");
   },
   updateProfile: async (_input: {
     id?: string;
@@ -64,13 +64,13 @@ const SessionContext = createContext<SessionContextProps>({
     phone?: string;
     email?: string;
   }): Promise<{ dataUpdate: any; errorUpdate: any }> => {
-    throw new Error("updateProfile not implemented");
+    throw new Error("updateProfile not implemented.");
   },
   updateProfilePicture: async (_input: { localFilePath: string; storageFilePath: string }): Promise<string> => {
-    throw new Error("updateProfilePicture not implemented");
+    throw new Error("updateProfilePicture not implemented.");
   },
   removeProfilePicture: async (_input: { storageFilePath: string }): Promise<boolean> => {
-    throw new Error("removeProfilePicture not implemented");
+    throw new Error("removeProfilePicture not implemented.");
   },
 
 
@@ -134,7 +134,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
       throw error;
     }
     if (!data) {
-      throw new Error("No data returned from signUp");
+      throw new Error("No data returned from signUp.");
     }
 
     const { session, user } = data;
@@ -186,7 +186,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         session,
         user,
         isLoading,
-        isFirstAccess: isFirstAccess ?? false,
+        isFirstAccess: isFirstAccess,
         signIn,
         signUp,
         signOut,

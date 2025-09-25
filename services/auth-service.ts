@@ -62,8 +62,8 @@ const authService = {
       const phone = input.phone.replace(/\D/g, "");
 
       if (!phone || !date_birth) {
-        Alert.alert("Error", "Telefone ou data de nascimento inválidos");
-        return { data: null, error: new Error("Telefone ou data inválidos") };
+        Alert.alert("Error", "Invalid phone number or date of birth.");
+        return { data: null, error: new Error("Invalid phone number or date.") };
       }
 
       const { data, error } = await supabase.auth.signUp({
@@ -82,7 +82,7 @@ const authService = {
       
       if (error) {
         console.log(error);
-        Alert.alert("Error", "Algo deu errado no cadastro.");
+        Alert.alert("Error", "Something went wrong with registration.");
         throw error;
       }
 
@@ -90,7 +90,7 @@ const authService = {
 
     } catch (err: any) {
       console.error("signUp exception:", err);
-      Alert.alert("Erro inesperado", err.message || "Something went wrong");
+      Alert.alert("Unexpected error", err.message || "Something went wrong.");
       return { data: null, error: err };
     }
   },
@@ -130,7 +130,7 @@ const authService = {
         return { dataUpdate, errorUpdate }
         
     } catch (error) {
-      console.error("Erro no update:", error);
+      console.error("Error in update:", error);
       throw error;
     }
   },
@@ -159,7 +159,7 @@ const authService = {
 
       return publicUrl + `?t=${Date.now()}`;
     } catch (error) {
-      console.error("Erro ao salver arquivo no storage:", error);
+      console.error("Error saving file to storage:", error);
       throw error;
     }
   },
@@ -173,7 +173,7 @@ const authService = {
         if (error) throw error
         return true
     } catch (error) {
-      console.error("Erro ao exluir arquivo do storage:", error);
+      console.error("Error deleting file from storage:", error);
       throw error
     }
   },
