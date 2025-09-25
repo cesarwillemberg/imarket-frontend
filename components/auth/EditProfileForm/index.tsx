@@ -26,7 +26,7 @@ const EditProfileForm: FC = () => {
     const [name, setName] = useState<string>("");
     const [cpf, setCPF] = useState<string>("");
     const [dateOfBirth, setDateOfBirth] = useState<string>("");
-    const [phone, setPhone] = useState<string>(String(""));
+    const [phone, setPhone] = useState<string>("");
     const [email, setEmail] = useState<string>("");
     const [showSuccessAnimation, setShowSuccessAnimation] = useState<boolean>(false);
 

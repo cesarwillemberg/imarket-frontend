@@ -75,7 +75,7 @@ const ChangeProfilePicture: FC<Props> = ({
         setModalVisible(false);
     };
 
-    const handelRemovePhoto = async () => {
+    const handleRemovePhoto = async () => {
         setImage("");
         setModalVisible(false);
     }
@@ -122,7 +122,7 @@ const ChangeProfilePicture: FC<Props> = ({
                         <Button 
                             style={styles.optionButton}
                             title="Remover Foto de Perfil" 
-                            onPress={handelRemovePhoto} 
+                            onPress={handleRemovePhoto} 
                             variant="outline" 
                         />
                         <Button 
