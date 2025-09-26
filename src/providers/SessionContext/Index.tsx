@@ -163,11 +163,17 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     phone?: string;
     email?: string;
   }) => {
-    const { dataUpdate, errorUpdate } = await authService.updateProfile({ 
-      userInfo: input, 
-      profilePictureUrl: input.profile_picture || "" 
-    });
-    return { dataUpdate, errorUpdate };
+    try {
+      const { dataUpdate, errorUpdate } = await authService.updateProfile({ 
+        userInfo: input, 
+        profilePictureUrl: input.profile_picture || "" 
+      });
+      
+      return { dataUpdate, errorUpdate };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao atualizar perfil:", error);
+      return { dataUpdate: null, errorUpdate: error };
+    }
   }
 
   const updateProfilePicture = async (input: { localFilePath: string; storageFilePath: string }) => {

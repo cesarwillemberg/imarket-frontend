@@ -25,10 +25,13 @@ export interface UserInfo {
   id?: string;
   profile_picture?: string;
   nome?: string;
+  name?: string;  // Adicionar para compatibilidade
   cpf?: string;
   data_nascimento?: string;
+  date_birth?: string;  // Adicionar para compatibilidade
   email?: string;
   telefone?: string | number;
+  phone?: string;  // Adicionar para compatibilidade
 }
 
 interface RemoveProfilePictureProps {
@@ -111,26 +114,30 @@ const authService = {
   },
 
   updateProfile: async (input: UpdateProfileProps) => {
-    const { id, cpf, data_nascimento, email, nome, telefone,  } = input.userInfo;
+    const userInfo = input.userInfo;
+    
+    // Mapear campos corretamente
+    const updateData = {
+      cpf: userInfo.cpf,
+      telefone: userInfo.telefone || userInfo.phone,
+      nome: userInfo.nome || userInfo.name,
+      data_nascimento: userInfo.data_nascimento || userInfo.date_birth,
+      email: userInfo.email,
+      profile_picture: input.profilePictureUrl,
+    };
+
     try {
       const { data: dataUpdate, error: errorUpdate } = await supabase
         .from('perfis')
-        .update({
-          cpf,
-          telefone,
-          nome,
-          data_nascimento,
-          email,
-          profile_picture: input.profilePictureUrl,
-        })
-        .eq("id", id)
+        .update(updateData)
+        .eq("id", userInfo.id)
         .select()
         .throwOnError();
 
-        return { dataUpdate, errorUpdate }
+      return { dataUpdate, errorUpdate };
         
-    } catch (error) {
-      console.error("Error in update:", error);
+    } catch (error: any) {
+      console.error("❌ Erro na atualização do perfil:", error);
       throw error;
     }
   },
