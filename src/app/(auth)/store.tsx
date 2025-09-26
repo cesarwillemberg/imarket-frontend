@@ -1,5 +1,5 @@
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { Theme, useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { Theme, useTheme } from "@/src/themes/ThemeContext";
 import { StyleSheet, Text, View } from "react-native";
 
 export default function Store() {

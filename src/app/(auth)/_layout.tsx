@@ -1,6 +1,6 @@
 import createStyles from "@/src/assets/styles/tabStyles";
 import { Icon } from "@/src/components/common/Icon";
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {

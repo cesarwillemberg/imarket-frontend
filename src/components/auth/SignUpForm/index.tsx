@@ -1,20 +1,20 @@
 
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 
-import { Input } from "@/src/components/common/Input/Index";
-import { Subtitle } from "@/src/components/common/subtitle/Index";
-import { Title } from "@/src/components/common/Title/Index";
+import { Input } from "@/src/components/common/Input";
+import { Subtitle } from "@/src/components/common/subtitle";
 
-import { useSession } from "@/providers/SessionContext/Index";
 import { Button } from "@/src/components/common/Button";
 import DatePickerInput from "@/src/components/common/DatePickerInput";
 import EmailInput from "@/src/components/common/InputEmail";
 import InputPassword from "@/src/components/common/InputPassword";
 import PhoneInput from "@/src/components/common/PhoneInput";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import Checkbox from "expo-checkbox";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import { Alert, findNodeHandle, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Title } from "../../common/Title";
 import createStyles from "./styled";
 
 export const SignUpForm = () => {

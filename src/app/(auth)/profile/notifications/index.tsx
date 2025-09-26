@@ -1,6 +1,6 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { Text, View } from "react-native";
 import createStyles from "./styled";

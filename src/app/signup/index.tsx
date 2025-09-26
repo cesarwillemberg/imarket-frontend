@@ -1,8 +1,8 @@
 import { SignUpForm } from "@/src/components/auth/SignUpForm";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import Logo from "@/src/components/common/Logo";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { ScrollView, View } from "react-native";
 import createStyles from "./styled";
 

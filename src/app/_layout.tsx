@@ -1,6 +1,6 @@
 
-import { SessionProvider } from "@/providers/SessionContext/Index";
-import { ThemeProvider } from "@/themes/ThemeContext";
+import { SessionProvider } from "@/src/providers/SessionContext/Index";
+import { ThemeProvider } from "@/src/themes/ThemeContext";
 import { Stack } from "expo-router";
 
 export default function RootLayout() {

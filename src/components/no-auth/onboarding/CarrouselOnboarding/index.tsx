@@ -1,5 +1,5 @@
 import { Button } from "@/src/components/common/Button";
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -10,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import createStyles from "./Styled";
+import createStyles from "./styled";
 
 
 const { width } = Dimensions.get("window");

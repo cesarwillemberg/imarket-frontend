@@ -1,12 +1,12 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 
-import { useSession } from "@/providers/SessionContext/Index";
 import { Button } from "@/src/components/common/Button";
 import DatePickerInput from "@/src/components/common/DatePickerInput";
-import { Input } from "@/src/components/common/Input/Index";
+import { Input } from "@/src/components/common/Input";
 import EmailInput from "@/src/components/common/InputEmail";
 import PhoneInput from "@/src/components/common/PhoneInput";
-import { Subtitle } from "@/src/components/common/subtitle/Index";
+import { Subtitle } from "@/src/components/common/subtitle";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { FC, useEffect, useRef, useState } from "react";
@@ -57,7 +57,13 @@ const EditProfileForm: FC = () => {
         setDateOfBirth(formattedDate);
     };
     
-    const scrollToInput = (inputRef: React.RefObject<TextInput>) => {
+        // Wrapper para garantir que phone seja sempre string
+    const handlePhoneChange = (value: any) => {
+        const stringValue = value ? String(value) : '';
+        setPhone(stringValue);
+    };
+
+    const scrollToInput = (inputRef: React.RefObject<any>) => {
         if (!inputRef.current || !scrollViewRef.current) return;
 
         const inputHandle = findNodeHandle(inputRef.current);
@@ -127,13 +133,13 @@ const EditProfileForm: FC = () => {
 
         try {
             const data = await getInfoUser({id: user.id});
-            setUserId(data.id);
-            setProfilePicture(data.profile_picture);
-            setName(data.nome);
-            setCPF(data.cpf);
-            setDateOfBirth(data.data_nascimento);
-            setPhone(data.telefone);
-            setEmail(data.email);
+            setUserId(data.id || '');
+            setProfilePicture(data.profile_picture || '');
+            setName(data.nome || '');
+            setCPF(data.cpf || '');
+            setDateOfBirth(data.data_nascimento || '');
+            setPhone(data.telefone ? String(data.telefone) : '');
+            setEmail(data.email || '');
         } catch (error) {
             console.error("Erro ao buscar informações do usuário:", error);
         }
@@ -237,7 +243,7 @@ const EditProfileForm: FC = () => {
                         <Text style={styles.label}>TELEFONE</Text>
                         <PhoneInput
                             value={phone}
-                            onChangePhoneNumber={setPhone}
+                            onChangePhoneNumber={handlePhoneChange}
                             label="TELEFONE"
                             ref={inputPhoneRef}
                             onSubmitEditing={() => {
@@ -320,7 +326,7 @@ const EditProfileForm: FC = () => {
                         onAnimationFinish={() => {
                             setShowSuccessAnimation(false);
                             router.dismissAll();
-                            router.push("/(tabs)/profile/viewprofile");
+                            router.push("/(auth)/profile/viewprofile");
                         }}
                     />
                     <Subtitle align="center" >Perfil Atualizado com sucesso!!!</Subtitle>

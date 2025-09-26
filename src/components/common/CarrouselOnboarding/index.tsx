@@ -1,4 +1,4 @@
-import { useTheme } from "@/theme/ThemeContext";
+import { useTheme } from "@/src/theme/ThemeContext";
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import {
@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { Button } from "../Button";
-import createStyles from "./Styled";
+import createStyles from "./styled";
 
 const { width } = Dimensions.get("window");
 

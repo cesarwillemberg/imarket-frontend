@@ -1,9 +1,9 @@
-import { useSession } from "@/providers/SessionContext/Index";
 import ProfielPictureAndName from "@/src/components/auth/profile/ProfilePictureandName";
 import { Button } from "@/src/components/common/Button";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useSession } from "@/src/providers/SessionContext/Index";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";

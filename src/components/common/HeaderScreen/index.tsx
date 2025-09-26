@@ -1,4 +1,4 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { FC } from "react";
 import { Text, View } from "react-native";
 import BackButton from "../BackButton";

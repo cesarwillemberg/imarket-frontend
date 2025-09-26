@@ -1,36 +1,57 @@
-import { useTheme } from "@/themes/ThemeContext";
+// Versão simplificada do ScreenContainer sem warnings
+import { useTheme } from "@/src/themes/ThemeContext";
+import Constants from 'expo-constants';
 import * as NavigationBar from "expo-navigation-bar";
-import { Stack } from "expo-router";
 import { FC, ReactNode, useEffect } from "react";
 import { StatusBar, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import createStyles from "./Styles";
+import createStyles from "./styles";
 
 type safeAreasType = ('top' | 'bottom' | 'left' | 'right')[];
+
 interface Props {
   children: ReactNode;
   style?: ViewStyle;
   statusBarHidden?: boolean;
-  safeAreaEdges?: safeAreasType
+  safeAreaEdges?: safeAreasType;
 }
 
-
-export const ScreenContainer: FC<Props> = ({ children, style, statusBarHidden, safeAreaEdges }) => {
-  const { currentTheme, theme, switchTheme } = useTheme();
+export const ScreenContainer: FC<Props> = ({ 
+  children, 
+  style, 
+  statusBarHidden, 
+  safeAreaEdges 
+}) => {
+  const { currentTheme, theme } = useTheme();
   const styles = createStyles(theme);
 
   useEffect(() => {
-    const setNavigationBar = async () => {
+    const configureNavBar = async () => {
       try {
-        await NavigationBar.setBackgroundColorAsync(theme.colors.surface, true);
-        await NavigationBar.setButtonStyleAsync(currentTheme === "light" ? "dark" : "light");
+        // Verificar se edge-to-edge está habilitado
+        const isEdgeToEdge = Constants.expoConfig?.android?.edgeToEdgeEnabled;
+        
+        if (isEdgeToEdge) {
+          // Com edge-to-edge: apenas configurar estilo dos botões
+          await NavigationBar.setButtonStyleAsync(
+            currentTheme === "light" ? "dark" : "light"
+          );
+        } else {
+          // Sem edge-to-edge: configuração completa
+          await NavigationBar.setButtonStyleAsync(
+            currentTheme === "light" ? "dark" : "light"
+          );
+          await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
+        }
       } catch (error) {
-        console.error("Erro ao configurar a barra de navegação:", error);
+        // Silenciosamente ignorar erros de configuração
+        console.debug("NavigationBar configuration skipped:", error);
       }
     };
-    setNavigationBar();
-  }, [currentTheme, theme]);
-  
+
+    configureNavBar();
+  }, [currentTheme, theme.colors.surface]);
+
   return (
     <>
       <SafeAreaView 
@@ -38,17 +59,13 @@ export const ScreenContainer: FC<Props> = ({ children, style, statusBarHidden, s
         edges={safeAreaEdges || ['top']}
       >
         <StatusBar
-            barStyle={currentTheme === 'light' ? 'dark-content' : 'light-content'}
-            backgroundColor={theme.colors.background}
-            hidden={false}
+          barStyle={currentTheme === "light" ? "dark-content" : "light-content"}
+          backgroundColor={theme.colors.surface}
+          hidden={statusBarHidden}
         />
-        <Stack.Screen
-          options={{
-            headerStyle: { backgroundColor: theme.colors.surface },
-            headerTintColor: theme.colors.text,
-          }}
-        />
-        <View style={[styles.container, style]}>{children}</View>
+        <View style={[styles.container, style]}>
+          {children}
+        </View>
       </SafeAreaView>
     </>
   );

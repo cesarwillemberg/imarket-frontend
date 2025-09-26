@@ -1,5 +1,5 @@
 
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import LottieView from "lottie-react-native";
 import { FC, RefObject } from "react";
 import { StyleProp, ViewStyle } from "react-native";

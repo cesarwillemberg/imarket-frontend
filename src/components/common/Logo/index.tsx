@@ -2,7 +2,7 @@ import { View } from "react-native";
 
 import LogoLight from "@/src/assets/images/splashscreen/logo.svg";
 import LogoDark from "@/src/assets/images/splashscreen/logo_dark.svg";
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import createStyles from "./styled";
 
 const Logo = () => {

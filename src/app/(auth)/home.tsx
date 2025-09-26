@@ -1,6 +1,6 @@
-import { useSession } from "@/providers/SessionContext/Index";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { Theme, useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useSession } from "@/src/providers/SessionContext/Index";
+import { Theme, useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";

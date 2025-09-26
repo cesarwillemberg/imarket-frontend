@@ -1,8 +1,8 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import React, { RefObject, forwardRef } from "react";
 import { Text, TextInput, TouchableOpacity, View } from "react-native";
 import IconMaterialIcons from "react-native-vector-icons/MaterialIcons";
-import createStyles from "./Styled";
+import createStyles from "./styled";
 
 interface PasswordInputProps {
   placeholder?: string;

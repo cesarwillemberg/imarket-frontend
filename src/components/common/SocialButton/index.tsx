@@ -1,4 +1,4 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import React, { FC, ReactElement } from "react";
 import { Pressable } from "react-native";
 import createStyles, { getSocialButtonStyle } from "./styled";

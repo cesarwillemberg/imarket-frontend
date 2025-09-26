@@ -1,7 +1,7 @@
 import { Button } from "@/src/components/common/Button";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { Title } from "@/src/components/common/Title/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { Title } from "@/src/components/common/Title/index";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 import createStyles from "./styled";

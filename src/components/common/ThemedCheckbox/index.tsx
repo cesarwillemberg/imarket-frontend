@@ -1,4 +1,4 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import ExpoCheckbox from "expo-checkbox";
 import { StyleProp, Text, View, ViewStyle } from "react-native";
 import createStyles from "./styled";

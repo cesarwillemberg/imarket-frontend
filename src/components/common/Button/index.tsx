@@ -1,5 +1,5 @@
 
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { FC } from "react";
 import {
   ActivityIndicator,
@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   ViewStyle,
 } from "react-native";
-import createStyles from "./Styled";
+import createStyles from "./styled";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "danger" | "success";
 

@@ -1,7 +1,7 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { Title } from "@/src/components/common/Title";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { FC } from "react";
 import { Image, View } from "react-native";
-import { Title } from "../../../common/Title/Index";
 import createStyles from "./styled";
 
 

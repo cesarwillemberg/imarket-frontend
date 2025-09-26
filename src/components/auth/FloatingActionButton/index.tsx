@@ -1,7 +1,7 @@
 import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { Icon } from "@/src/components/common/Icon";
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";

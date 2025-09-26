@@ -1,7 +1,7 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { FC, ReactNode } from "react";
 import { Text, TextStyle } from "react-native";
-import createStyles from "./Styles";
+import createStyles from "./styles";
 
 interface Props {
   children: ReactNode;

@@ -1,7 +1,7 @@
-import { useTheme } from '@/themes/ThemeContext';
+import { useTheme } from '@/src/themes/ThemeContext';
 import React, { useRef, useState } from 'react';
 import { Text } from 'react-native';
-import { Input } from '../Input/Index';
+import { Input } from '../Input';
 import createStyles from './styled';
 
 interface EmailInputProps {

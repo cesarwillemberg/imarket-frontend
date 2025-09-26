@@ -1,9 +1,9 @@
-import { useSession } from "@/providers/SessionContext/Index";
-import { UserInfo } from "@/services/auth-service";
 import EditProfileForm from "@/src/components/auth/EditProfileForm";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useSession } from "@/src/providers/SessionContext/Index";
+import { UserInfo } from "@/src/services/auth-service";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { findNodeHandle, ScrollView, TextInput, View } from "react-native";

@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { Input } from '../Input/Index';
+import { Input } from '../Input';
 
 interface DatePickerInputProps {
   value: string | undefined;

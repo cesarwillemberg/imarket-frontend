@@ -1,6 +1,6 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { RefreshControl, ScrollView, Text, View } from "react-native";
 import createStyles from "./styled";
@@ -9,7 +9,7 @@ import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import LocationBackground from "@/src/assets/images/address/undraw_destination_fkst.svg";
 import { FloatingActionButton } from "@/src/components/auth/FloatingActionButton";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
-import { Title } from "@/src/components/common/Title/Index";
+import { Title } from "@/src/components/common/Title/index";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 

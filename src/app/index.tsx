@@ -1,5 +1,5 @@
-import { useSession } from "@/providers/SessionContext/Index";
 import SplashScreenLoading from "@/src/components/no-auth/splashscreenloading";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 

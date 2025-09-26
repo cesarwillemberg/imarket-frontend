@@ -1,5 +1,5 @@
-import authService, { UserInfo } from "@/services/auth-service";
 import { supabase } from "@/src/lib/supabase";
+import authService, { UserInfo } from "@/src/services/auth-service";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";

@@ -1,4 +1,5 @@
-import { useTheme } from '@/themes/ThemeContext';
+
+import { useTheme } from '@/src/themes/ThemeContext';
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
 import { TextStyle, ViewStyle } from 'react-native';
 import PhoneInputLib, { ICountry, isValidPhoneNumber } from 'react-native-international-phone-number';

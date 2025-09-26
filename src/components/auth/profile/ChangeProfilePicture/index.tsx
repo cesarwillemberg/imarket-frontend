@@ -1,7 +1,7 @@
 import { Button } from "@/src/components/common/Button";
 import { Icon } from "@/src/components/common/Icon";
-import { Subtitle } from "@/src/components/common/subtitle/Index";
-import { useTheme } from "@/themes/ThemeContext";
+import { Subtitle } from "@/src/components/common/subtitle";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { Camera } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { FC } from "react";

@@ -1,4 +1,4 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { FC } from "react";
 import { Text, TouchableOpacity, View } from "react-native";

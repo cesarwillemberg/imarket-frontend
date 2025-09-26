@@ -1,7 +1,7 @@
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import React, { forwardRef } from "react";
 import { TextInput, TextInputProps } from "react-native";
-import createStyles from "./Styled";
+import createStyles from "./styled";
 
 export const Input = forwardRef<TextInput, TextInputProps>((props, ref) => {
   const { theme } = useTheme();

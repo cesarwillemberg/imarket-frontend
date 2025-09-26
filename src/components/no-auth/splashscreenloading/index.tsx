@@ -1,10 +1,10 @@
 
-import { useTheme } from "@/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import createStyles from "./styled";
 
 import LogoLight from "@/src/assets/images/splashscreen/logo.svg";
 import LogoDark from "@/src/assets/images/splashscreen/logo_dark.svg";
-import { ScreenContainer } from "../../common/ScreenContainer/Index";
+import { ScreenContainer } from "../../common/ScreenContainer";
 
 
 export default function SplashScreenLoading(){
