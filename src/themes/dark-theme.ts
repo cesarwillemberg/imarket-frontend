@@ -45,6 +45,12 @@ export const FONT_SIZES = {
   xxl: 32,
 };
 
+export const FONTS = {
+  regular: 'Inter',
+  italic: 'Inter-Italic',
+  mono: 'SpaceMono',
+};
+
 export const RADIUS = {
   clear: 0,
   sm: 4,
@@ -75,6 +81,7 @@ const darkTheme = {
   colors: DARK_COLORS,
   spacing: SPACING,
   fontSizes: FONT_SIZES,
+  fonts: FONTS,
   radius: RADIUS,
   opacity: OPACITY,
   size: SIZE,

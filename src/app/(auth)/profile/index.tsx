@@ -9,7 +9,7 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
-import createStyles from "./stylde";
+import createStyles from "./styled";
 
 export default function Profile() {
   const { theme } = useTheme();

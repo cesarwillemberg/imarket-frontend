@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native";
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     title: {
-      fontFamily: "Inter",
+      fontFamily: theme.fonts.regular,
       fontWeight: "bold",
       color: theme.colors.text,
       fontSize: theme.fontSizes.xl,

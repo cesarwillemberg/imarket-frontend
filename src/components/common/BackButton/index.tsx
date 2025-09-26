@@ -3,15 +3,9 @@ import { useRouter } from "expo-router";
 import { FC } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { Icon } from "../Icon";
-import createStyles from "./styled";
 
-interface Props {
-
-}
-
-const BackButton: FC<Props> = () => {
+const BackButton: FC = () => {
     const { theme } = useTheme();
-    const styles = createStyles(theme);
     const router = useRouter();
 
     const handleBack = () => {

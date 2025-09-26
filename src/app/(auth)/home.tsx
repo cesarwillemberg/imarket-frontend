@@ -1,15 +1,18 @@
+import { createCommonStyles } from "@/src/assets/styles/commonStyles";
+import { createTextStyles } from "@/src/assets/styles/textStyles";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
-import { Theme, useTheme } from "@/src/themes/ThemeContext";
+import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Text, View } from "react-native";
 
 export default function Home() {
     const { theme } = useTheme();
-    const styles = createStyles(theme);
+    const commonStyles = createCommonStyles(theme);
+    const textStyles = createTextStyles(theme);
     const router = useRouter();
-    const { session, user} = useSession();
+    const { session } = useSession();
 
     useEffect(() => {
         if (!session) return router.replace("/signin")
@@ -17,18 +20,9 @@ export default function Home() {
 
     return (
         <ScreenContainer>
-            <View style={styles.container}>
-                <Text style={{color: theme.colors.text}}>Home</Text>
+            <View style={commonStyles.centeredContainer}>
+                <Text style={textStyles.themedText}>Home</Text>
             </View>
         </ScreenContainer>
     );
 }
-
-
-const createStyles = (theme: Theme) => StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-});

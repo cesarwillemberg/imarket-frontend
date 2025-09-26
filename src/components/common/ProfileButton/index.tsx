@@ -5,21 +5,12 @@ import { Text, TouchableOpacity, View } from "react-native";
 import { Icon, IconName, IconType } from "../Icon";
 import createStyles from "./styled";
 
-
-type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | Json[]
-  | { [key: string]: Json };
-
 interface Props {
     title: string;
     iconName: IconName;
     iconType: IconType;
-    linkPage: string;
-    params?: Json;
+    linkPage: any; // Usando any para permitir compatibilidade com router
+    params?: Record<string, any>;
 }
 
 const ProfileButton: FC<Props> = (props) => {
