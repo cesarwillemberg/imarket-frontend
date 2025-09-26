@@ -24,7 +24,7 @@ interface IFormState {
   showPassword: boolean;
 }
 
-export const SignInFormRefactored = () => {
+export const SignInForm = () => {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const { signIn } = useSession();

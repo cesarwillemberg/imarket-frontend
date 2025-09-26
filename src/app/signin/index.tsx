@@ -4,12 +4,12 @@ import { useRouter } from "expo-router";
 import { Text, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";
 
-import { SignInForm } from "@/src/components/auth/SignInForm";
 
 import Apple from "@/src/assets/images/login/apple.svg";
 import Facebook from "@/src/assets/images/login/facebook.svg";
 import Google from "@/src/assets/images/login/google.svg";
 import X from "@/src/assets/images/login/x.svg";
+import { SignInForm } from "@/src/components/auth/SignInForm";
 import Logo from "@/src/components/common/Logo";
 import SocialButton from "@/src/components/common/SocialButton";
 import { useSession } from "@/src/providers/SessionContext/Index";

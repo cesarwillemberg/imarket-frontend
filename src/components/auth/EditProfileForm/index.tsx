@@ -7,6 +7,7 @@ import EmailInput from "@/src/components/common/InputEmail";
 import PhoneInput from "@/src/components/common/PhoneInput";
 import { Subtitle } from "@/src/components/common/subtitle";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import { useEmailChange } from "@/src/hooks/useEmailChange";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import React, { FC, useEffect, useRef, useState } from "react";
@@ -28,7 +29,20 @@ const EditProfileForm: FC = () => {
     const [dateOfBirth, setDateOfBirth] = useState<string>("");
     const [phone, setPhone] = useState<string>("");
     const [email, setEmail] = useState<string>("");
+    const [originalEmail, setOriginalEmail] = useState<string>("");
     const [showSuccessAnimation, setShowSuccessAnimation] = useState<boolean>(false);
+
+    // Hook para alteração de email
+    const { 
+        handleEmailChange, 
+        isChangingEmail, 
+        hasEmailChanged 
+    } = useEmailChange({
+        currentEmail: originalEmail,
+        onEmailChangeSuccess: () => {
+            console.log("✅ Processo de alteração de email iniciado");
+        }
+    });
 
     // const [password, setPassword] = useState<string>("");
     // const [confirmPassword, setConfirmPassword] = useState<string>("");
@@ -77,48 +91,84 @@ const EditProfileForm: FC = () => {
     };
 
     const handleSave = async () => {
+        console.log("🔵 handleSave iniciado");
         setIsLoadingBtnSave(true);
         const path = `${userId}/${userId}-avatar.jpg`;
         let publicUrl = profilePicture;
 
         try {
+            // Processar imagem de perfil
             if (profilePicture && profilePicture.startsWith("file://")) {
+                console.log("🖼️ Processando imagem de perfil...");
                 publicUrl = await updateProfilePicture({ 
                     localFilePath: profilePicture, 
                     storageFilePath: path 
                 });
             } else if (profilePicture === "") {
+                console.log("🗑️ Removendo imagem de perfil...");
                 await removeProfilePicture({ storageFilePath: path });
                 publicUrl = "";
             }
-        } catch (error) {
+        } catch {
+            console.log("❌ Erro ao processar imagem de perfil");
             Alert.alert("Erro ao processar imagem de perfil");
             setIsLoadingBtnSave(false);
             return;
         }
 
-        let params = {
-            id: userId,
-            profile_picture: publicUrl,
-            name: name,
-            cpf: cpf,
-            date_birth: dateOfBirth,
-            phone: phone,
-            email: email,
-        }
+        try {
+            // Se o email mudou, processar alteração de email SEPARADAMENTE
+            if (hasEmailChanged(email)) {
+                console.log("📧 Email mudou no EditProfileForm, processando alteração...");
+                console.log("📧 Email atual:", originalEmail);
+                console.log("📧 Novo email:", email);
+                
+                const emailChanged = await handleEmailChange(email);
+                console.log("📧 Resultado do handleEmailChange:", emailChanged);
+                
+                if (!emailChanged) {
+                    console.log("📧 Alteração de email cancelada ou falhou");
+                    setIsLoadingBtnSave(false);
+                    return; // Usuário cancelou ou erro ocorreu
+                }
+                // Se chegou aqui, o email está sendo processado e o usuário será deslogado
+                // Não precisa continuar com o updateProfile
+                console.log("📧 Processo de alteração de email iniciado, retornando...");
+                return;
+            }
 
-        const { dataUpdate, errorUpdate } = await updateProfile(params);
+            console.log("💾 Salvando outros dados do perfil...");
+            // Atualizar outros dados do perfil (SEM email)
+            let params = {
+                id: userId,
+                profile_picture: publicUrl,
+                name: name,
+                cpf: cpf,
+                date_birth: dateOfBirth,
+                phone: phone,
+                // email: NÃO incluir aqui - foi tratado separadamente
+            }
 
-        if (errorUpdate) {
-            console.error("Error in updateProfile:", errorUpdate);
-            Alert.alert("Erro ao atualizar perfil");
+            const { errorUpdate } = await updateProfile(params);
+
+            if (errorUpdate) {
+                console.error("Error in updateProfile:", errorUpdate);
+                Alert.alert("Erro ao atualizar perfil");
+                setIsLoadingBtnSave(false);
+                return;
+            } 
+            
+            // Sucesso - mostrar animação
+            console.log("✅ Perfil atualizado com sucesso");
+            setShowSuccessAnimation(true);
+            animationSaveSuccess.current?.play();
             setIsLoadingBtnSave(false);
-            return;
-        } 
-        
-        setShowSuccessAnimation(true);
-        animationSaveSuccess.current?.play();
-        setIsLoadingBtnSave(false);
+
+        } catch (error: any) {
+            console.error("Erro ao salvar:", error);
+            Alert.alert("Erro", "Não foi possível salvar as alterações");
+            setIsLoadingBtnSave(false);
+        }
     }
 
     const handleCancel = () => {
@@ -139,7 +189,9 @@ const EditProfileForm: FC = () => {
             setCPF(data.cpf || '');
             setDateOfBirth(data.data_nascimento || '');
             setPhone(data.telefone ? String(data.telefone) : '');
-            setEmail(data.email || '');
+            const userEmail = data.email || '';
+            setEmail(userEmail);
+            setOriginalEmail(userEmail); // Salvar email original para comparação
         } catch (error) {
             console.error("Erro ao buscar informações do usuário:", error);
         }
@@ -294,8 +346,8 @@ const EditProfileForm: FC = () => {
                     <View style={{marginTop: 30}}>
                         <Button 
                             title="Salvar Alterações" 
-                            loading={isLoadingBtnSave} 
-                            disabled={isLoadingBtnSave}
+                            loading={isLoadingBtnSave || isChangingEmail} 
+                            disabled={isLoadingBtnSave || isChangingEmail}
                             onPress={handleSave}
                             style={{paddingVertical: 12}} 
                         />

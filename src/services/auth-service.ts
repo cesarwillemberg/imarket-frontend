@@ -48,6 +48,10 @@ interface UpdateProfileProps {
   profilePictureUrl: string
 }
 
+interface ChangeEmailProps {
+  newEmail: string;
+}
+
 const authService = {
   signIn: async (input: SignInAttributes) => {
     const { data, error } = await supabase.auth.signInWithPassword(input);
@@ -116,13 +120,13 @@ const authService = {
   updateProfile: async (input: UpdateProfileProps) => {
     const userInfo = input.userInfo;
     
-    // Mapear campos corretamente
+    // Mapear campos corretamente - EXCLUINDO email (deve ser alterado via changeEmail)
     const updateData = {
       cpf: userInfo.cpf,
       telefone: userInfo.telefone || userInfo.phone,
       nome: userInfo.nome || userInfo.name,
       data_nascimento: userInfo.data_nascimento || userInfo.date_birth,
-      email: userInfo.email,
+      // email: NÃO incluir aqui - deve usar changeEmail()
       profile_picture: input.profilePictureUrl,
     };
 
@@ -138,6 +142,67 @@ const authService = {
         
     } catch (error: any) {
       console.error("❌ Erro na atualização do perfil:", error);
+      throw error;
+    }
+  },
+
+  changeEmail: async (input: ChangeEmailProps) => {
+    try {
+      console.log("📧 Alterando email para:", input.newEmail);
+      
+      // 1. Atualizar email no auth.users (envia verificação)
+      const { data, error } = await supabase.auth.updateUser({
+        email: input.newEmail
+      });
+
+      if (error) {
+        console.error("❌ Erro ao alterar email:", error);
+        throw error;
+      }
+
+      console.log("✅ Email alterado no auth.users. Verificação enviada para:", input.newEmail);
+      console.log("📬 O usuário deve confirmar o novo email para completar a alteração.");
+      
+      return { 
+        data, 
+        message: `Email de verificação enviado para ${input.newEmail}. Verifique sua caixa de entrada e confirme para completar a alteração.` 
+      };
+
+    } catch (error: any) {
+      console.error("❌ Erro na alteração de email:", error);
+      throw error;
+    }
+  },
+
+  // Nova função para sincronizar email na tabela perfis após confirmação
+  syncEmailToPerfis: async (userId: string, newEmail: string) => {
+    try {
+      console.log("🔄 [syncEmailToPerfis] Iniciando sincronização:", { userId, newEmail });
+
+      const { data, error } = await supabase
+        .from('perfis')
+        .update({ email: newEmail })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("❌ [syncEmailToPerfis] Erro na query:", error);
+        console.error("❌ [syncEmailToPerfis] Detalhes do erro:", {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw error;
+      }
+
+      console.log("✅ [syncEmailToPerfis] Email sincronizado com sucesso:", data);
+      return data;
+
+    } catch (error: any) {
+      console.error("❌ [syncEmailToPerfis] Erro geral na sincronização:", error);
+      console.error("❌ [syncEmailToPerfis] Stack trace:", error.stack);
       throw error;
     }
   },

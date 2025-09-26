@@ -42,6 +42,7 @@ interface SessionContextProps {
     storageFilePath: string; 
   }) => Promise<string>;
   removeProfilePicture: (input: { storageFilePath: string; }) => Promise<boolean>;
+  changeEmail: (newEmail: string) => Promise<{ data: any; message: string }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -71,6 +72,9 @@ const SessionContext = createContext<SessionContextProps>({
   },
   removeProfilePicture: async (_input: { storageFilePath: string }): Promise<boolean> => {
     throw new Error("removeProfilePicture not implemented.");
+  },
+  changeEmail: async (_newEmail: string): Promise<{ data: any; message: string }> => {
+    throw new Error("changeEmail not implemented.");
   },
 
 
@@ -103,8 +107,26 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, _session) => {
-        if (mounted) setSession(_session);
+      async (event, _session) => {
+        if (mounted) {
+          setSession(_session);
+          
+          // TEMPORARIAMENTE DESABILITADO - Detectar quando email foi confirmado e sincronizar com tabela perfis
+          // if (event === 'USER_UPDATED' && _session?.user) {
+          //   const newEmail = _session.user.email;
+          //   const userId = _session.user.id;
+            
+          //   if (newEmail) {
+          //     try {
+          //       console.log("🔄 Email confirmado, sincronizando com tabela perfis...");
+          //       await authService.syncEmailToPerfis(userId, newEmail);
+          //       console.log("✅ Email sincronizado com sucesso na tabela perfis");
+          //     } catch (error) {
+          //       console.error("❌ Erro ao sincronizar email na tabela perfis:", error);
+          //     }
+          //   }
+          // }
+        }
       }
     );
 
@@ -186,6 +208,16 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     return success;
   };
 
+  const changeEmail = async (newEmail: string) => {
+    try {
+      const result = await authService.changeEmail({ newEmail });
+      return result;
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao alterar email:", error);
+      throw error;
+    }
+  };
+
   return (
     <SessionContext.Provider
       value={{
@@ -200,6 +232,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         updateProfile,
         updateProfilePicture,
         removeProfilePicture,
+        changeEmail,
       }}
     >
       {children}
