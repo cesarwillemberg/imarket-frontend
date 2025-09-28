@@ -32,7 +32,7 @@ const createStyles = (theme: Theme) =>
       padding: theme.spacing.clear,
     },
     submit_button_wrapper: {
-      marginVertical: theme.spacing.xl,
+      marginTop: theme.spacing.xl,
     },
     login_button: {
       backgroundColor: theme.colors.primary,

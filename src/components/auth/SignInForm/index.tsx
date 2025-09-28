@@ -11,6 +11,7 @@ import { Title } from '@/src/components/common/Title/index';
 import { useSession } from '@/src/providers/SessionContext/Index';
 import { useTheme } from '@/src/themes/ThemeContext';
 
+import { useRouter } from 'expo-router';
 import createStyles from './styled';
 
 interface IFormData {
@@ -27,6 +28,7 @@ interface IFormState {
 export const SignInForm = () => {
   const { theme } = useTheme();
   const styles = createStyles(theme);
+  const router = useRouter();
   const { signIn } = useSession();
 
   // Form data
@@ -90,6 +92,10 @@ export const SignInForm = () => {
     updateFormState('showPassword', !formState.showPassword);
   }, [formState.showPassword, updateFormState]);
 
+  const handleForgotPassword = useCallback(() => {
+    router.push('/(no-auth)/forgotpassword');
+  }, [router]);
+
   return (
     <View>
       <Title align="center" style={{ marginBottom: 0 }}>
@@ -130,7 +136,7 @@ export const SignInForm = () => {
           checked={formState.keepLoggedIn}
           onChange={(checked) => updateFormState('keepLoggedIn', checked)}
         />
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleForgotPassword}>
           <Text style={styles.forgot_password_text}>Esqueceu a senha?</Text>
         </TouchableOpacity>
       </View>

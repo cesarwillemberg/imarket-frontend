@@ -1,3 +1,4 @@
+import { createCommonStyles } from "@/src/assets/styles/commonStyles";
 import { SignUpForm } from "@/src/components/auth/SignUpForm";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import Logo from "@/src/components/common/Logo";
@@ -7,20 +8,22 @@ import { ScrollView, View } from "react-native";
 import createStyles from "./styled";
 
 const SignUpScreen = () => {
-    const { theme, currentTheme } = useTheme();
+    const { theme } = useTheme();
     const styles = createStyles(theme);
+    const stylesCommon = createCommonStyles(theme);
 
     return (
-        <ScreenContainer style={{ flex: 1 }}>
+        <ScreenContainer>
             <ScrollView
-                style={{ flex: 1 }}
-                contentContainerStyle={{ flexGrow: 1, alignItems: "center", justifyContent: "center" }}
+                contentContainerStyle={stylesCommon.growContainer}
                 keyboardShouldPersistTaps="handled"
             >
-                <HeaderScreen  />
-                <Logo />
-                <View style={styles.form_wrapper}>
-                    <SignUpForm />
+                <HeaderScreen title="Criar Conta" showButtonBack />
+                <View style={stylesCommon.paddedContainer}>
+                    <Logo />
+                    <View style={styles.form_wrapper}>
+                        <SignUpForm />
+                    </View>
                 </View>
             </ScrollView>
         </ScreenContainer>

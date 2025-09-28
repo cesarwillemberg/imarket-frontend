@@ -11,9 +11,9 @@ const Logo = () => {
     return (
         <View style={styles.logo_wrapper}>
             {currentTheme === "light" ? (
-                <LogoLight width={250} height={250} />
+                <LogoLight width={250} height={180} />
             ) : (
-                <LogoDark width={250} height={250} />
+                <LogoDark width={250} height={180} />
             )}
         </View>
     )

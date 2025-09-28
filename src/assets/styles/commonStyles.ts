@@ -9,6 +9,11 @@ export const createCommonStyles = (theme: Theme) =>
       justifyContent: "center",
       alignItems: "center",
     },
+    growContainer: {
+      flexGrow: 1,
+      justifyContent: "center",
+      alignItems: "center",
+    },
     // Container flex padrão
     flexContainer: {
       flex: 1,
@@ -16,6 +21,6 @@ export const createCommonStyles = (theme: Theme) =>
     // Container com padding padrão
     paddedContainer: {
       flex: 1,
-      padding: theme.spacing.md,
+      padding: theme.spacing.lg,
     },
   });

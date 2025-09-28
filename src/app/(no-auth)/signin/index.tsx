@@ -9,6 +9,7 @@ import Apple from "@/src/assets/images/login/apple.svg";
 import Facebook from "@/src/assets/images/login/facebook.svg";
 import Google from "@/src/assets/images/login/google.svg";
 import X from "@/src/assets/images/login/x.svg";
+import { createCommonStyles } from "@/src/assets/styles/commonStyles";
 import { SignInForm } from "@/src/components/auth/SignInForm";
 import Logo from "@/src/components/common/Logo";
 import SocialButton from "@/src/components/common/SocialButton";
@@ -20,6 +21,7 @@ export default function SignIn() {
 
   const { theme, currentTheme } = useTheme();
   const styles = createStyles(theme);
+  const stylesCommon = createCommonStyles(theme);
   const router = useRouter();
   const { session, user} = useSession();
 
@@ -36,14 +38,8 @@ export default function SignIn() {
 
 
   return (
-    <ScreenContainer 
-      style={{ 
-        flex: 1, 
-        alignItems: "center", 
-        justifyContent: "center", 
-      }}
-    >
-      <>
+    <ScreenContainer>
+      <View style={stylesCommon.centeredContainer}>
         <Logo />
         <View style={styles.form_wrapper}>
           <SignInForm />
@@ -65,7 +61,7 @@ export default function SignIn() {
           <SocialButton icon={<Apple width={60} height={60}/>} onPress={() => console.log("Login com Apple")}/>
           <SocialButton icon={<Google width={60} height={60}/>} onPress={() => console.log("Login com Google")}/>
         </View>
-      </>
+      </View>
     </ScreenContainer>
   );
 };

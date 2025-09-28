@@ -87,7 +87,7 @@ export const SignUpForm = () => {
     };
 
     return (
-        <View>
+        <>
             <Title align="center" style={{marginBottom: 0}}>CADASTRE-SE</Title>
             <Subtitle align="center">Por favor, cadastre-se para começar</Subtitle>
             <View style={styles.input_group}>
@@ -236,6 +236,6 @@ export const SignUpForm = () => {
                   style={styles.login_button}
                 />
             </View>
-        </View>
+        </>
     )
 }

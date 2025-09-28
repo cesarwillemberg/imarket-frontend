@@ -9,6 +9,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: theme.radius.xl,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.background_forms,
+      marginBottom: theme.spacing.lg,
     },
   });
 
