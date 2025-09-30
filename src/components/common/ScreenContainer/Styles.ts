@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native";
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     safe_area_view_wrapper: { 
-      flexGrow: 1,
+      flex: 1,
       backgroundColor: theme.colors.background,
     },
     container: {

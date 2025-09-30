@@ -36,6 +36,8 @@ export const ScreenContainer: FC<Props> = ({
           await NavigationBar.setButtonStyleAsync(
             currentTheme === "light" ? "dark" : "light"
           );
+          // Defina também uma cor de fundo para evitar flashes/branco em alguns dispositivos
+          await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
         } else {
           // Sem edge-to-edge: configuração completa
           await NavigationBar.setButtonStyleAsync(
@@ -56,7 +58,7 @@ export const ScreenContainer: FC<Props> = ({
     <>
       <SafeAreaView 
         style={styles.safe_area_view_wrapper} 
-        edges={safeAreaEdges || ['top']}
+        edges={safeAreaEdges || ['top', 'bottom']}
       >
         <StatusBar
           barStyle={currentTheme === "light" ? "dark-content" : "light-content"}

@@ -1,3 +1,4 @@
+import * as SystemUI from "expo-system-ui";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useColorScheme } from "react-native";
 import darkTheme from "./dark-theme";
@@ -39,6 +40,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const switchTheme = () => {
     setCurrentTheme((current) => (current === "light" ? "dark" : "light"));
   };
+
+  // Keep the Android system background aligned with our theme, important for edge-to-edge
+  useEffect(() => {
+    // This sets the window background used behind system bars/gestures
+    SystemUI.setBackgroundColorAsync(theme.colors.background).catch(() => {});
+  }, [theme.colors.background]);
 
   return (
     <ThemeContext.Provider value={{ currentTheme, theme, switchTheme }}>

@@ -1,10 +1,10 @@
 
 import { SessionProvider } from "@/src/providers/SessionContext/Index";
-import { ThemeProvider } from "@/src/themes/ThemeContext";
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { ThemeProvider, useTheme } from "../themes/ThemeContext";
 
 // Prevent the splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -29,12 +29,24 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SessionProvider>
-        <Stack>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="(no-auth)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack>
+        <ThemedStack />
       </SessionProvider>
     </ThemeProvider>
+  );
+}
+
+function ThemedStack() {
+  const { theme } = useTheme();
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: theme.colors.background },
+      }}
+    >
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(no-auth)" />
+      <Stack.Screen name="(auth)" />
+    </Stack>
   );
 }
