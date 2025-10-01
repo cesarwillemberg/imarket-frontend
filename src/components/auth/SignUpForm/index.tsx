@@ -1,4 +1,3 @@
-
 import { useTheme } from "@/src/themes/ThemeContext";
 
 import { Input } from "@/src/components/common/Input";
@@ -13,7 +12,7 @@ import { useSession } from "@/src/providers/SessionContext/Index";
 import Checkbox from "expo-checkbox";
 import { useRouter } from "expo-router";
 import { useRef, useState } from "react";
-import { Alert, findNodeHandle, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Title } from "../../common/Title";
 import createStyles from "./styled";
 
@@ -39,8 +38,6 @@ export const SignUpForm = () => {
     const inputEmailRef = useRef<TextInput>(null);
     const inputPasswordRef = useRef<TextInput>(null);
     const inputConfirmPasswordRef = useRef<TextInput>(null);
-
-    const scrollViewRef = useRef<ScrollView>(null);
 
     const handleDateChange = (date: Date, formattedDate: string) => {
         setDateOfBirth(formattedDate);
@@ -70,21 +67,7 @@ export const SignUpForm = () => {
           pathname: "/confirmemailscreen",
           params: {email: email}
         });
-        
     }
-
-    const scrollToInput = (inputRef: React.RefObject<TextInput>) => {
-      if (!inputRef.current || !scrollViewRef.current) return;
-
-      const inputHandle = findNodeHandle(inputRef.current);
-      if (!inputHandle) return;
-
-      scrollViewRef.current.scrollResponderScrollNativeHandleToKeyboard(
-        inputHandle,
-        20,
-        true
-      );
-    };
 
     return (
         <>
@@ -96,13 +79,10 @@ export const SignUpForm = () => {
                   placeholder="Nome completo" 
                   value={name} 
                   onChangeText={setName} 
-                  onSubmitEditing={() => {
-                    inputCPFRf.current?.focus();
-                    scrollToInput(inputCPFRf);
-                  }}
-                  onFocus={() => scrollToInput(inputNameRef)}
+                  onSubmitEditing={() => inputCPFRf.current?.focus()}
                   ref={inputNameRef}
                   returnKeyType={"next"}
+                  blurOnSubmit={false}
                   inputMode="text"
                 />
             </View>
@@ -112,13 +92,10 @@ export const SignUpForm = () => {
                   placeholder="000.000.000-00" 
                   value={cpf} 
                   onChangeText={setCPF} 
-                  onSubmitEditing={() => {
-                    inputDateOfBirthRef.current?.focus();
-                    scrollToInput(inputDateOfBirthRef);
-                  }}
-                  onFocus={() => scrollToInput(inputCPFRf)}
+                  onSubmitEditing={() => inputDateOfBirthRef.current?.focus()}
                   ref={inputCPFRf}
                   returnKeyType={"next"}
+                  blurOnSubmit={false}
                   inputMode="text"
                 />
             </View>
@@ -132,8 +109,8 @@ export const SignUpForm = () => {
                     minimumDate={new Date('1900-01-01')} 
                     nextInputRef={inputPhoneRef}
                     inputRef={inputDateOfBirthRef}
-                    scrollToInput={scrollToInput}
                     returnKeyType={"next"}
+                    blurOnSubmit={false}
                     inputMode="text"
                 />
             </View>
@@ -144,12 +121,9 @@ export const SignUpForm = () => {
                   onChangeText={setPhone}
                   label="TELEFONE"
                   ref={inputPhoneRef}
-                  onSubmitEditing={() => {
-                    inputEmailRef.current?.focus();
-                    scrollToInput(inputEmailRef);
-                  }}
-                  onFocus={() => scrollToInput(inputEmailRef)}
+                  onSubmitEditing={() => inputEmailRef.current?.focus()}
                   returnKeyType={"next"}
+                  blurOnSubmit={false}
                   keyboardType="numeric"
                 />
             </View>
@@ -160,7 +134,6 @@ export const SignUpForm = () => {
                   onValueChange={setEmail}  
                   ref={inputEmailRef}
                   passwordRef={inputPasswordRef}
-                  scrollToInput={scrollToInput}
                 />
             </View>
             <View style={styles.input_group}>
@@ -171,12 +144,9 @@ export const SignUpForm = () => {
                     placeholder="Digite sua senha"
                     isRegistration={true}
                     ref={inputPasswordRef}
-                    onSubmitEditing={() => {
-                      inputConfirmPasswordRef.current?.focus();
-                      scrollToInput(inputConfirmPasswordRef);
-                    }}
-                    onFocus={() => scrollToInput(inputPasswordRef)}
+                    onSubmitEditing={() => inputConfirmPasswordRef.current?.focus()}
                     returnKeyType="next"
+                    blurOnSubmit={false}
                 />
             </View>
             <View style={styles.input_group}>

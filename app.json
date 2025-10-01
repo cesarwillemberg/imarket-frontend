@@ -53,7 +53,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Permita que o aplicativo acesse suas fotos para poder escolher sua foto de perfil."
+          "photosPermission": "Permita que o $(PRODUCT_NAME) acesse suas fotos para poder escolher sua foto de perfil."
         }
       ],
       [
@@ -70,7 +70,17 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
-      ]
+      ],
+      [
+        "react-native-edge-to-edge",
+        {
+          "android": {
+            "parentTheme": "Default",
+            "enforceNavigationBarContrast": false
+          }
+        }
+      ],
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,

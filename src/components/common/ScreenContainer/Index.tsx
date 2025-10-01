@@ -1,9 +1,9 @@
 // Versão simplificada do ScreenContainer sem warnings
 import { useTheme } from "@/src/themes/ThemeContext";
 import Constants from 'expo-constants';
-import * as NavigationBar from "expo-navigation-bar";
+import * as NavigationBar from 'expo-navigation-bar';
 import { FC, ReactNode, useEffect } from "react";
-import { StatusBar, View, ViewStyle } from "react-native";
+import { Platform, StatusBar, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createStyles from "./styles";
 
@@ -28,47 +28,45 @@ export const ScreenContainer: FC<Props> = ({
   useEffect(() => {
     const configureNavBar = async () => {
       try {
-        // Verificar se edge-to-edge está habilitado
-        const isEdgeToEdge = Constants.expoConfig?.android?.edgeToEdgeEnabled;
-        
-        if (isEdgeToEdge) {
-          // Com edge-to-edge: apenas configurar estilo dos botões
-          await NavigationBar.setButtonStyleAsync(
-            currentTheme === "light" ? "dark" : "light"
-          );
-          // Defina também uma cor de fundo para evitar flashes/branco em alguns dispositivos
-          await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
-        } else {
-          // Sem edge-to-edge: configuração completa
-          await NavigationBar.setButtonStyleAsync(
-            currentTheme === "light" ? "dark" : "light"
-          );
-          await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
+        const isEdgeToEdge = Constants.expoConfig?.android?.edgeToEdgeEnabled;       
+        const themeSeted = currentTheme === "light" ? "dark" : "light";
+
+        if (Platform.OS === "android") {
+          await NavigationBar.setButtonStyleAsync(themeSeted);
+          if (isEdgeToEdge) {
+            await NavigationBar.setBackgroundColorAsync("##ffffff00");
+          } else {
+            await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
+          }
         }
       } catch (error) {
-        // Silenciosamente ignorar erros de configuração
         console.debug("NavigationBar configuration skipped:", error);
       }
     };
 
     configureNavBar();
+
+    const timeout = setTimeout(() => configureNavBar(), 300);
+
+    return () => clearTimeout(timeout);
+
   }, [currentTheme, theme.colors.surface]);
 
   return (
-    <>
       <SafeAreaView 
         style={styles.safe_area_view_wrapper} 
-        edges={safeAreaEdges || ['top', 'bottom']}
+        edges={safeAreaEdges || ['top', "bottom"]}
       >
         <StatusBar
           barStyle={currentTheme === "light" ? "dark-content" : "light-content"}
-          backgroundColor={theme.colors.surface}
+          // backgroundColor={theme.colors.surface}
+          backgroundColor="transparent"
+          translucent={true}
           hidden={statusBarHidden}
         />
         <View style={[styles.container, style]}>
           {children}
         </View>
       </SafeAreaView>
-    </>
   );
 };

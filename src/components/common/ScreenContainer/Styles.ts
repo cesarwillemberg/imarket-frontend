@@ -6,14 +6,13 @@ const createStyles = (theme: Theme) =>
     safe_area_view_wrapper: { 
       flex: 1,
       backgroundColor: theme.colors.background,
+      // backgroundColor: "red",
     },
     container: {
       flex: 1,
       // paddingHorizontal: theme.spacing.lg,
       // paddingVertical: theme.spacing.xl,
       backgroundColor: theme.colors.background,
-      width: "100%",
-      height: "100%"
     },
   });
 
