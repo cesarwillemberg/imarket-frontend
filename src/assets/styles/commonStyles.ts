@@ -5,7 +5,7 @@ export const createCommonStyles = (theme: Theme) =>
   StyleSheet.create({
     // Container centralizado padrão usado em várias telas
     centeredContainer: {
-      flex: 1,
+      flexGrow: 1,
       justifyContent: "center",
       alignItems: "center",
     },
