@@ -2,6 +2,7 @@ import Animated, { interpolate, useAnimatedStyle, useSharedValue, withTiming } f
 
 import { Icon } from "@/src/components/common/Icon";
 import { useTheme } from "@/src/themes/ThemeContext";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";
@@ -9,6 +10,7 @@ import createStyles from "./styled";
 export function FloatingActionButton() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
+  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   // animação
@@ -29,11 +31,22 @@ export function FloatingActionButton() {
     opacity: progress.value,
   }));
 
+  const handleSearchAddress = () => {
+    // Lógica para buscar o endereço
+  }
+
+  const handleLocation = () => {
+    router.push("/(auth)/profile/address/selectaddress/");
+  }
+
   return (
     <View style={styles.container}>
       {/* Botão: Buscar endereço */}
       <Animated.View style={[styles.animatedWrapper, style1]}>
-        <TouchableOpacity style={[styles.buttonOption, { backgroundColor: theme.colors.primary }]}>
+        <TouchableOpacity 
+          onPress={handleSearchAddress}
+          style={[styles.buttonOption, { backgroundColor: theme.colors.primary }]}
+        >
           <Icon
             name="magnify"
             type="MaterialCommunityIcons"
@@ -48,7 +61,10 @@ export function FloatingActionButton() {
 
       {/* Botão: Usar localização */}
       <Animated.View style={[styles.animatedWrapper, style2]}>
-        <TouchableOpacity style={[styles.buttonOption, { backgroundColor: theme.colors.primary }]}>
+        <TouchableOpacity 
+          onPress={handleLocation}
+          style={[styles.buttonOption, { backgroundColor: theme.colors.primary }]}
+        >
           <Icon
             name="crosshairs-gps"
             type="MaterialCommunityIcons"

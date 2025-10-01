@@ -1,7 +1,7 @@
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
-import { Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";
 
 
@@ -39,7 +39,7 @@ export default function SignIn() {
 
   return (
     <ScreenContainer>
-      <View style={stylesCommon.centeredContainer}>
+      <ScrollView contentContainerStyle={stylesCommon.centeredContainer}>
         <Logo />
         <View style={styles.form_wrapper}>
           <SignInForm />
@@ -61,7 +61,7 @@ export default function SignIn() {
           <SocialButton icon={<Apple width={60} height={60}/>} onPress={() => console.log("Login com Apple")}/>
           <SocialButton icon={<Google width={60} height={60}/>} onPress={() => console.log("Login com Google")}/>
         </View>
-      </View>
+      </ScrollView>
     </ScreenContainer>
   );
 };

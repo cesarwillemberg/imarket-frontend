@@ -2,8 +2,8 @@
 import { useTheme } from "@/src/themes/ThemeContext";
 import Constants from 'expo-constants';
 import * as NavigationBar from 'expo-navigation-bar';
-import { FC, ReactNode, useEffect } from "react";
-import { Platform, StatusBar, View, ViewStyle } from "react-native";
+import { FC, ReactNode, useEffect, useState } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, StatusBar, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createStyles from "./styles";
 
@@ -24,33 +24,43 @@ export const ScreenContainer: FC<Props> = ({
 }) => {
   const { currentTheme, theme } = useTheme();
   const styles = createStyles(theme);
+  const isEdgeToEdge = Constants.expoConfig?.android?.edgeToEdgeEnabled;  
+  const isAndroid = Platform.OS === "android";     
+  const [flexToggle, setFlexToggle] = useState(true);
 
   useEffect(() => {
-    const configureNavBar = async () => {
-      try {
-        const isEdgeToEdge = Constants.expoConfig?.android?.edgeToEdgeEnabled;       
-        const themeSeted = currentTheme === "light" ? "dark" : "light";
+    const keyboardShowListener = Keyboard.addListener("keyboardDidShow", () => {
+      setFlexToggle(false);
+    });
 
-        if (Platform.OS === "android") {
-          await NavigationBar.setButtonStyleAsync(themeSeted);
-          if (isEdgeToEdge) {
-            await NavigationBar.setBackgroundColorAsync("##ffffff00");
-          } else {
-            await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
-          }
-        }
-      } catch (error) {
-        console.debug("NavigationBar configuration skipped:", error);
-      }
+    const keyboardHideListener = Keyboard.addListener("keyboardDidHide", () => {
+      setFlexToggle(true);
+    });
+
+    return () => {
+      keyboardShowListener.remove();
+      keyboardHideListener.remove();
     };
+  }, []);
 
-    configureNavBar();
+  useEffect(() => {
+      const configureNavBar = async () => {
+        try {
+          const themeSeted = currentTheme === "light" ? "dark" : "light";
 
-    const timeout = setTimeout(() => configureNavBar(), 300);
+          if (isAndroid) {
+            await NavigationBar.setButtonStyleAsync(themeSeted);
+            if (!isEdgeToEdge) {
+              await NavigationBar.setBackgroundColorAsync(theme.colors.surface);
+            }
+          }
+        } catch (error) {
+          console.debug("NavigationBar configuration skipped:", error);
+        }
+      };
 
-    return () => clearTimeout(timeout);
-
-  }, [currentTheme, theme.colors.surface]);
+      configureNavBar();
+    }, [currentTheme, isEdgeToEdge]);
 
   return (
       <SafeAreaView 
@@ -59,14 +69,20 @@ export const ScreenContainer: FC<Props> = ({
       >
         <StatusBar
           barStyle={currentTheme === "light" ? "dark-content" : "light-content"}
-          // backgroundColor={theme.colors.surface}
-          backgroundColor="transparent"
-          translucent={true}
+          {...(isAndroid && !isEdgeToEdge ? { backgroundColor: "transparent", translucent: true } : {})}
           hidden={statusBarHidden}
         />
-        <View style={[styles.container, style]}>
+        <KeyboardAvoidingView
+          style={[
+            styles.container,
+            flexToggle ? { flexGrow: 1 } : { flex: 1 },
+            style
+          ]}
+          behavior={Platform.OS === "ios" ? "padding" : 'height'}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+        >
           {children}
-        </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
   );
 };

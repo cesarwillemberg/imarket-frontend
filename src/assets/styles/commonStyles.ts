@@ -14,13 +14,10 @@ export const createCommonStyles = (theme: Theme) =>
       justifyContent: "center",
       alignItems: "center",
     },
-    // Container flex padrão
     flexContainer: {
       flex: 1,
     },
-    // Container com padding padrão
     paddedContainer: {
-      flex: 1,
       padding: theme.spacing.lg,
     },
   });

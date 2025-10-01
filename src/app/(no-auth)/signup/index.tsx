@@ -4,8 +4,7 @@ import HeaderScreen from "@/src/components/common/HeaderScreen";
 import Logo from "@/src/components/common/Logo";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { View } from "react-native";
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { ScrollView, View } from "react-native";
 import createStyles from "./styled";
 
 const SignUpScreen = () => {
@@ -15,11 +14,9 @@ const SignUpScreen = () => {
 
     return (
         <ScreenContainer>
-            <KeyboardAwareScrollView
-                enableOnAndroid
+            <ScrollView
                 contentContainerStyle={stylesCommon.growContainer}
                 keyboardShouldPersistTaps="handled"
-                extraScrollHeight={40}
             >
                 <HeaderScreen 
                     title="Criar Conta" 
@@ -31,7 +28,7 @@ const SignUpScreen = () => {
                         <SignUpForm />
                     </View>
                 </View>
-            </KeyboardAwareScrollView>
+            </ScrollView>
         </ScreenContainer>
     );
 };

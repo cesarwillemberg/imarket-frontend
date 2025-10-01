@@ -119,24 +119,6 @@ export default function Address() {
                       )
                     }
                   </View>
-                  {/* <View style={{ 
-                    position: "absolute",
-                    bottom: 40,
-                    right: 0,
-                    borderRadius: 100,
-                  }}>
-                    <TouchableOpacity style={{
-                      backgroundColor: theme.colors.primary,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 1,
-                      width: 70,
-                      height: 70,
-                      borderRadius: 100,
-                    }}>
-                      <Icon name="map-marker-plus-outline" type="MaterialCommunityIcons" size={24} color={theme.colors.text}  />
-                    </TouchableOpacity>
-                  </View> */}
 
                   <FloatingActionButton />
                 </>
