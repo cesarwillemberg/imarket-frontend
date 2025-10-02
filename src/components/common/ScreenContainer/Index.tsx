@@ -65,7 +65,7 @@ export const ScreenContainer: FC<Props> = ({
   return (
       <SafeAreaView 
         style={styles.safe_area_view_wrapper} 
-        edges={safeAreaEdges || ['top', "bottom"]}
+        edges={safeAreaEdges}
       >
         <StatusBar
           barStyle={currentTheme === "light" ? "dark-content" : "light-content"}

@@ -7,6 +7,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
         /* justifyContent: "center",
         alignItems: "center", */
         paddingHorizontal: theme.spacing.lg,
+        backgroundColor: theme.colors.success
     },
 });
 
