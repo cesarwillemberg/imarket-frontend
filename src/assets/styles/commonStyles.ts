@@ -3,7 +3,6 @@ import { StyleSheet } from "react-native";
 
 export const createCommonStyles = (theme: Theme) =>
   StyleSheet.create({
-    // Container centralizado padrão usado em várias telas
     centeredContainer: {
       flexGrow: 1,
       justifyContent: "center",

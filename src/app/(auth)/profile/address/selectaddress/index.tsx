@@ -1,8 +1,8 @@
 import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import { createCommonStyles } from "@/src/assets/styles/commonStyles";
+import { MapPicker } from "@/src/components/auth/MapPicker";
 import { Button } from "@/src/components/common/Button";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
-import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { Subtitle } from "@/src/components/common/subtitle";
@@ -12,14 +12,13 @@ import {
   LocationAccuracy,
   LocationObject,
   requestForegroundPermissionsAsync,
-  reverseGeocodeAsync,
   watchPositionAsync
 } from 'expo-location';
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet, TouchableOpacity, View } from "react-native";
-import MapView, { Circle, Marker, Region } from 'react-native-maps';
+import { RefreshControl, ScrollView, View } from "react-native";
+import { Region } from 'react-native-maps';
 import createStyles from "./styled";
 
 export default function SelectAddress() {
@@ -41,9 +40,9 @@ export default function SelectAddress() {
 
 
 
-  const mapRef = useRef<MapView | null>(null);
+  // const mapRef = useRef<MapView | null>(null);
 
-  const handleGetInfoUser = async () => {}
+  // const handleGetInfoUser = async () => {}
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -84,9 +83,9 @@ export default function SelectAddress() {
 
   }
 
-  useEffect(() => {
+  // useEffect(() => {
     
-  },[])
+  // },[])
 
   useEffect(() => {
     const subscription = watchPositionAsync({
@@ -113,54 +112,23 @@ export default function SelectAddress() {
   const handleConfirmAddress = async () => {
     if (!selectedLocation) return;
     try {
-      const address = await reverseGeocodeAsync(selectedLocation);
-      if(address.length > 0) {
-        const addr = address[0];
-
-        router.push({
-          pathname: '/(auth)/profile/address/addaddress',
-          params: {
-            address: JSON.stringify(addr)
-          }
-        })
-      } else {
-        console.log('No address found for these coordinates');
-      }
-      console.log('Selected Location:', selectedLocation);
-      console.log('Address:', address);
+      router.push({
+        pathname: '/(auth)/profile/address/registeraddress',
+        params: {
+          address: JSON.stringify(selectedLocation)
+        }
+      })
     } catch (error) {
       console.error('Error fetching address:', error);
     }
 
   }
 
-  const zoomIn = () => {
-    if (mapRef.current && currentRegion) {
-      const newRegion = {
-        ...currentRegion,
-        latitudeDelta: currentRegion.latitudeDelta / 1.5, // Zoom in factor (adjust as needed)
-        longitudeDelta: currentRegion.longitudeDelta / 1.5,
-      };
-      mapRef.current.animateToRegion(newRegion, 200); // Animate with 200ms duration
-    }
-  };
-
-  const zoomOut = () => {
-    if (mapRef.current && currentRegion) {
-      const newRegion = {
-        ...currentRegion,
-        latitudeDelta: currentRegion.latitudeDelta * 1.5, // Zoom out factor (adjust as needed)
-        longitudeDelta: currentRegion.longitudeDelta * 1.5,
-      };
-      mapRef.current.animateToRegion(newRegion, 200);
-    }
-  };
-
 
 
   return (
     <ScreenContainer>
-        <HeaderScreen title="Meus Endereços" showButtonBack />
+      <HeaderScreen title="Meus Endereços" showButtonBack />
       <View style={styles.container}>
       <ScrollView
         contentContainerStyle={[styles.container, isLoading || refreshing ? { justifyContent: "center", alignItems: "center" } : {}]}
@@ -197,94 +165,12 @@ export default function SelectAddress() {
                   {
                     location && currentRegion && 
                     <>
-                      <MapView
-                        ref={mapRef}
-                        style={{ width: '100%', height: 500 }}
-                        initialRegion={{
-                          latitude: location.coords.latitude,
-                          longitude: location.coords.longitude,
-                          latitudeDelta: 0.005,
-                          longitudeDelta: 0.005,
-                        }}
-                        onRegionChangeComplete={handleRegionChangeComplete}
-                      >
-                        {/* Círculo externo (aura) */}
-                        <Circle
-                          center={{
-                            latitude: location.coords.latitude,
-                            longitude: location.coords.longitude,
-                          }}
-                          radius={20}
-                          fillColor="rgba(0, 122, 255, 0.3)"
-                          strokeColor="rgba(0, 122, 255, 1)"
-                          strokeWidth={2}
-                        />
-                        
-                        {/* Círculo interno */}
-                        <Circle
-                          center={{
-                            latitude: location.coords.latitude,
-                            longitude: location.coords.longitude,
-                          }}
-                          radius={4}
-                          fillColor="rgba(0, 122, 255, 1)"
-                          strokeColor="white"
-                          strokeWidth={2}
-                        />
-                        
-                        {/* Seta indicando direção */}
-                        {location.coords.heading !== null && 
-                        location.coords.heading !== undefined && 
-                        location.coords.heading >= 0 && (
-                          <Marker
-                            coordinate={{
-                              latitude: location.coords.latitude,
-                              longitude: location.coords.longitude,
-                            }}
-                            anchor={{ x: 0.5, y: 0.5 }}
-                            rotation={location.coords.heading}
-                            flat={true}
-                            zIndex={1000}
-                          >
-                            <View style={styles.arrowContainer}>
-                              <View style={styles.arrowPointer}>
-                                <View style={styles.arrowTriangle} />
-                              </View>
-                            </View>
-                          </Marker>
-                        )}
-                      </MapView>
-                      <View style={StyleSheet.absoluteFillObject} pointerEvents="auto" >
-                        <View style={styles.markerFixed}>
-                          <Icon 
-                            type="MaterialCommunityIcons" 
-                            name="map-marker" 
-                            size={40} 
-                            color="#FF5252" 
-                          />
-                        </View>
-                      </View>
-                      <View style={{
-                        position: 'absolute',
-                        bottom: 14,
-                        right: 14,
-                        backgroundColor: 'white',
-                        borderRadius: 8,
-                        padding: 8,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 3.84,
-                        elevation: 5,
-                      }}>
-                        <TouchableOpacity onPress={zoomIn} style={{ marginBottom: 8 }}>
-                          <Icon type="MaterialCommunityIcons" name="plus" color="#000" size={24} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={zoomOut}>
-                          <Icon type="MaterialCommunityIcons" name="minus" color="#000" size={24} />
-                        </TouchableOpacity>
-                      </View>
-
+                      <MapPicker
+                        location={selectedLocation ?? { latitude: location.coords.latitude, longitude: location.coords.longitude }}
+                        heading={location?.coords.heading ?? undefined}
+                        onLocationChange={(coords) => setSelectedLocation(coords)}
+                        style={{ width: "100%", height: 500 }}
+                      />
                     </>
                   }
                 </View>
