@@ -10,11 +10,10 @@ const createStyles = (theme: Theme) => StyleSheet.create({
         flex: 1,
     },
     scrollViewContent: {
-        flex: 1,
+        flexGrow: 1,
         paddingBottom: 20,
     },
     loadingContainer: {
-        flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
     },
