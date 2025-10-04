@@ -212,11 +212,9 @@ export default function RegisterAddress() {
 
             const isFirstAddress = count === 0;
             
-
-            // Preparar dados para inserção (adequados à estrutura da tabela)
             const addressData = {
                 user_id: user.id,
-                is_default: isFirstAddress, // Primeiro endereço será padrão
+                is_default: isFirstAddress,
                 country: country.trim(),
                 state: state.trim(),
                 state_acronym: stateAbbreviation.trim().toUpperCase(),
@@ -225,9 +223,8 @@ export default function RegisterAddress() {
                 street: street.trim(),
                 street_number: noHasNumber ? null : streetNumber.trim(),
                 address_type: addressType.trim(),
-                reference: referencePoint.trim() || null, // Campo 'reference' na tabela
+                reference: referencePoint.trim() || null,
                 complement: noHasComplement ? null : complement.trim(),
-                // Removido latitude/longitude e postal_code pois não estão na tabela
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             };
@@ -256,7 +253,11 @@ export default function RegisterAddress() {
                 [
                     {
                         text: "OK",
-                        onPress: () => router.back()
+                        onPress: () => {
+                            router.dismissAll();
+                            router.push('/(auth)/profile/address');
+                        }
+
                     }
                 ]
             );
