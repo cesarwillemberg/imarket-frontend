@@ -10,7 +10,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
         flex: 1,
     },
     scrollViewContent: {
-        flexGrow: 1,
+        flex: 1,
         paddingBottom: 20,
     },
     loadingContainer: {

@@ -33,6 +33,10 @@ export const MapPicker: React.FC<MapPickerProps> = ({
         latitudeDelta: 0.001,
         longitudeDelta: 0.001,
     });
+    const [circleLocation] = React.useState({
+        latitude: location.latitude,
+        longitude: location.longitude,
+    });
 
     const handleRegionChangeComplete = (region: Region) => {
         setCurrentRegion(region);
@@ -78,14 +82,14 @@ export const MapPicker: React.FC<MapPickerProps> = ({
       >
         {/* Círculos */}
         <Circle
-          center={location}
+          center={circleLocation}
           radius={20}
           fillColor="rgba(0, 122, 255, 0.3)"
           strokeColor="rgba(0, 122, 255, 1)"
           strokeWidth={2}
         />
         <Circle
-          center={location}
+          center={circleLocation}
           radius={4}
           fillColor="rgba(0, 122, 255, 1)"
           strokeColor="white"
@@ -94,7 +98,7 @@ export const MapPicker: React.FC<MapPickerProps> = ({
 
         {/* Marker com seta */}
         {heading !== undefined && heading >= 0 && (
-          <Marker coordinate={location} rotation={heading} flat anchor={{ x: 0.5, y: 0.5 }}>
+          <Marker coordinate={circleLocation} rotation={heading} flat anchor={{ x: 0.5, y: 0.5 }}>
             <View style={styles.arrowContainer}>
               <View style={styles.arrowPointer}>
                 <View style={styles.arrowTriangle} />
