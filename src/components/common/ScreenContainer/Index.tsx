@@ -3,7 +3,7 @@ import { useTheme } from "@/src/themes/ThemeContext";
 import Constants from 'expo-constants';
 import * as NavigationBar from 'expo-navigation-bar';
 import { FC, ReactNode, useEffect, useState } from "react";
-import { Keyboard, KeyboardAvoidingView, Platform, StatusBar, ViewStyle } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Platform, StatusBar, View, ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import createStyles from "./styles";
 
@@ -65,24 +65,26 @@ export const ScreenContainer: FC<Props> = ({
   return (
       <SafeAreaView 
         style={styles.safe_area_view_wrapper} 
-        edges={safeAreaEdges}
+        edges={safeAreaEdges || ['top']}
       >
         <StatusBar
           barStyle={currentTheme === "light" ? "dark-content" : "light-content"}
           {...(isAndroid && !isEdgeToEdge ? { backgroundColor: "transparent", translucent: true } : {})}
           hidden={statusBarHidden}
         />
-        <KeyboardAvoidingView
-          style={[
-            styles.container,
-            flexToggle ? { flexGrow: 1 } : { flex: 1 },
-            style
-          ]}
-          behavior={Platform.OS === "ios" ? "padding" : 'height'}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-        >
-          {children}
-        </KeyboardAvoidingView>
+        {Platform.OS === "ios" ? (
+          <KeyboardAvoidingView
+            style={[styles.container, style]}
+            behavior={Platform.OS === "ios" ? "padding" : 'height'} 
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
+          >
+            {children}
+          </KeyboardAvoidingView>
+        ) : (
+          <View style={[styles.container, style]}>
+            {children}
+          </View>
+        )}
       </SafeAreaView>
   );
 };

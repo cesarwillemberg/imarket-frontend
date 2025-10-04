@@ -8,7 +8,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
     },
     container: {
-      // flex: 1,
+      flex: 1,
       backgroundColor: theme.colors.background,
     },
   });
