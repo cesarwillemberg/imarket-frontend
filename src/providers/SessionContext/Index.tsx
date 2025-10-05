@@ -92,7 +92,21 @@ const SessionContext = createContext<SessionContextProps>({
   changeEmail: async (_newEmail: string): Promise<{ data: any; message: string }> => {
     throw new Error("changeEmail not implemented.");
   },
-  postAddress: async () => {
+  postAddress: async (inputAddress: {
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }): Promise<{ data: any; error: any }> => {
     throw new Error("PostAddress not implemented.");
   }
 });
@@ -248,8 +262,11 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     postal_code?: string;
   }) => {
     try {
-      const { data, error } = await addressService.postAddress(inputAddress);
-      return { data, error };
+      const result = await addressService.postAddress(inputAddress);
+      if (!result) {
+        return { data: null, error: "Unknown error" };
+      }
+      return result;
     } catch (error) {
       console.error("❌ SessionContext: Erro ao cadastrar endereço:", error);
       throw error;
