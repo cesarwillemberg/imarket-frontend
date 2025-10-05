@@ -1,4 +1,5 @@
 import { supabase } from "@/src/lib/supabase";
+import addressService from "@/src/services/address-service";
 import authService, { UserInfo } from "@/src/services/auth-service";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
@@ -43,6 +44,21 @@ interface SessionContextProps {
   }) => Promise<string>;
   removeProfilePicture: (input: { storageFilePath: string; }) => Promise<boolean>;
   changeEmail: (newEmail: string) => Promise<{ data: any; message: string }>;
+  postAddress: (inputAddress: {
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -76,9 +92,9 @@ const SessionContext = createContext<SessionContextProps>({
   changeEmail: async (_newEmail: string): Promise<{ data: any; message: string }> => {
     throw new Error("changeEmail not implemented.");
   },
-
-
-  
+  postAddress: async () => {
+    throw new Error("PostAddress not implemented.");
+  }
 });
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -218,6 +234,28 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const postAddress = async (inputAddress: {
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }) => {
+    try {
+      const { data, error } = await addressService.postAddress(inputAddress);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao cadastrar endereço:", error);
+      throw error;
+    }
+  }
+
   return (
     <SessionContext.Provider
       value={{
@@ -233,6 +271,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         updateProfilePicture,
         removeProfilePicture,
         changeEmail,
+        postAddress,
       }}
     >
       {children}

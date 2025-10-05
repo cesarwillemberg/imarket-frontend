@@ -33,7 +33,7 @@ export default function RegisterAddress() {
     const { theme } = useTheme();
     const styles = createStyles(theme);
     const commonStyles = createCommonStyles(theme);
-    const { user, getInfoUser  } = useSession();
+    const { user, getInfoUser, postAddress } = useSession();
 
     const router = useRouter();
 
@@ -150,69 +150,48 @@ export default function RegisterAddress() {
 
     const handleSaveAddress = async () => {
         try {
-            // Validações dos campos obrigatórios
-            if (!city.trim()) {
-                Alert.alert("Erro", "O campo Cidade é obrigatório.");
-                return;
-            }
-            
-            if (!neighborhood.trim()) {
-                Alert.alert("Erro", "O campo Bairro é obrigatório.");
-                return;
-            }
-            
-            if (!street.trim()) {
-                Alert.alert("Erro", "O campo Rua é obrigatório.");
-                return;
-            }
-            
-            if (!noHasNumber && !streetNumber.trim()) {
-                Alert.alert("Erro", "O campo Número é obrigatório ou marque que não possui número.");
-                return;
-            }
-            
-            if (!stateAbbreviation.trim()) {
-                Alert.alert("Erro", "O campo Sigla do Estado é obrigatório.");
-                return;
-            }
-            
-            if (!postalCode.trim()) {
-                Alert.alert("Erro", "O campo CEP é obrigatório.");
-                return;
-            }
-            
-            if (!noHasComplement && !complement.trim()) {
-                Alert.alert("Erro", "O campo Complemento é obrigatório ou marque que não possui complemento.");
-                return;
-            }
-            
-            if (!addressType.trim()) {
-                Alert.alert("Erro", "Selecione um tipo de endereço.");
-                return;
-            }
-            
-            if (!selectedLocation) {
-                Alert.alert("Erro", "Localização não encontrada. Tente novamente.");
-                return;
-            }
-
             setIsLoading(true);
-
             if (!user) {
                 Alert.alert("Erro", "Usuário não autenticado.");
                 setIsLoading(false);
                 return;
+            } else if (!city.trim()) {
+                Alert.alert("Erro", "O campo Cidade é obrigatório.");
+                return;
+            } else if (!neighborhood.trim()) {
+                Alert.alert("Erro", "O campo Bairro é obrigatório.");
+                return;
+            } else if (!street.trim()) {
+                Alert.alert("Erro", "O campo Rua é obrigatório.");
+                return;
+            } else if (!noHasNumber && !streetNumber.trim()) {
+                Alert.alert("Erro", "O campo Número é obrigatório ou marque que não possui número.");
+                return;
+            } else if (!stateAbbreviation.trim()) {
+                Alert.alert("Erro", "O campo Sigla do Estado é obrigatório.");
+                return;
+            } else if (!postalCode.trim()) {
+                Alert.alert("Erro", "O campo CEP é obrigatório.");
+                return;
+            } else if (!noHasComplement && !complement.trim()) {
+                Alert.alert("Erro", "O campo Complemento é obrigatório ou marque que não possui complemento.");
+                return;
+            } else if (!addressType.trim()) {
+                Alert.alert("Erro", "Selecione um tipo de endereço.");
+                return;
+            } else if (!selectedLocation) {
+                Alert.alert("Erro", "Localização não encontrada. Tente novamente.");
+                return;
             }
 
-            // Verificar se é o primeiro endereço para definir como padrão
             const { count } = await supabase
                 .from('address')
                 .select('*', { count: 'exact', head: true })
                 .eq('user_id', user.id);
 
             const isFirstAddress = count === 0;
-            
-            const addressData = {
+
+            const inputAddress = {
                 user_id: user.id,
                 is_default: isFirstAddress,
                 country: country.trim(),
@@ -221,22 +200,14 @@ export default function RegisterAddress() {
                 city: city.trim(),
                 neighborhood: neighborhood.trim(),
                 street: street.trim(),
-                street_number: noHasNumber ? null : streetNumber.trim(),
+                street_number: noHasNumber ? "" : streetNumber.trim(),
                 address_type: addressType.trim(),
-                reference: referencePoint.trim() || null,
-                complement: noHasComplement ? null : complement.trim(),
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                reference: referencePoint.trim() || "",
+                complement: noHasComplement ? "" : complement.trim(),
+                postal_code: postalCode.trim(),
             };
 
-            console.log('Dados do endereço a serem salvos:', addressData);
-
-            // Inserir no Supabase
-            const { data, error } = await supabase
-                .from('address')
-                .insert([addressData])
-                .select()
-                .single();
+            const { data, error } = await postAddress(inputAddress);
 
             if (error) {
                 console.error('Erro ao salvar endereço:', error);
@@ -261,7 +232,6 @@ export default function RegisterAddress() {
                     }
                 ]
             );
-
         } catch (error) {
             console.error('Erro inesperado ao salvar endereço:', error);
             Alert.alert("Erro", "Ocorreu um erro inesperado. Tente novamente.");
