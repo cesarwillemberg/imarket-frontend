@@ -40,6 +40,7 @@ export default function RegisterAddress() {
     const { address: addressParam } = useLocalSearchParams<RegisterAddressParams>();
 
     const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isLoadingButton, setIsLoadingButton] = useState<boolean>(true);
     const [refreshing, setRefreshing] = useState<boolean>(false);
 
     const [country, setCountry] = useState<string>("");
@@ -150,37 +151,46 @@ export default function RegisterAddress() {
 
     const handleSaveAddress = async () => {
         try {
-            setIsLoading(true);
+            setIsLoadingButton(true);
             if (!user) {
                 Alert.alert("Erro", "Usuário não autenticado.");
-                setIsLoading(false);
+                setIsLoadingButton(false);
                 return;
             } else if (!city.trim()) {
                 Alert.alert("Erro", "O campo Cidade é obrigatório.");
+                setIsLoadingButton(false);
                 return;
             } else if (!neighborhood.trim()) {
                 Alert.alert("Erro", "O campo Bairro é obrigatório.");
+                setIsLoadingButton(false);
                 return;
             } else if (!street.trim()) {
                 Alert.alert("Erro", "O campo Rua é obrigatório.");
+                setIsLoadingButton(false);
                 return;
             } else if (!noHasNumber && !streetNumber.trim()) {
                 Alert.alert("Erro", "O campo Número é obrigatório ou marque que não possui número.");
+                setIsLoadingButton(false);
                 return;
             } else if (!stateAbbreviation.trim()) {
                 Alert.alert("Erro", "O campo Sigla do Estado é obrigatório.");
+                setIsLoadingButton(false);
                 return;
             } else if (!postalCode.trim()) {
                 Alert.alert("Erro", "O campo CEP é obrigatório.");
+                setIsLoadingButton(false);
                 return;
             } else if (!noHasComplement && !complement.trim()) {
                 Alert.alert("Erro", "O campo Complemento é obrigatório ou marque que não possui complemento.");
+                setIsLoadingButton(false);
                 return;
             } else if (!addressType.trim()) {
                 Alert.alert("Erro", "Selecione um tipo de endereço.");
+                setIsLoadingButton(false);
                 return;
             } else if (!selectedLocation) {
                 Alert.alert("Erro", "Localização não encontrada. Tente novamente.");
+                setIsLoadingButton(false);
                 return;
             }
 
@@ -212,12 +222,12 @@ export default function RegisterAddress() {
             if (error) {
                 console.error('Erro ao salvar endereço:', error);
                 Alert.alert("Erro", "Falha ao salvar o endereço. Tente novamente.");
-                setIsLoading(false);
+                setIsLoadingButton(false);
                 return;
             }
 
-            setIsLoading(false);
-            
+            setIsLoadingButton(false);
+
             Alert.alert(
                 "Sucesso", 
                 "Endereço salvo com sucesso!",
@@ -423,6 +433,8 @@ export default function RegisterAddress() {
                                         <Button 
                                             title="Salvar Endereço" 
                                             onPress={handleSaveAddress} 
+                                            disabled={!isLoadingButton}
+                                            loading={isLoadingButton}
                                         />
                                     </View>
                                 </View>
