@@ -55,6 +55,21 @@ interface SessionContextProps {
     street?: string;
     street_number?: string;
     address_type?: string;
+    complement?: string;
+    reference?: string;
+    postal_code?: string;
+  }) => Promise<{ data: any; error: any }>;
+  checkDuplicity: (inputAddress: {
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
     reference?: string;
     complement?: string;
     postal_code?: string;
@@ -108,7 +123,25 @@ const SessionContext = createContext<SessionContextProps>({
     postal_code?: string;
   }): Promise<{ data: any; error: any }> => {
     throw new Error("PostAddress not implemented.");
-  }
+  },
+  checkDuplicity: async (inputAddress: {
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }): Promise<{ data: any; error: any }> => {
+    throw new Error("PostAddress not implemented.");
+  },
+
 });
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -263,12 +296,36 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
   }) => {
     try {
       const result = await addressService.postAddress(inputAddress);
+      console.log(result);
+      
       if (!result) {
         return { data: null, error: "Unknown error" };
       }
       return result;
     } catch (error) {
       console.error("❌ SessionContext: Erro ao cadastrar endereço:", error);
+      throw error;
+    }
+  }
+
+  const checkDuplicity = async (inputAddress: {
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }) => {
+    try {
+      const result = await addressService.checkDuplicity(inputAddress);
+      return result;
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao verificar duplicidade de endereço:", error);
       throw error;
     }
   }
@@ -289,6 +346,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         removeProfilePicture,
         changeEmail,
         postAddress,
+        checkDuplicity,
       }}
     >
       {children}

@@ -14,10 +14,8 @@ import { useTheme } from "@/src/themes/ThemeContext";
 import { LocationObject, reverseGeocodeAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, RefreshControl, ScrollView, Text, View } from "react-native";
-import MapView, { Region } from "react-native-maps";
-import createCommonStyles from "../../chats/styled";
 import createStyles from "./styled";
 
 type RegisterAddressParams = {
@@ -32,15 +30,14 @@ type Coordinates = {
 export default function RegisterAddress() {
     const { theme } = useTheme();
     const styles = createStyles(theme);
-    const commonStyles = createCommonStyles(theme);
-    const { user, getInfoUser, postAddress } = useSession();
+    const { user, postAddress, checkDuplicity } = useSession();
 
     const router = useRouter();
 
     const { address: addressParam } = useLocalSearchParams<RegisterAddressParams>();
 
     const [isLoading, setIsLoading] = useState<boolean>(true);
-    const [isLoadingButton, setIsLoadingButton] = useState<boolean>(true);
+    const [isLoadingButton, setIsLoadingButton] = useState<boolean>(false);
     const [refreshing, setRefreshing] = useState<boolean>(false);
 
     const [country, setCountry] = useState<string>("");
@@ -59,11 +56,8 @@ export default function RegisterAddress() {
     const [noHasComplement, setNoHasComplement] = useState<boolean>(false);
 
 
-    const [location, setLocation] = useState<LocationObject | null>(null);
+    const [location] = useState<LocationObject | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-    const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
-
-    const mapRef = useRef<MapView | null>(null);
 
     const animationLoading = useRef<LottieView>(null);
 
@@ -88,7 +82,7 @@ export default function RegisterAddress() {
     };
 
 
-    const getCoordsFromParams = (): Coordinates | null => {
+    const getCoordsFromParams = useCallback((): Coordinates | null => {
         if (!addressParam) return null;
         try {
             return JSON.parse(addressParam) as Coordinates;
@@ -96,41 +90,9 @@ export default function RegisterAddress() {
             console.error("Erro ao parsear addressParam:", error);
             return null;
         }
-    };
+    }, [addressParam]);
 
-    const fetchData = async () => {
-        setIsLoading(true);
-        const coords = getCoordsFromParams();
-        if (!coords) {
-            setIsLoading(false);
-            console.warn("Nenhum parâmetro address encontrado!");
-            return;
-        }
-        setSelectedLocation({
-            latitude: coords.latitude,
-            longitude: coords.longitude
-        });
-        await handleConfirmAddress(coords)
-        setIsLoading(false);
-    };
-
-    useEffect(()=>{
-        fetchData();
-    },[])
-
-    const onRefresh = async () => {
-        const coords = getCoordsFromParams();
-        if (!coords) {
-            console.warn("Nenhum parâmetro address encontrado!");
-            return;
-        }
-        setCurrentRegion(coords);
-        setRefreshing(true);
-        await handleConfirmAddress(coords)
-        setRefreshing(false);
-    };
-
-    const handleConfirmAddress = async (selectedLocation: Coordinates) => {
+    const handleConfirmAddress = useCallback(async (selectedLocation: Coordinates) => {
         try {
             const address = await reverseGeocodeAsync(selectedLocation);
             if(address.length > 0) {
@@ -147,7 +109,50 @@ export default function RegisterAddress() {
         } catch (error) {
             console.error('Error fetching address:', error);
         }
-    }
+    }, []);
+
+    useEffect(()=>{
+        const fetchData = async () => {
+            setIsLoading(true);
+            const coords = getCoordsFromParams();
+            if (!coords) {
+                setIsLoading(false);
+                console.warn("Nenhum parâmetro address encontrado!");
+                return;
+            }
+            setSelectedLocation({
+                latitude: coords.latitude,
+                longitude: coords.longitude
+            });
+            await handleConfirmAddress(coords)
+            setIsLoading(false);
+        };
+
+        fetchData();
+    }, [getCoordsFromParams, handleConfirmAddress]);
+
+    const onRefresh = async () => {
+        const coords = getCoordsFromParams();
+        if (!coords) {
+            console.warn("Nenhum parâmetro address encontrado!");
+            return;
+        }
+        setRefreshing(true);
+        await handleConfirmAddress(coords)
+        setRefreshing(false);
+    };
+
+    const checkDuplicateAddress = async (inputAddress: any) => {
+        if (!user) return false;
+        if (!inputAddress) return false;
+        try {
+            const { data, error } = await checkDuplicity(inputAddress)
+            return data && data.length > 0;
+        } catch (error) {
+            console.error('Erro inesperado ao verificar duplicatas:', error);
+            return false;
+        }
+    };
 
     const handleSaveAddress = async () => {
         try {
@@ -217,6 +222,38 @@ export default function RegisterAddress() {
                 postal_code: postalCode.trim(),
             };
 
+            const isDuplicate = await checkDuplicateAddress(inputAddress);
+            console.log(isDuplicate);
+            
+            if (isDuplicate) {
+                Alert.alert(
+                    "Endereço já existe", 
+                    "Este endereço já está cadastrado em sua conta. Você não pode cadastrar o mesmo endereço novamente.",
+                );
+                setIsLoadingButton(false);
+                return;
+            }
+
+            await saveAddress(inputAddress);
+        } catch (error) {
+            console.error('Erro inesperado ao salvar endereço:', error);
+            Alert.alert("Erro", "Ocorreu um erro inesperado. Tente novamente.");
+            setIsLoadingButton(false);
+        }
+    };
+
+    const saveAddress = async (inputAddress: any) => {
+        try {
+            if (!user) {
+                Alert.alert("Erro", "Usuário não autenticado.");
+                setIsLoadingButton(false);
+                return;
+            } else if (!inputAddress) {
+                Alert.alert("Erro", "Dados do endereço não encontrados. Tente novamente.");
+                setIsLoadingButton(false);
+                return;
+            }
+
             const { data, error } = await postAddress(inputAddress);
 
             if (error) {
@@ -245,7 +282,7 @@ export default function RegisterAddress() {
         } catch (error) {
             console.error('Erro inesperado ao salvar endereço:', error);
             Alert.alert("Erro", "Ocorreu um erro inesperado. Tente novamente.");
-            setIsLoading(false);
+            setIsLoadingButton(false);
         }
     };
 
@@ -284,7 +321,7 @@ export default function RegisterAddress() {
                                     <View>
                                         <View style={{borderColor: theme.colors.primary, borderWidth: 2}}>
                                             <MapPicker
-                                                location={selectedLocation}
+                                                location={selectedLocation || { latitude: 0, longitude: 0 }}
                                                 heading={location?.coords.heading ?? undefined}
                                                 onLocationChange={(coords) => setSelectedLocation(coords)}
                                                 style={{ width: "100%", height: 120, alignSelf: "center" }}
@@ -433,7 +470,7 @@ export default function RegisterAddress() {
                                         <Button 
                                             title="Salvar Endereço" 
                                             onPress={handleSaveAddress} 
-                                            disabled={!isLoadingButton}
+                                            disabled={isLoadingButton}
                                             loading={isLoadingButton}
                                         />
                                     </View>
