@@ -1,7 +1,7 @@
 import { Alert } from "react-native";
 import { supabase } from "../lib/supabase";
 
-interface inputAddressProps {
+export interface inputAddressProps {
     user_id?: string;
     is_default?: boolean;
     country?: string;
@@ -18,6 +18,26 @@ interface inputAddressProps {
 }
 
 const addressService = {
+    getAddresses: async (input: { user_id: string }) => {
+        try {
+            const { data, error } = await supabase
+                .from('address')
+                .select('*')
+                .eq('user_id', input.user_id);
+
+            if (error) {
+                console.error('Erro ao buscar endereços:', error);
+                Alert.alert("Erro", "Falha ao buscar endereços. Tente novamente.");
+                return { data, error };
+            }
+
+            return { data, error };
+        } catch (error) {
+            console.error('Erro inesperado ao buscar endereços:', error);
+            Alert.alert("Erro", "Falha ao buscar endereços. Tente novamente.");
+            return { data: null, error };
+        }
+    },
     postAddress: async (inputAddress: inputAddressProps) => {
         try {
             const { data, error } = await supabase
@@ -37,6 +57,64 @@ const addressService = {
         } catch (error) {
             console.error('Erro inesperado ao salvar endereço:', error);
             Alert.alert("Erro", "Falha ao salvar o endereço. Tente novamente.");
+            return { data: null, error };
+        }
+    },
+
+    updateAddress: async (inputAddress: inputAddressProps) => {
+        try {
+            const { data, error } = await supabase
+                .from('address')
+                .update(inputAddress)
+                .eq('id', inputAddress.user_id)
+                .select()
+                .single();
+
+            if (error) {
+                console.error('Erro ao atualizar endereço:', error);
+                Alert.alert("Erro", "Falha ao atualizar o endereço. Tente novamente.");
+                return;
+            }
+
+            Alert.alert("Sucesso", "Endereço atualizado com sucesso!");
+            return { data, error };
+        } catch (error) {
+            console.error('Erro inesperado ao atualizar endereço:', error);
+            Alert.alert("Erro", "Falha ao atualizar o endereço. Tente novamente.");
+            return { data: null, error };
+        }
+    },
+
+    deleteAddress: async (address_id: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('address')
+                .delete()
+                .eq('id', address_id)
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('Erro ao deletar endereço:', error);
+                Alert.alert("Erro", "Falha ao deletar o endereço. Tente novamente.");
+                return;
+            }
+            Alert.alert("Sucesso", "Endereço deletado com sucesso!");
+            return { data, error };
+        } catch (error) {
+            console.error('Erro inesperado ao deletar endereço:', error);
+            Alert.alert("Erro", "Falha ao deletar o endereço. Tente novamente.");
+            return { data: null, error };
+        }
+    },
+
+    changeDefaultAddress: async (user_id: string, address_id: string) => {
+        try {
+            
+           
+        } catch (error) {
+            console.error('Erro inesperado ao deletar endereço:', error);
+            Alert.alert("Erro", "Falha ao deletar o endereço. Tente novamente.");
             return { data: null, error };
         }
     },

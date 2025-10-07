@@ -44,6 +44,7 @@ interface SessionContextProps {
   }) => Promise<string>;
   removeProfilePicture: (input: { storageFilePath: string; }) => Promise<boolean>;
   changeEmail: (newEmail: string) => Promise<{ data: any; message: string }>;
+  getAddresses: (input: { user_id: string }) => Promise<{ data: any; error: any }>;
   postAddress: (inputAddress: {
     user_id?: string;
     is_default?: boolean;
@@ -103,6 +104,9 @@ const SessionContext = createContext<SessionContextProps>({
   },
   removeProfilePicture: async (_input: { storageFilePath: string }): Promise<boolean> => {
     throw new Error("removeProfilePicture not implemented.");
+  },
+  getAddresses: async (input: { user_id: string }): Promise<{ data: any; error: any }> => {
+    throw new Error("getAddresses not implemented.");
   },
   changeEmail: async (_newEmail: string): Promise<{ data: any; message: string }> => {
     throw new Error("changeEmail not implemented.");
@@ -281,6 +285,16 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const getAddresses = async (input: { user_id: string }): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await addressService.getAddresses(input);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar endereços:", error);
+      return { data: null, error };
+    }
+  };
+
   const postAddress = async (inputAddress: {
     country?: string;
     state?: string;
@@ -345,6 +359,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         updateProfilePicture,
         removeProfilePicture,
         changeEmail,
+        getAddresses,
         postAddress,
         checkDuplicity,
       }}
