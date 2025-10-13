@@ -1,8 +1,8 @@
 import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
+import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
-import { Icon } from "@/src/components/common/Icon";
 import { useTheme } from "@/src/themes/ThemeContext";
 import {
   geocodeAsync,
@@ -186,8 +186,11 @@ export default function SearchAddressByName() {
       const { latitude, longitude } = result.coords;
 
       router.push({
-        pathname: "/(auth)/profile/address/registeraddress",
-        params: { address: JSON.stringify({ latitude, longitude }) },
+        pathname: "/(auth)/profile/address/selectaddress/",
+        params: {
+          latitude: String(latitude),
+          longitude: String(longitude),
+        },
       });
     },
     [router]
