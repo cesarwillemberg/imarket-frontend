@@ -360,10 +360,11 @@ export default function Address() {
                 addresses.map(renderAddressCard)
               )}
               </View>
-              <FloatingActionButton />
             </>
           )}
         </ScrollView>
+
+        <FloatingActionButton />
 
         <Modal
           animationType="slide"

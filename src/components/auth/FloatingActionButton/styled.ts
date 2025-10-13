@@ -4,8 +4,9 @@ import { StyleSheet } from "react-native";
 const createStyles = (theme: Theme) => StyleSheet.create({
     container: {
         position: "absolute",
-        bottom: 40,
-        right: 20,
+        right: theme.spacing.xl,
+        bottom: theme.spacing.xl + theme.spacing.md,
+        alignItems: "center",
     },
     buttonOption: {
         padding: 15,
