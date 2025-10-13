@@ -155,6 +155,9 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     confirmButtonDisabled: {
         opacity: theme.opacity.disabled,
     },
+    primaryButtonDisabled: {
+        opacity: theme.opacity.disabled,
+    }
 });
 
 export default createStyles;

@@ -111,6 +111,14 @@ export default function Address() {
       return;
     }
 
+    if (selectedAddress.is_default) {
+      Alert.alert(
+        "Endereço Padrão",
+        "Você não pode excluir seu endereço padrão. Por favor, defina outro endereço como padrão primeiro."
+      );
+      return;
+    }
+
     if (!user || isDeletingAddress) {
       return;
     }
@@ -345,9 +353,10 @@ export default function Address() {
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
-                style={styles.primaryButton}
+                style={[styles.primaryButton, selectedAddress?.is_default && styles.primaryButtonDisabled]}
                 onPress={handleMakeDefault}
                 activeOpacity={0.85}
+                disabled={selectedAddress?.is_default}
               >
                 <Icon
                   name="check-circle-outline"
