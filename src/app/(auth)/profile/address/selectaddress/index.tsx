@@ -83,10 +83,6 @@ export default function SelectAddress() {
 
   }
 
-  // useEffect(() => {
-    
-  // },[])
-
   useEffect(() => {
     const subscription = watchPositionAsync({
       accuracy: LocationAccuracy.Highest,

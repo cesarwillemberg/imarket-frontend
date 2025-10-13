@@ -61,6 +61,7 @@ interface SessionContextProps {
     postal_code?: string;
   }) => Promise<{ data: any; error: any }>;
   deleteAddress: (input: { address_id: string; user_id: string; }) => Promise<{ data: any; error: any }>;
+  changeDefaultAddress: (input: { address_id: string; user_id: string; }) => Promise<{ data: any; error: any }>;
   checkDuplicity: (inputAddress: {
     user_id?: string;
     is_default?: boolean;
@@ -131,6 +132,9 @@ const SessionContext = createContext<SessionContextProps>({
   },
   deleteAddress: async (input: { address_id: string; user_id: string; }): Promise<{ data: any; error: any }> => {
     throw new Error("deleteAddress not implemented.");
+  },
+  changeDefaultAddress: async (input: { address_id: string; user_id: string; }): Promise<{ data: any; error: any }> => {
+    throw new Error("changeDefaultAddress not implemented.");
   },
   checkDuplicity: async (inputAddress: {
     user_id?: string;
@@ -336,6 +340,16 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const changeDefaultAddress = async (input: { address_id: string; user_id: string; }) => {
+    try {
+      const result = await addressService.changeDefaultAddress(input);
+      return result;
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao mudar endereço padrão:", error);
+      throw error;
+    }
+  }
+
   const checkDuplicity = async (inputAddress: {
     country?: string;
     state?: string;
@@ -376,6 +390,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getAddresses,
         postAddress,
         deleteAddress,
+        changeDefaultAddress,
         checkDuplicity,
       }}
     >

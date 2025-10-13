@@ -1,7 +1,6 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { useRouter } from "expo-router";
 import {
   Alert,
   Modal,
@@ -19,129 +18,128 @@ import LocationBackground from "@/src/assets/images/address/undraw_destination_f
 import { FloatingActionButton } from "@/src/components/auth/FloatingActionButton";
 import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
-import { Title } from "@/src/components/common/Title/index";
+import { Title } from "@/src/components/common/Title";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { inputAddressProps } from "@/src/services/address-service";
+import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-export default function Address() {
-  const { theme } = useTheme();
-  const styles = createStyles(theme);
-  const router = useRouter();
-  const { user, getAddresses, deleteAddress } = useSession();
-
-  const [addressesRegistered, setAddressRegistered] = useState<inputAddressProps[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
-  const [selectedAddress, setSelectedAddress] = useState<inputAddressProps | null>(null);
-  const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
-  const [isConfirmDeleteVisible, setIsConfirmDeleteVisible] = useState(false);
-  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
-
-  const animationLoading = useRef<LottieView>(null);
-
-  const handleGetAddresses = async () => {
-    if(!user) return;
-    const { data, error } = await getAddresses({ user_id: user.id });
-    if(error) {
-      console.error("âŒ Erro ao buscar endereços:", error);
-      setAddressRegistered([]);
-      return;
-    }
-    if(data && data.length > 0) {
-      setAddressRegistered(data);
-    } else {
-      setAddressRegistered([]);
-    }
-    
-  }
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    await handleGetAddresses();
-    setIsLoading(false);
-  };
-
-  useEffect(()=>{
-    fetchData();
-  },[])
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await handleGetAddresses();
-    setRefreshing(false);
-  };
-
-  const addressOptions = [
-  { id: "home", icon: "home-outline", label: "Casa", type: "MaterialCommunityIcons"},
+const ADDRESS_OPTIONS = [
+  { id: "home", icon: "home-outline", label: "Casa", type: "MaterialCommunityIcons" },
   { id: "work", icon: "briefcase-outline", label: "Trabalho", type: "MaterialCommunityIcons" },
   { id: "love", icon: "heart-outline", label: "Amor", type: "MaterialCommunityIcons" },
   { id: "school", icon: "school-outline", label: "Escola", type: "MaterialCommunityIcons" },
   { id: "friend", icon: "account-multiple-outline", label: "Amigo", type: "MaterialCommunityIcons" },
   { id: "other", icon: "map-marker-outline", label: "Outro", type: "MaterialCommunityIcons" },
-];
+] as const;
+
+export default function Address() {
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  const {
+    user,
+    getAddresses,
+    deleteAddress,
+    changeDefaultAddress,
+  } = useSession();
+  const router = useRouter();
+
+  const [addresses, setAddresses] = useState<inputAddressProps[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState<inputAddressProps | null>(null);
+  const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
+  const [isConfirmDeleteVisible, setIsConfirmDeleteVisible] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSettingDefault, setIsSettingDefault] = useState(false);
+
+  const animationLoading = useRef<LottieView>(null);
+
+  const loadAddresses = async () => {
+    if (!user) return;
+
+    const { data, error } = await getAddresses({ user_id: user.id });
+    if (error) {
+      console.error("Error fetching addresses:", error);
+      setAddresses([]);
+      return;
+    }
+
+    setAddresses(data ?? []);
+  };
+
+  const handleInitialFetch = async () => {
+    setIsLoading(true);
+    await loadAddresses();
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    handleInitialFetch();
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadAddresses();
+    setRefreshing(false);
+  };
 
   const handleOpenOptions = (address: inputAddressProps) => {
-    const rawId =
-      address.address_id ??
-      (address as Record<string, unknown>)?.["id"] ??
-      (address as Record<string, unknown>)?.["address_id"] ??
-      (address as Record<string, unknown>)?.["addressId"];
-
-    const normalizedAddress = {
-      ...address,
-      id: rawId !== undefined && rawId !== null ? String(rawId) : undefined,
-    };
-
-    setSelectedAddress(normalizedAddress);
+    setSelectedAddress(address);
     setIsOptionsModalVisible(true);
+    setIsConfirmDeleteVisible(false);
+    setIsDeleting(false);
+    setIsSettingDefault(false);
   };
 
   const handleCloseOptions = () => {
     setIsOptionsModalVisible(false);
     setSelectedAddress(null);
-    setIsDeletingAddress(false);
     setIsConfirmDeleteVisible(false);
+    setIsDeleting(false);
+    setIsSettingDefault(false);
   };
 
   const handleDeletePress = () => {
-    if (!selectedAddress?.address_id) {
+    if (!selectedAddress) return;
+
+    const targetId = selectedAddress.address_id;
+    if (!targetId) {
       Alert.alert("Error", "Could not identify the selected address.");
       return;
     }
 
     if (selectedAddress.is_default) {
       Alert.alert(
-        "Endereço Padrão",
-        "Você não pode excluir seu endereço padrão. Por favor, defina outro endereço como padrão primeiro."
+        "Default address",
+        "You cannot delete your default address. Set another address as default first."
       );
       return;
     }
 
-    if (!user || isDeletingAddress) {
-      return;
-    }
-
+    if (!user || isDeleting) return;
     setIsConfirmDeleteVisible(true);
   };
 
   const handleCancelDelete = () => {
-    if (isDeletingAddress) {
-      return;
-    }
+    if (isDeleting) return;
     setIsConfirmDeleteVisible(false);
   };
 
   const handleConfirmDelete = async () => {
-    if (!selectedAddress?.address_id || !user || isDeletingAddress) {
+    if (!selectedAddress || !user || isDeleting) return;
+
+    const targetId = selectedAddress.address_id;
+    if (!targetId) {
+      Alert.alert("Error", "Could not identify the selected address.");
       return;
     }
 
     try {
-      setIsDeletingAddress(true);
+      setIsDeleting(true);
       const { error } = await deleteAddress({
-        address_id: String(selectedAddress.address_id),
+        address_id: String(targetId),
         user_id: user.id,
       });
 
@@ -150,7 +148,7 @@ export default function Address() {
         return;
       }
 
-      await handleGetAddresses();
+      await loadAddresses();
       setIsConfirmDeleteVisible(false);
       handleCloseOptions();
       Alert.alert("Success", "Address deleted successfully.");
@@ -158,143 +156,212 @@ export default function Address() {
       console.error("Error deleting address:", error);
       Alert.alert("Error", "Something went wrong while deleting the address.");
     } finally {
-      setIsDeletingAddress(false);
+      setIsDeleting(false);
+    }
+  };
+
+  const handleMakeDefault = async () => {
+    if (!selectedAddress || selectedAddress.is_default || !user || isSettingDefault) return;
+
+    const targetId = selectedAddress.address_id;
+    if (!targetId) {
+      Alert.alert("Error", "Could not identify the selected address.");
+      return;
+    }
+
+    try {
+
+      const input = {
+        user_id: user.id,
+        address_id: String(targetId),
+      }
+
+      setIsSettingDefault(true);
+      const { data, error } = await changeDefaultAddress(input);
+
+      if (error) {
+        Alert.alert("Error", "Could not update the default address. Please try again.");
+        return;
+      }
+
+      await loadAddresses();
+      Alert.alert("Success", "Default address updated.");
+      handleCloseOptions();
+    } catch (error) {
+      console.error("Error updating default address:", error);
+      Alert.alert("Error", "Something went wrong while updating the default address.");
+    } finally {
+      setIsSettingDefault(false);
     }
   };
 
   const handleEditAddress = () => {
     if (!selectedAddress) return;
-    console.log("Edit address", selectedAddress.address_id);
+    router.push({
+      pathname: '/(auth)/profile/address/selectaddress',
+      params: { address: JSON.stringify(selectedAddress) }
+    })
     handleCloseOptions();
   };
 
-  const handleMakeDefault = () => {
-    if (!selectedAddress) return;
-    console.log("Make default address", selectedAddress.address_id);
-    handleCloseOptions();
+  const emptyState = useMemo(
+    () => (
+      <View style={styles.emptyState}>
+        <LocationBackground width={300} height={300} />
+        <Title align="center" style={styles.emptyStateTitle}>
+          VocÃª ainda nÃ£o possui nenhum endereÃ§o cadastrado
+        </Title>
+      </View>
+    ),
+    [styles.emptyState, styles.emptyStateTitle]
+  );
+
+  const renderAddressCard = (address: inputAddressProps, index: number) => {
+    const option = ADDRESS_OPTIONS.find((optionItem) => optionItem.id === address.address_type);
+
+    return (
+      <View
+        key={`${address.address_id ?? index}`}
+        style={[
+          styles.addressCard,
+          address.is_default && styles.addressCardActive,
+        ]}
+      >
+        <View style={styles.addressInfoRow}>
+          <View style={styles.addressIconWrapper}>
+            <Icon
+              name={option?.icon ?? "map-marker-outline"}
+              type={option?.type ?? "MaterialCommunityIcons"}
+              color={theme.colors.primary}
+              size={32}
+            />
+          </View>
+          <View style={styles.addressDetails}>
+            <Title
+              style={[
+                styles.addressTitle,
+                address.address_type ? undefined : styles.hidden,
+              ]}
+            >
+              {address.address_type}
+            </Title>
+            <Text
+              style={[
+                styles.addressLine,
+                address.street ? undefined : styles.hidden,
+              ]}
+            >
+              {address.street}
+              {address.street_number ? `, Nº ${address.street_number}` : ""}
+            </Text>
+            <Text
+              style={[
+                styles.addressLine,
+                address.neighborhood ? undefined : styles.hidden,
+              ]}
+            >
+              {address.neighborhood}
+            </Text>
+            <Text
+              style={[
+                styles.addressLine,
+                address.city ? undefined : styles.hidden,
+              ]}
+            >
+              {address.city}
+              {address.state_acronym ? ` - ${address.state_acronym}` : ""}
+            </Text>
+            <Text
+              style={[
+                styles.addressMeta,
+                address.complement ? undefined : styles.hidden,
+              ]}
+            >
+              {address.complement}
+            </Text>
+            <Text
+              style={[
+                styles.addressMeta,
+                address.reference ? undefined : styles.hidden,
+              ]}
+            >
+              {address.reference}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.addressActions}>
+          <Icon
+            name="check-circle-outline"
+            type="MaterialCommunityIcons"
+            color={address.is_default ? theme.colors.primary : theme.colors.disabled}
+            size={24}
+          />
+          <TouchableOpacity onPress={() => handleOpenOptions(address)}>
+            <Icon
+              name="more-vertical"
+              type="feather"
+              color={address.is_default ? theme.colors.primary : theme.colors.disabled}
+              size={24}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
   };
 
+  const isDefaultButtonDisabled = selectedAddress?.is_default || isSettingDefault;
+  const defaultButtonLabel = selectedAddress?.is_default
+    ? "Already the default address"
+    : isSettingDefault
+      ? "Setting default..."
+      : "Make it a default address";
 
   return (
     <ScreenContainer>
-      <HeaderScreen title={"Meus endereços"} showButtonBack  />
+      <HeaderScreen title="Meus endereços" showButtonBack />
       <View style={styles.container}>
-        <ScrollView 
-          contentContainerStyle={[styles.scrollContainer, isLoading || refreshing ? { justifyContent: "center", alignItems: "center" } : {}]}
-          // scrollEnabled={false}
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContainer,
+            (isLoading || refreshing) && styles.scrollContainerCentered,
+          ]}
           refreshControl={
-            <RefreshControl   
+            <RefreshControl
               refreshing={refreshing}
-              onRefresh={onRefresh}
-              title="Carregando..."
-              colors={['#ff0000', '#00ff00', '#0000ff']}
-              tintColor="#ff0000"
-              titleColor="#00ff00" 
-              />
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+              title="Atualizando..."
+              titleColor={theme.colors.primary}
+            />
           }
         >
-            {
-              isLoading || refreshing ? (
-                <LoadingIcon 
-                  autoPlay={true} 
-                  source={loadingCart} 
-                  loop={true}
-                  refAnimationLoading={animationLoading}
-                />
+          {isLoading || refreshing ? (
+            <LoadingIcon
+              autoPlay
+              loop
+              source={loadingCart}
+              refAnimationLoading={animationLoading}
+            />
+          ) : (
+            <>
+              <View style={styles.listWrapper}>
+                {addresses.length === 0 ? (
+                <View style={styles.emptyState}>
+                  <LocationBackground width={300} height={300} />
+                  <Title align="center" style={styles.emptyStateTitle}>
+                    Você ainda não possui nenhum endereço cadastrado
+                  </Title>
+                </View>
               ) : (
-                <>
-                  <View style={{ flex: 1 }}>
-                    {
-                      addressesRegistered.length === 0 ? (
-                        <View style={{
-                          flex: 1,
-                          alignItems: "center",
-                          justifyContent: "center",
-                          marginTop: "-20%"
-                        }} >
-                            <LocationBackground width={300} height={300} />
-                            <Title 
-                              align="center" 
-                              style={{fontSize: 20}}
-                            >
-                              Você ainda não possui nenhum endereço cadastrado
-                            </Title>
-                        </View>
-                      ) : (
-                        <View style={{ flex: 1, paddingTop: 20 }}>
-                          {
-                            addressesRegistered.map((address, index) => (
-                              <View key={index} style={{
-                                flexDirection: "row",
-                                borderWidth: 2,
-                                borderColor: theme.colors.primary,
-                                borderRadius: 8,
-                                padding: theme.spacing.md,
-                                marginBottom: theme.spacing.sm,
-                                backgroundColor: theme.colors.background,
-                              }}>
-                                <View style={{ alignItems: "center", flexDirection: "row", flex: 1 }}>
-                                  <View style={{
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    backgroundColor: theme.colors.background_forms,
-                                    borderRadius: theme.radius.full,
-                                    marginRight: theme.spacing.md,
-                                    borderColor: theme.colors.primary,
-                                    borderWidth: 2,
-                                    height: 80,
-                                    width: 80,
-                                    overflow: "hidden",
-                                  }}>
-                                    <Icon 
-                                      name={addressOptions.find(option => option.id === address.address_type)?.icon} 
-                                      type={addressOptions.find(option => option.id === address.address_type)?.type} 
-                                      color={theme.colors.primary} 
-                                      size={32} 
-                                    />
-                                  </View>
-                                  <View style={{ flex: 1 }}>
-                                    <Title style={{ textTransform: "capitalize", marginBottom: 0, padding: 0, display: address.address_type ? "flex" : "none" }}>{address.address_type}</Title>
-                                    <Text style={{ color: theme.colors.text, display: address.street ? "flex" : "none" }}>{address.street} { address.street_number ? `,  Nº ${address.street_number}` : ""}</Text>
-                                    <Text style={{ color: theme.colors.text, display: address.neighborhood ? "flex" : "none" }}>{address.neighborhood}</Text>
-                                    <Text style={{ color: theme.colors.text, display: address.city ? "flex" : "none" }}>{address.city} - {address.state_acronym}</Text>
-                                    <Text style={{ fontSize: 12, color: theme.colors.text, display: address.complement ? "flex" : "none" }}>{address.complement}</Text>
-                                    <Text style={{ fontSize: 12, color: theme.colors.text, display: address.reference ? "flex" : "none" }}>{address.reference}</Text>
-                                  </View>
-                                </View>
-                                <View 
-                                  style={{ 
-                                    flexDirection: "row", 
-                                    justifyContent: "space-between" 
-                                  }}>
-                                  <Icon 
-                                    name="check-circle-outline"
-                                    type="MaterialCommunityIcons"                                    
-                                    color={address.is_default ? theme.colors.primary : theme.colors.disabled} 
-                                    size={24}
-                                  />
-                                  <TouchableOpacity onPress={() => handleOpenOptions(address)}>
-                                    <Icon 
-                                      name="more-vertical"
-                                      type="feather"                                   
-                                      color={address.is_default ? theme.colors.primary : theme.colors.disabled} 
-                                      size={24}
-                                    />
-                                  </TouchableOpacity>
-                                </View>
-                              </View>
-                            ))
-                          }
-                        </View>
-                      )
-                    }
-                  </View>
-
-                  <FloatingActionButton />
-                </>
-              )
-            }
+                addresses.map(renderAddressCard)
+              )}
+              </View>
+              <FloatingActionButton />
+            </>
+          )}
         </ScrollView>
+
         <Modal
           animationType="slide"
           transparent
@@ -310,34 +377,36 @@ export default function Address() {
                 {selectedAddress?.address_type
                   ? selectedAddress.address_type.charAt(0).toUpperCase() +
                     selectedAddress.address_type.slice(1)
-                  : "Endereco"}
+                  : "Endereços"}
               </Text>
+
               <View style={styles.modalActionsRow}>
                 <TouchableOpacity
                   style={[
                     styles.actionButton,
                     styles.deleteButton,
-                    isDeletingAddress && styles.actionButtonDisabled,
+                    isDeleting && styles.actionButtonDisabled,
                   ]}
                   onPress={handleDeletePress}
                   activeOpacity={0.7}
-                  disabled={isDeletingAddress}
+                  disabled={isDeleting}
                 >
                   <Icon
                     name="trash-can-outline"
                     type="MaterialCommunityIcons"
                     size={22}
-                    color={isDeletingAddress ? theme.colors.disabled : theme.colors.primary}
+                    color={isDeleting ? theme.colors.disabled : theme.colors.primary}
                   />
                   <Text
                     style={[
                       styles.deleteButtonText,
-                      isDeletingAddress && styles.deleteButtonTextDisabled,
+                      isDeleting && styles.deleteButtonTextDisabled,
                     ]}
                   >
                     Delete
                   </Text>
                 </TouchableOpacity>
+
                 <TouchableOpacity
                   style={[styles.actionButton, styles.editButton]}
                   onPress={handleEditAddress}
@@ -352,23 +421,35 @@ export default function Address() {
                   <Text style={styles.editButtonText}>Edit</Text>
                 </TouchableOpacity>
               </View>
+
               <TouchableOpacity
-                style={[styles.primaryButton, selectedAddress?.is_default && styles.primaryButtonDisabled]}
+                style={[
+                  styles.primaryButton,
+                  isDefaultButtonDisabled && styles.primaryButtonDisabled,
+                ]}
                 onPress={handleMakeDefault}
                 activeOpacity={0.85}
-                disabled={selectedAddress?.is_default}
+                disabled={isDefaultButtonDisabled}
               >
                 <Icon
                   name="check-circle-outline"
                   type="MaterialCommunityIcons"
                   size={22}
-                  color={theme.colors.onPrimary}
+                  color={isDefaultButtonDisabled ? theme.colors.disabled : theme.colors.onPrimary}
                 />
-                <Text style={styles.primaryButtonText}>Make it a default address</Text>
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    isDefaultButtonDisabled && styles.primaryButtonTextDisabled,
+                  ]}
+                >
+                  {defaultButtonLabel}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
+
         <Modal
           animationType="fade"
           transparent
@@ -387,24 +468,24 @@ export default function Address() {
                 <TouchableOpacity
                   style={[
                     styles.confirmPrimaryButton,
-                    isDeletingAddress && styles.confirmButtonDisabled,
+                    isDeleting && styles.confirmButtonDisabled,
                   ]}
                   onPress={handleConfirmDelete}
                   activeOpacity={0.7}
-                  disabled={isDeletingAddress}
+                  disabled={isDeleting}
                 >
                   <Text style={styles.confirmPrimaryText}>
-                    {isDeletingAddress ? "Removing..." : "Yes"}
+                    {isDeleting ? "Removing..." : "Yes"}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.confirmSecondaryButton,
-                    isDeletingAddress && styles.confirmButtonDisabled,
+                    isDeleting && styles.confirmButtonDisabled,
                   ]}
                   onPress={handleCancelDelete}
                   activeOpacity={0.7}
-                  disabled={isDeletingAddress}
+                  disabled={isDeleting}
                 >
                   <Text style={styles.confirmSecondaryText}>No</Text>
                 </TouchableOpacity>
@@ -416,12 +497,4 @@ export default function Address() {
     </ScreenContainer>
   );
 }
-
-
-
-
-
-
-
-
 

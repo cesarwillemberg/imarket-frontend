@@ -112,33 +112,37 @@ const addressService = {
         }
     },
 
-    changeDefaultAddress: async (user_id: string, address_id: string) => {
+    changeDefaultAddress: async (input: { user_id: string; address_id: string; }) => {
         try {
+            // 1️⃣ Desmarca qualquer default existente
             const { error: unsetError } = await supabase
-                .from("address")
-                .update({ is_default: false })
-                .eq("user_id", user_id);
+            .from("address")
+            .update({ is_default: false })
+            .eq("user_id", input.user_id)
+            .eq("is_default", true);
 
             if (unsetError) {
-                console.error("Error clearing default addresses:", unsetError);
-                return { data: null, error: unsetError };
+            console.error("Erro ao desmarcar endereço padrão:", unsetError);
+            return { data: null, error: unsetError };
             }
 
+            // 2️⃣ Define o novo endereço padrão
             const { data, error } = await supabase
-                .from("address")
-                .update({ is_default: true })
-                .eq("id", address_id)
-                .select()
-                .single();
+            .from("address")
+            .update({ is_default: true })
+            .eq("user_id", input.user_id)
+            .eq("address_id", input.address_id)
+            .select()
+            .single();
 
             if (error) {
-                console.error("Error setting default address:", error);
-                return { data: null, error };
+            console.error("Erro ao definir novo endereço padrão:", error);
+            return { data: null, error };
             }
 
             return { data, error: null };
         } catch (caughtError) {
-            console.error("Unexpected error updating default address:", caughtError);
+            console.error("Erro inesperado:", caughtError);
             return { data: null, error: caughtError };
         }
     },
