@@ -38,12 +38,6 @@ export default function SelectAddress() {
 
   const animationLoading = useRef<LottieView>(null);
 
-
-
-  // const mapRef = useRef<MapView | null>(null);
-
-  // const handleGetInfoUser = async () => {}
-
   const fetchData = async () => {
     setIsLoading(true);
     // await handleGetInfoUser();

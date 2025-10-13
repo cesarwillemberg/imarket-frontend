@@ -195,12 +195,15 @@ export default function Address() {
     }
   };
 
+
   const handleEditAddress = () => {
     if (!selectedAddress) return;
+
     router.push({
-      pathname: '/(auth)/profile/address/selectaddress',
+      pathname: '/(auth)/profile/address/selecteditaddress',
       params: { address: JSON.stringify(selectedAddress) }
     })
+
     handleCloseOptions();
   };
 
@@ -209,7 +212,7 @@ export default function Address() {
       <View style={styles.emptyState}>
         <LocationBackground width={300} height={300} />
         <Title align="center" style={styles.emptyStateTitle}>
-          VocÃª ainda nÃ£o possui nenhum endereÃ§o cadastrado
+          Você ainda não possui nenhum endereço cadastrado
         </Title>
       </View>
     ),

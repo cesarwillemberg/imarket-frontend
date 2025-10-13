@@ -1,71 +1,74 @@
 import { Icon } from "@/src/components/common/Icon";
 import { useTheme } from "@/src/themes/ThemeContext";
-import React, { useRef } from "react";
-import { StyleSheet, TouchableOpacity, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import MapView, { Circle, Marker, Region } from "react-native-maps";
 import createStyles from "./styles";
 
 export type MapPickerProps = {
-  location: { latitude: number; longitude: number };
+  location: { latitude: number; longitude: number }; // centro atual do mapa
+  userLocation?: { latitude: number; longitude: number }; // posição real do usuário
   heading?: number;
   onLocationChange?: (coords: { latitude: number; longitude: number }) => void;
   style?: object;
-  zoomStep?: number;
   readOnly?: boolean;
   hideZoomControls?: boolean;
+  regionDelta?: number;
 };
 
 export const MapPicker: React.FC<MapPickerProps> = ({
   location,
+  userLocation,
   heading,
   onLocationChange,
   style,
-  zoomStep = 1.5,
   readOnly = false,
-  hideZoomControls = false,
+  regionDelta,
 }) => {
-    const { theme } = useTheme();
-    const styles = createStyles(theme);
-    const mapRef = useRef<MapView | null>(null);
-    const [currentRegion, setCurrentRegion] = React.useState<Region>({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.001,
-        longitudeDelta: 0.001,
-    });
-    const [circleLocation] = React.useState({
-        latitude: location.latitude,
-        longitude: location.longitude,
-    });
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
+  const mapRef = useRef<MapView | null>(null);
+  const DEFAULT_DELTA = 0.005;
 
-    const handleRegionChangeComplete = (region: Region) => {
-        setCurrentRegion(region);
-        onLocationChange?.({
-            latitude: region.latitude,
-            longitude: region.longitude,
-        });
+  const [currentRegion, setCurrentRegion] = useState<Region>(() => ({
+    latitude: location.latitude,
+    longitude: location.longitude,
+    latitudeDelta: regionDelta ?? DEFAULT_DELTA,
+    longitudeDelta: regionDelta ?? DEFAULT_DELTA,
+  }));
+
+  // 🚀 Atualiza o mapa quando o "location" mudar de fato (novo endereço, não apenas zoom)
+  useEffect(() => {
+    if (!mapRef.current) return;
+
+    const desiredDelta =
+      regionDelta !== undefined ? regionDelta : currentRegion.latitudeDelta ?? DEFAULT_DELTA;
+    const newRegion: Region = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+      latitudeDelta: desiredDelta,
+      longitudeDelta: desiredDelta,
     };
 
-    const zoomIn = () => {
-        if (mapRef.current) {
-            const newRegion = {
-                ...currentRegion,
-                latitudeDelta: currentRegion.latitudeDelta / zoomStep,
-                longitudeDelta: currentRegion.longitudeDelta / zoomStep,
-            };
-            mapRef.current.animateToRegion(newRegion, 200);
-        }
-    };
+    const hasLatitudeChanged = Math.abs(newRegion.latitude - currentRegion.latitude) > 0.0001;
+    const hasLongitudeChanged = Math.abs(newRegion.longitude - currentRegion.longitude) > 0.0001;
+    const hasDeltaChanged =
+      regionDelta !== undefined &&
+      Math.abs(newRegion.latitudeDelta - currentRegion.latitudeDelta) > 0.0001;
 
-  const zoomOut = () => {
-    if (mapRef.current) {
-      const newRegion = {
-        ...currentRegion,
-        latitudeDelta: currentRegion.latitudeDelta * zoomStep,
-        longitudeDelta: currentRegion.longitudeDelta * zoomStep,
-      };
-      mapRef.current.animateToRegion(newRegion, 200);
+    if (hasLatitudeChanged || hasLongitudeChanged || hasDeltaChanged) {
+      setCurrentRegion(newRegion);
+      mapRef.current.animateToRegion(newRegion, 400);
     }
+  }, [currentRegion, location, regionDelta]);
+
+  // Quando o usuário movimenta o mapa manualmente
+  const handleRegionChangeComplete = (region: Region) => {
+    setCurrentRegion(region);
+    onLocationChange?.({
+      latitude: region.latitude,
+      longitude: region.longitude,
+    });
   };
 
   return (
@@ -74,37 +77,41 @@ export const MapPicker: React.FC<MapPickerProps> = ({
         ref={mapRef}
         style={{ width: "100%", height: "100%" }}
         initialRegion={currentRegion}
+        region={currentRegion} // ✅ mantém o zoom estável
         onRegionChangeComplete={handleRegionChangeComplete}
         scrollEnabled={!readOnly}
         zoomEnabled={!readOnly}
         rotateEnabled={!readOnly}
         pitchEnabled={!readOnly}
+        showsUserLocation={false}
       >
-        {/* Círculos */}
-        <Circle
-          center={circleLocation}
-          radius={20}
-          fillColor="rgba(0, 122, 255, 0.3)"
-          strokeColor="rgba(0, 122, 255, 1)"
-          strokeWidth={2}
-        />
-        <Circle
-          center={circleLocation}
-          radius={4}
-          fillColor="rgba(0, 122, 255, 1)"
-          strokeColor="white"
-          strokeWidth={2}
-        />
-
-        {/* Marker com seta */}
-        {heading !== undefined && heading >= 0 && (
-          <Marker coordinate={circleLocation} rotation={heading} flat anchor={{ x: 0.5, y: 0.5 }}>
-            <View style={styles.arrowContainer}>
-              <View style={styles.arrowPointer}>
-                <View style={styles.arrowTriangle} />
-              </View>
-            </View>
-          </Marker>
+        {/* Mostra posição real do usuário */}
+        {userLocation && (
+          <>
+            <Circle
+              center={userLocation}
+              radius={20}
+              fillColor="rgba(0, 122, 255, 0.3)"
+              strokeColor="rgba(0, 122, 255, 1)"
+              strokeWidth={2}
+            />
+            <Circle
+              center={userLocation}
+              radius={4}
+              fillColor="rgba(0, 122, 255, 1)"
+              strokeColor="white"
+              strokeWidth={2}
+            />
+            {heading !== undefined && heading >= 0 && (
+              <Marker coordinate={userLocation} rotation={heading} flat anchor={{ x: 0.5, y: 0.5 }}>
+                <View style={styles.arrowContainer}>
+                  <View style={styles.arrowPointer}>
+                    <View style={styles.arrowTriangle} />
+                  </View>
+                </View>
+              </Marker>
+            )}
+          </>
         )}
       </MapView>
 
@@ -114,18 +121,6 @@ export const MapPicker: React.FC<MapPickerProps> = ({
           <Icon type="MaterialCommunityIcons" name="map-marker" size={40} color="#FF5252" />
         </View>
       </View>
-
-      {/* Controles de Zoom */}
-      {!hideZoomControls && (
-        <View style={styles.zoomControls}>
-          <TouchableOpacity onPress={zoomIn} style={{ marginBottom: 8 }}>
-            <Icon type="MaterialCommunityIcons" name="plus" color="#000" size={24} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={zoomOut}>
-            <Icon type="MaterialCommunityIcons" name="minus" color="#000" size={24} />
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };

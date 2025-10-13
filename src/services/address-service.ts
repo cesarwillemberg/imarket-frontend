@@ -64,9 +64,9 @@ const addressService = {
 
     updateAddress: async (inputAddress: inputAddressProps) => {
         try {
-            const { id, ...rest } = inputAddress;
+            const { address_id, ...rest } = inputAddress;
 
-            if (!id) {
+            if (!address_id) {
                 throw new Error("Address id is required for update.");
             }
 
@@ -75,7 +75,7 @@ const addressService = {
             const { data, error } = await supabase
                 .from("address")
                 .update(payload)
-                .eq("id", id)
+                .eq("address_id", address_id)
                 .select()
                 .single();
 

@@ -60,6 +60,21 @@ interface SessionContextProps {
     reference?: string;
     postal_code?: string;
   }) => Promise<{ data: any; error: any }>;
+  updateAddress: (inputAddress: {
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    complement?: string;
+    reference?: string;
+    postal_code?: string;
+  }) => Promise<{ data: any; error: any }>;
   deleteAddress: (input: { address_id: string; user_id: string; }) => Promise<{ data: any; error: any }>;
   changeDefaultAddress: (input: { address_id: string; user_id: string; }) => Promise<{ data: any; error: any }>;
   checkDuplicity: (inputAddress: {
@@ -114,6 +129,23 @@ const SessionContext = createContext<SessionContextProps>({
     throw new Error("changeEmail not implemented.");
   },
   postAddress: async (inputAddress: {
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }): Promise<{ data: any; error: any }> => {
+    throw new Error("PostAddress not implemented.");
+  },
+  updateAddress: async (inputAddress: {
     user_id?: string;
     is_default?: boolean;
     country?: string;
@@ -330,6 +362,31 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const updateAddress = async (inputAddress: {
+    id_address?: string;
+    user_id?: string;
+    is_default?: boolean;
+    country?: string;
+    state?: string;
+    state_acronym?: string;
+    city?: string;
+    neighborhood?: string;
+    street?: string;
+    street_number?: string;
+    address_type?: string;
+    reference?: string;
+    complement?: string;
+    postal_code?: string;
+  }) => {
+    try {
+      const result = await addressService.updateAddress(inputAddress);
+      return result;
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao atualizar endereço:", error);
+      throw error;
+    }
+  }
+
   const deleteAddress = async (input: { address_id: string; user_id: string; }) => {
     try {
       const result = await addressService.deleteAddress(input);
@@ -389,6 +446,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         changeEmail,
         getAddresses,
         postAddress,
+        updateAddress,
         deleteAddress,
         changeDefaultAddress,
         checkDuplicity,
