@@ -32,7 +32,7 @@ export function FloatingActionButton() {
   }));
 
   const handleSearchAddress = () => {
-    // Lógica para buscar o endereço
+    router.push("/(auth)/profile/address/searchaddressbyname/");
   }
 
   const handleLocation = () => {
