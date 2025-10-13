@@ -17,10 +17,14 @@ import {
 } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView, View } from "react-native";
 import { Region } from "react-native-maps";
 import createStyles from "./styled";
+
+type Coordinates = { latitude: number; longitude: number };
+
+const DEFAULT_DELTA = 0.005;
 
 export default function SelectEditAddress() {
   const { theme } = useTheme();
@@ -28,88 +32,136 @@ export default function SelectEditAddress() {
   const commonStyles = createCommonStyles(theme);
 
   const router = useRouter();
-  const { address } = useLocalSearchParams();
+  const { address: addressParam } = useLocalSearchParams<{ address?: string | string[] }>();
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  // localização atual do usuário (GPS)
   const [userLocation, setUserLocation] = useState<LocationObject | null>(null);
-
-  // localização escolhida pelo usuário no mapa
-  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-
-  // região atual visível no mapa
+  const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
 
   const animationLoading = useRef<LottieView>(null);
 
-  // geocodificação: converte endereço em coordenadas
-  const getGeocode = async (address: string) => {
+  const rawAddressValue = useMemo(() => {
+    if (!addressParam) return null;
+    return Array.isArray(addressParam) ? addressParam[0] : addressParam;
+  }, [addressParam]);
+
+  const formattedAddressForGeocode = useMemo(() => {
+    if (!rawAddressValue) return null;
+
+    try {
+      const parsed = JSON.parse(rawAddressValue);
+      if (parsed && typeof parsed === "object") {
+        const {
+          street,
+          street_number,
+          neighborhood,
+          city,
+          state_acronym,
+          state,
+          country,
+          postal_code,
+        } = parsed as Record<string, string | undefined>;
+
+        const parts = [
+          [street, street_number].filter(Boolean).join(", "),
+          neighborhood,
+          city,
+          state_acronym || state,
+          country,
+          postal_code,
+        ].filter((value) => Boolean(value && value.toString().trim().length));
+
+        if (parts.length > 0) {
+          return parts.join(", ");
+        }
+      }
+    } catch (error) {
+      console.warn("Nao foi possivel interpretar endereco para geocode:", error);
+    }
+
+    return rawAddressValue;
+  }, [rawAddressValue]);
+
+  const getGeocode = useCallback(async (address: string) => {
     try {
       const geocode = await geocodeAsync(address);
       return geocode;
     } catch (error) {
-      console.error("Erro durante geocodificação:", error);
+      console.error("Erro durante geocodificacao:", error);
+      return null;
     }
-  };
+  }, []);
 
-  // solicita permissão e pega localização atual
-  async function handleRequestLocationPermission() {
-    const { granted } = await requestForegroundPermissionsAsync();
-    if (granted) {
-      const currentPosition = await getCurrentPositionAsync();
-      setUserLocation(currentPosition);
+  const handleRequestLocationPermission = useCallback(async () => {
+    try {
+      const { granted } = await requestForegroundPermissionsAsync();
+      if (granted) {
+        const currentPosition = await getCurrentPositionAsync();
+        setUserLocation(currentPosition);
+        setCurrentRegion((previousRegion) => {
+          if (previousRegion) {
+            return previousRegion;
+          }
 
-      // define posição inicial do mapa se ainda não houver endereço
-      if (!currentRegion) {
-        setCurrentRegion({
-          latitude: currentPosition.coords.latitude,
-          longitude: currentPosition.coords.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
+          return {
+            latitude: currentPosition.coords.latitude,
+            longitude: currentPosition.coords.longitude,
+            latitudeDelta: DEFAULT_DELTA,
+            longitudeDelta: DEFAULT_DELTA,
+          };
         });
+      } else {
+        console.log("Permissao de localizacao negada");
       }
-    } else {
-      console.log("Permissão de localização negada");
+      return granted;
+    } catch (error) {
+      console.error("Erro ao solicitar permissao de localizacao:", error);
+      return false;
     }
-  }
+  }, []);
 
-  // se estiver editando um endereço, define como posição inicial
-  async function handleSetLocationAddressToEdit(address: string) {
-    if (!address) return;
+  const handleSetLocationAddressToEdit = useCallback(
+    async (addressToLocate: string) => {
+      if (!addressToLocate || !addressToLocate.trim()) return;
 
-    const geocode = await getGeocode(address);
-    if (geocode && geocode.length > 0) {
-      const { latitude, longitude } = geocode[0];
-      const region = {
-        latitude,
-        longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      };
-      setSelectedLocation({ latitude, longitude });
-      setCurrentRegion(region);
-    }
-  }
+      const geocode = await getGeocode(addressToLocate);
+      if (geocode && geocode.length > 0) {
+        const { latitude, longitude } = geocode[0];
+        const region = {
+          latitude,
+          longitude,
+          latitudeDelta: DEFAULT_DELTA,
+          longitudeDelta: DEFAULT_DELTA,
+        };
+        setSelectedLocation({ latitude, longitude });
+        setCurrentRegion(region);
+      } else {
+        console.warn("Nao foi possivel localizar o endereco informado.");
+      }
+    },
+    [getGeocode]
+  );
 
-  // carrega dados iniciais
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
-    await handleRequestLocationPermission();
+    try {
+      await handleRequestLocationPermission();
 
-    if (address) {
-      await handleSetLocationAddressToEdit(address as string);
+      if (formattedAddressForGeocode) {
+        await handleSetLocationAddressToEdit(formattedAddressForGeocode);
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-  };
+  }, [formattedAddressForGeocode, handleRequestLocationPermission, handleSetLocationAddressToEdit]);
 
   useEffect(() => {
     fetchData();
-  }, [address]);
+  }, [fetchData]);
 
-  // acompanha mudanças de posição do usuário
   useEffect(() => {
+    let isMounted = true;
     const startWatching = async () => {
       const subscription = await watchPositionAsync(
         {
@@ -118,37 +170,50 @@ export default function SelectEditAddress() {
           distanceInterval: 2,
         },
         (response) => {
+          if (!isMounted) return;
           setUserLocation(response);
         }
       );
-      return () => subscription.remove();
+      return () => {
+        subscription.remove();
+      };
     };
 
-    startWatching();
+    const subscriptionPromise = startWatching().catch((error) => {
+      console.log("Erro ao iniciar monitoramento de localizacao:", error);
+      return undefined;
+    });
+
+    return () => {
+      isMounted = false;
+      subscriptionPromise
+        .then((unsubscribe) => unsubscribe && unsubscribe())
+        .catch((error) => console.log("Erro ao encerrar monitoramento de localizacao:", error));
+    };
   }, []);
 
-  const handleRegionChangeComplete = (region: Region) => {
+  const handleRegionChangeComplete = useCallback((region: Region) => {
     setSelectedLocation({
       latitude: region.latitude,
       longitude: region.longitude,
     });
     setCurrentRegion(region);
-  };
+  }, []);
 
-  const handleConfirmAddress = async () => {
+  const handleConfirmAddress = useCallback(async () => {
     if (!selectedLocation) return;
     try {
       router.push({
         pathname: "/(auth)/profile/address/confirmeditaddress/",
         params: {
           newAddress: JSON.stringify(selectedLocation),
-          oldAddress: address
+          oldAddress: rawAddressValue ?? "",
         },
       });
     } catch (error) {
-      console.error("Erro ao confirmar endereço:", error);
+      console.error("Erro ao confirmar endereco:", error);
     }
-  };
+  }, [rawAddressValue, router, selectedLocation]);
 
   return (
     <ScreenContainer>

@@ -232,7 +232,7 @@ export default function SelectAddress() {
 
   return (
     <ScreenContainer>
-      <HeaderScreen title="Meus EndereAos" showButtonBack />
+      <HeaderScreen title="Meus Endereços" showButtonBack />
       <View style={styles.container}>
         <ScrollView
           contentContainerStyle={[
@@ -261,7 +261,7 @@ export default function SelectAddress() {
             <View>
               <View style={{ marginVertical: 20 }}>
                 <Subtitle align="center" style={{ fontSize: 20 }}>
-                  Selecione um endereAo no mapa
+                  Selecione um endereço no mapa
                 </Subtitle>
               </View>
               <View
@@ -299,7 +299,7 @@ export default function SelectAddress() {
               </View>
               <View style={{ paddingHorizontal: 20, marginTop: 20 }}>
                 <Button
-                  title="Confirmar EndereAo"
+                  title="Confirmar Endereço"
                   onPress={handleConfirmAddress}
                   disabled={!selectedLocation}
                 />
