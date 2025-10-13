@@ -60,6 +60,7 @@ interface SessionContextProps {
     reference?: string;
     postal_code?: string;
   }) => Promise<{ data: any; error: any }>;
+  deleteAddress: (input: { address_id: string; user_id: string; }) => Promise<{ data: any; error: any }>;
   checkDuplicity: (inputAddress: {
     user_id?: string;
     is_default?: boolean;
@@ -127,6 +128,9 @@ const SessionContext = createContext<SessionContextProps>({
     postal_code?: string;
   }): Promise<{ data: any; error: any }> => {
     throw new Error("PostAddress not implemented.");
+  },
+  deleteAddress: async (input: { address_id: string; user_id: string; }): Promise<{ data: any; error: any }> => {
+    throw new Error("deleteAddress not implemented.");
   },
   checkDuplicity: async (inputAddress: {
     user_id?: string;
@@ -322,6 +326,16 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const deleteAddress = async (input: { address_id: string; user_id: string; }) => {
+    try {
+      const result = await addressService.deleteAddress(input);
+      return result;
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao deletar endereço:", error);
+      throw error;
+    }
+  }
+
   const checkDuplicity = async (inputAddress: {
     country?: string;
     state?: string;
@@ -361,6 +375,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         changeEmail,
         getAddresses,
         postAddress,
+        deleteAddress,
         checkDuplicity,
       }}
     >

@@ -2,7 +2,6 @@ import { supabase } from "@/src/lib/supabase";
 import { decode } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system/legacy';
 // import { File } from 'expo-file-system';
-import { Alert } from "react-native";
 interface SignInAttributes {
   email: string;
   password: string;
@@ -56,8 +55,8 @@ const authService = {
   signIn: async (input: SignInAttributes) => {
     const { data, error } = await supabase.auth.signInWithPassword(input);
     if (error) {
-      console.log(error);
-      Alert.alert("Error", "Something went wrong.");
+      console.error("Error signing in:", error);
+      throw error;
     }
     return data;
   },
@@ -65,12 +64,13 @@ const authService = {
   signUp: async (input: SignUpAttributes) => {
     try {
       const [day, month, year] = input.date_birth.split("/").map(Number);
-      const date_birth = new Date(year, month - 1, day).toISOString().split("T")[0];
+      const parsedDate = new Date(year, month - 1, day);
+      const date_birth = parsedDate.toISOString().split("T")[0];
       const phone = input.phone.replace(/\D/g, "");
 
-      if (!phone || !date_birth) {
-        Alert.alert("Error", "Invalid phone number or date of birth.");
-        return { data: null, error: new Error("Invalid phone number or date.") };
+      if (!phone || Number.isNaN(parsedDate.getTime())) {
+        const validationError = new Error("Invalid phone number or date of birth.");
+        return { data: null, error: validationError };
       }
 
       const { data, error } = await supabase.auth.signUp({
@@ -80,25 +80,27 @@ const authService = {
           data: {
             name: input.name,
             email: input.email,
-            phone: phone,
+            phone,
             cpf: input.cpf,
-            date_birth: date_birth,
+            date_birth,
           },
         },
       });
       
       if (error) {
-        console.log(error);
-        Alert.alert("Error", "Something went wrong with registration.");
-        throw error;
+        console.error("Error during sign up:", error);
+        return { data: null, error };
       }
 
-      return { session: data.session, user: data.user };
+      return { 
+        data: { session: data.session, user: data.user },
+        error: null,
+      };
 
-    } catch (err: any) {
+    } catch (err) {
       console.error("signUp exception:", err);
-      Alert.alert("Unexpected error", err.message || "Something went wrong.");
-      return { data: null, error: err };
+      const caughtError = err instanceof Error ? err : new Error("Unexpected signUp error.");
+      return { data: null, error: caughtError };
     }
   },
 
@@ -110,8 +112,12 @@ const authService = {
       .single();
 
     if (error) {
-      console.log(error);
-      Alert.alert("Error", "Something went wrong.");
+      console.error("Error fetching user info:", error);
+      throw error;
+    }
+
+    if (!data) {
+      throw new Error("User profile not found.");
     }
 
     return data;

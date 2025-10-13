@@ -2,7 +2,16 @@ import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
-import { RefreshControl, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Modal,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import createStyles from "./styled";
 
 import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
@@ -20,11 +29,15 @@ export default function Address() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
-  const { user, getAddresses } = useSession();
+  const { user, getAddresses, deleteAddress } = useSession();
 
   const [addressesRegistered, setAddressRegistered] = useState<inputAddressProps[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [selectedAddress, setSelectedAddress] = useState<inputAddressProps | null>(null);
+  const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
+  const [isConfirmDeleteVisible, setIsConfirmDeleteVisible] = useState(false);
+  const [isDeletingAddress, setIsDeletingAddress] = useState(false);
 
   const animationLoading = useRef<LottieView>(null);
 
@@ -32,7 +45,7 @@ export default function Address() {
     if(!user) return;
     const { data, error } = await getAddresses({ user_id: user.id });
     if(error) {
-      console.error("❌ Erro ao buscar endereços:", error);
+      console.error("âŒ Erro ao buscar endereços:", error);
       setAddressRegistered([]);
       return;
     }
@@ -69,10 +82,94 @@ export default function Address() {
   { id: "other", icon: "map-marker-outline", label: "Outro", type: "MaterialCommunityIcons" },
 ];
 
+  const handleOpenOptions = (address: inputAddressProps) => {
+    const rawId =
+      address.address_id ??
+      (address as Record<string, unknown>)?.["id"] ??
+      (address as Record<string, unknown>)?.["address_id"] ??
+      (address as Record<string, unknown>)?.["addressId"];
+
+    const normalizedAddress = {
+      ...address,
+      id: rawId !== undefined && rawId !== null ? String(rawId) : undefined,
+    };
+
+    setSelectedAddress(normalizedAddress);
+    setIsOptionsModalVisible(true);
+  };
+
+  const handleCloseOptions = () => {
+    setIsOptionsModalVisible(false);
+    setSelectedAddress(null);
+    setIsDeletingAddress(false);
+    setIsConfirmDeleteVisible(false);
+  };
+
+  const handleDeletePress = () => {
+    if (!selectedAddress?.address_id) {
+      Alert.alert("Error", "Could not identify the selected address.");
+      return;
+    }
+
+    if (!user || isDeletingAddress) {
+      return;
+    }
+
+    setIsConfirmDeleteVisible(true);
+  };
+
+  const handleCancelDelete = () => {
+    if (isDeletingAddress) {
+      return;
+    }
+    setIsConfirmDeleteVisible(false);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedAddress?.address_id || !user || isDeletingAddress) {
+      return;
+    }
+
+    try {
+      setIsDeletingAddress(true);
+      const { error } = await deleteAddress({
+        address_id: String(selectedAddress.address_id),
+        user_id: user.id,
+      });
+
+      if (error) {
+        Alert.alert("Error", "Could not delete the address. Please try again.");
+        return;
+      }
+
+      await handleGetAddresses();
+      setIsConfirmDeleteVisible(false);
+      handleCloseOptions();
+      Alert.alert("Success", "Address deleted successfully.");
+    } catch (error) {
+      console.error("Error deleting address:", error);
+      Alert.alert("Error", "Something went wrong while deleting the address.");
+    } finally {
+      setIsDeletingAddress(false);
+    }
+  };
+
+  const handleEditAddress = () => {
+    if (!selectedAddress) return;
+    console.log("Edit address", selectedAddress.address_id);
+    handleCloseOptions();
+  };
+
+  const handleMakeDefault = () => {
+    if (!selectedAddress) return;
+    console.log("Make default address", selectedAddress.address_id);
+    handleCloseOptions();
+  };
+
 
   return (
     <ScreenContainer>
-      <HeaderScreen title={"Meus Endereços"} showButtonBack  />
+      <HeaderScreen title={"Meus endereços"} showButtonBack  />
       <View style={styles.container}>
         <ScrollView 
           contentContainerStyle={[styles.scrollContainer, isLoading || refreshing ? { justifyContent: "center", alignItems: "center" } : {}]}
@@ -105,7 +202,6 @@ export default function Address() {
                           flex: 1,
                           alignItems: "center",
                           justifyContent: "center",
-                          backgroundColor: "orange",
                           marginTop: "-20%"
                         }} >
                             <LocationBackground width={300} height={300} />
@@ -169,7 +265,7 @@ export default function Address() {
                                     color={address.is_default ? theme.colors.primary : theme.colors.disabled} 
                                     size={24}
                                   />
-                                  <TouchableOpacity onPress={() => {}}>
+                                  <TouchableOpacity onPress={() => handleOpenOptions(address)}>
                                     <Icon 
                                       name="more-vertical"
                                       type="feather"                                   
@@ -191,8 +287,132 @@ export default function Address() {
               )
             }
         </ScrollView>
+        <Modal
+          animationType="slide"
+          transparent
+          visible={isOptionsModalVisible}
+          onRequestClose={handleCloseOptions}
+        >
+          <View style={styles.modalContainer}>
+            <TouchableWithoutFeedback onPress={handleCloseOptions}>
+              <View style={styles.modalOverlay} />
+            </TouchableWithoutFeedback>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>
+                {selectedAddress?.address_type
+                  ? selectedAddress.address_type.charAt(0).toUpperCase() +
+                    selectedAddress.address_type.slice(1)
+                  : "Endereco"}
+              </Text>
+              <View style={styles.modalActionsRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.actionButton,
+                    styles.deleteButton,
+                    isDeletingAddress && styles.actionButtonDisabled,
+                  ]}
+                  onPress={handleDeletePress}
+                  activeOpacity={0.7}
+                  disabled={isDeletingAddress}
+                >
+                  <Icon
+                    name="trash-can-outline"
+                    type="MaterialCommunityIcons"
+                    size={22}
+                    color={isDeletingAddress ? theme.colors.disabled : theme.colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.deleteButtonText,
+                      isDeletingAddress && styles.deleteButtonTextDisabled,
+                    ]}
+                  >
+                    Delete
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.editButton]}
+                  onPress={handleEditAddress}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    name="pencil-outline"
+                    type="MaterialCommunityIcons"
+                    size={22}
+                    color={theme.colors.text}
+                  />
+                  <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handleMakeDefault}
+                activeOpacity={0.85}
+              >
+                <Icon
+                  name="check-circle-outline"
+                  type="MaterialCommunityIcons"
+                  size={22}
+                  color={theme.colors.onPrimary}
+                />
+                <Text style={styles.primaryButtonText}>Make it a default address</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        <Modal
+          animationType="fade"
+          transparent
+          visible={isConfirmDeleteVisible}
+          onRequestClose={handleCancelDelete}
+        >
+          <View style={styles.confirmOverlay}>
+            <TouchableWithoutFeedback onPress={handleCancelDelete}>
+              <View style={styles.confirmBackdrop} />
+            </TouchableWithoutFeedback>
+            <View style={styles.confirmContainer}>
+              <Text style={styles.confirmTitle}>
+                Are you sure you want to delete this address?
+              </Text>
+              <View style={styles.confirmActions}>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmPrimaryButton,
+                    isDeletingAddress && styles.confirmButtonDisabled,
+                  ]}
+                  onPress={handleConfirmDelete}
+                  activeOpacity={0.7}
+                  disabled={isDeletingAddress}
+                >
+                  <Text style={styles.confirmPrimaryText}>
+                    {isDeletingAddress ? "Removing..." : "Yes"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.confirmSecondaryButton,
+                    isDeletingAddress && styles.confirmButtonDisabled,
+                  ]}
+                  onPress={handleCancelDelete}
+                  activeOpacity={0.7}
+                  disabled={isDeletingAddress}
+                >
+                  <Text style={styles.confirmSecondaryText}>No</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </ScreenContainer>
   );
 }
+
+
+
+
+
+
+
+
 
