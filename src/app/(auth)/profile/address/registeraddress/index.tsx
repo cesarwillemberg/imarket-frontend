@@ -55,7 +55,6 @@ export default function RegisterAddress() {
     const [noHasNumber, setNoHasNumber] = useState<boolean>(false);
     const [noHasComplement, setNoHasComplement] = useState<boolean>(false);
 
-
     const [location] = useState<LocationObject | null>(null);
     const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
 
@@ -81,7 +80,6 @@ export default function RegisterAddress() {
         setValue(cleanText);
     };
 
-
     const getCoordsFromParams = useCallback((): Coordinates | null => {
         if (!addressParam) return null;
         try {
@@ -103,6 +101,9 @@ export default function RegisterAddress() {
                 setState(address[0].region ?? "");
                 setCountry(address[0].country ?? "");
                 setPostalCode(address[0].postalCode ?? "");
+                const { localidade, uf } = await getCityAndState(address[0]);
+                setStateAbbreviation(uf ?? "");
+                setCity((prev) => (localidade && localidade.length > 0 ? localidade : prev));
             } else {
                 console.log('No address found for these coordinates');
             }
@@ -110,6 +111,56 @@ export default function RegisterAddress() {
             console.error('Error fetching address:', error);
         }
     }, []);
+
+    const getCityAndState = async (address: any) => {
+        try {
+            if (!address || !address.postalCode) {
+                return Alert.alert(
+                    "Atenção",
+                    "Não foi possível obter o CEP automaticamente. Por favor, insira-o manualmente."
+                );
+            }
+
+            const cep = address.postalCode.replace(/\D/g, "");
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+            if (!res.ok) {
+            console.warn(`Erro HTTP ${res.status}: ${res.statusText}`);
+            return Alert.alert(
+                "Atenção",
+                "CEP inválido ou não encontrado. Por favor, insira-o manualmente."
+            );
+            }
+
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                return Alert.alert(
+                    "Atenção",
+                    "O servidor retornou uma resposta inesperada. Tente novamente."
+                );
+            }
+
+            const data = await res.json();
+            console.log("Resposta:", data);
+
+            if (data.erro) {
+                return Alert.alert(
+                    "Atenção",
+                    "Não foi possível obter o CEP automaticamente. Por favor, insira-o manualmente."
+                );
+            }
+
+            return data;
+        } catch (error) {
+            console.error("Erro ao buscar cidade e estado:", error);
+            Alert.alert(
+                "Erro",
+                "Falha ao buscar cidade e estado. Por favor, tente novamente."
+            );
+            return { localidade: "", uf: "" };
+        }
+    };
+
 
     useEffect(()=>{
         const fetchData = async () => {

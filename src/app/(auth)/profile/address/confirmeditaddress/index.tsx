@@ -109,6 +109,10 @@ export default function ConfirmEditAddress() {
         setState(info.region ?? "");
         setCountry(info.country ?? "");
         setPostalCode(info.postalCode ?? "");
+        const { localidade, uf } = await getCityAndState(info);
+        setStateAbbreviation(uf ?? "");
+        setCity((prev) => (localidade && localidade.length > 0 ? localidade : prev));
+
       } else {
         console.warn("Nenhum endereço encontrado para estas coordenadas.");
       }
@@ -116,6 +120,55 @@ export default function ConfirmEditAddress() {
       console.error("Erro ao buscar endereço:", error);
     }
   }, []);
+
+    const getCityAndState = async (address: any) => {
+        try {
+            if (!address || !address.postalCode) {
+                return Alert.alert(
+                    "Atenção",
+                    "Não foi possível obter o CEP automaticamente. Por favor, insira-o manualmente."
+                );
+            }
+
+            const cep = address.postalCode.replace(/\D/g, "");
+            const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+
+            if (!res.ok) {
+            console.warn(`Erro HTTP ${res.status}: ${res.statusText}`);
+            return Alert.alert(
+                "Atenção",
+                "CEP inválido ou não encontrado. Por favor, insira-o manualmente."
+            );
+            }
+
+            const contentType = res.headers.get("content-type") || "";
+            if (!contentType.includes("application/json")) {
+                return Alert.alert(
+                    "Atenção",
+                    "O servidor retornou uma resposta inesperada. Tente novamente."
+                );
+            }
+
+            const data = await res.json();
+            console.log("Resposta:", data);
+
+            if (data.erro) {
+                return Alert.alert(
+                    "Atenção",
+                    "Não foi possível obter o CEP automaticamente. Por favor, insira-o manualmente."
+                );
+            }
+
+            return data;
+        } catch (error) {
+            console.error("Erro ao buscar cidade e estado:", error);
+            Alert.alert(
+                "Erro",
+                "Falha ao buscar cidade e estado. Por favor, tente novamente."
+            );
+            return { localidade: "", uf: "" };
+        }
+    };
 
   const requestUserLocation = useCallback(async (): Promise<LocationObject | null> => {
     try {
@@ -163,7 +216,7 @@ export default function ConfirmEditAddress() {
                 let parsedOld: any = null;
                 try {
                     if (oldAddress) {
-                    parsedOld = JSON.parse(oldAddress);
+                      parsedOld = JSON.parse(oldAddress);
                     }
                 } catch (error) {
                     console.warn("Erro ao parsear oldAddress:", error);
