@@ -17,7 +17,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshControl, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { Region } from "react-native-maps";
 import createStyles from "./styled";
 
@@ -239,16 +239,16 @@ export default function SelectAddress() {
             styles.container,
             isLoading || refreshing ? { justifyContent: "center", alignItems: "center" } : {},
           ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              title="Carregando..."
-              colors={["#ff0000", "#00ff00", "#0000ff"]}
-              tintColor="#ff0000"
-              titleColor="#00ff00"
-            />
-          }
+          // refreshControl={
+          //   <RefreshControl
+          //     refreshing={refreshing}
+          //     onRefresh={onRefresh}
+          //     title="Carregando..."
+          //     colors={["#ff0000", "#00ff00", "#0000ff"]}
+          //     tintColor="#ff0000"
+          //     titleColor="#00ff00"
+          //   />
+          // }
         >
           {isLoading || refreshing ? (
             <LoadingIcon
