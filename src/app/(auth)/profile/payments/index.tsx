@@ -10,7 +10,7 @@ export default function Payments() {
 
   return (
     <ScreenContainer>
-      <HeaderScreen title={"Formas de Pagamentos"} />
+      <HeaderScreen title={"Formas de Pagamentos"} showButtonBack />
       <View style={commonStyles.centeredContainer}>
         <Text style={{color: theme.colors.text}}>Pagamentos</Text>
       </View>

@@ -10,7 +10,7 @@ export default function Notifications() {
 
   return (
     <ScreenContainer>
-      <HeaderScreen title="Notificações" />
+      <HeaderScreen title="Notificações" showButtonBack />
       <View style={commonStyles.centeredContainer}>
         <Text style={{color: theme.colors.text}}>Notificações</Text>
       </View>

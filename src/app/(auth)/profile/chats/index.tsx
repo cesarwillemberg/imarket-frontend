@@ -10,7 +10,7 @@ export default function Chats() {
 
   return (
     <ScreenContainer>
-      <HeaderScreen title={"Conversas"} />
+      <HeaderScreen title={"Conversas"} showButtonBack />
       <View style={commonStyles.centeredContainer}>
         <Text style={{color: theme.colors.text}}>Conversas</Text>
       </View>
