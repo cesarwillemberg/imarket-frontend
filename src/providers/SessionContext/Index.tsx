@@ -94,9 +94,11 @@ interface SessionContextProps {
     postal_code?: string;
   }) => Promise<{ data: any; error: any }>;
   getStores: () => Promise<{ data: any; error: any }>;
+  getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
   getStoreRatings: (storeId: string) => Promise<{ data: any; error: any }>;
   getStoreRatingsAverage: (storeId: string) => Promise<{ data: any; error: any }>;
   getAddressesStore: (storeId: string) => Promise<{ data: any; error: any }>;
+  getStoreSchedule: (storeId: string) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -193,6 +195,9 @@ const SessionContext = createContext<SessionContextProps>({
   getStores: async (): Promise<{ data: any; error: any }> => {
     throw new Error("getStores not implemented.");
   },
+  getStoreById: async (_storeId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("getStoreById not implemented."); 
+  },
   getStoreRatings: async (_storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getStoreRatings not implemented.");
   },
@@ -201,7 +206,10 @@ const SessionContext = createContext<SessionContextProps>({
   },
   getAddressesStore: async (storeId: string) => {
     throw new Error("getAddressesStore not implemented.");
-  }
+  },
+  getStoreSchedule: async (storeId: string) => {
+    throw new Error("getStoreSchedule not implemented.");
+  },
 
 });
 
@@ -484,6 +492,26 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const getStoreById = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStoreById(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar loja:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getStoreSchedule = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStoreSchedule(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar horário da loja:", error);
+      return { data: null, error };
+    }
+  }
+
   return (
     <SessionContext.Provider
       value={{
@@ -509,6 +537,8 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getStoreRatings,
         getStoreRatingsAverage,
         getAddressesStore,
+        getStoreById,
+        getStoreSchedule,
       }}
     >
       {children}
