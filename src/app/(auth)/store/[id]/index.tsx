@@ -148,7 +148,7 @@ export default function StoreProfile() {
                 size={16}
                 color={theme.colors.primary}
               />
-              <Text style={styles.metaText}>{store.rating.toFixed(1)}</Text>
+              <Text style={styles.metaText}>{store.rating.toFixed(2)}</Text>
             </View>
             <View style={styles.metaSeparator} />
             <Text style={styles.metaText}>{store.category}</Text>

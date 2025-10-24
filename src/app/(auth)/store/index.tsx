@@ -4,10 +4,12 @@ import { Icon } from "@/src/components/common/Icon";
 import { Input } from "@/src/components/common/Input";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import { Theme, useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Image,
   ListRenderItemInfo,
@@ -17,8 +19,37 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import { DEFAULT_FILTERS, MOCKED_STORES, Store } from "./mockStores";
+import {
+  DEFAULT_FILTERS,
+  type Store,
+  type StoreInfoBlock,
+  type StorePromotion,
+} from "./mockStores";
 import createStyles from "./styled";
+
+const FALLBACK_BRAND_COLORS = [
+  "#FEE9EA",
+  "#FFEAEA",
+  "#E9F6FF",
+  "#FFF3E9",
+  "#EAF8F0",
+  "#F3E9FF",
+];
+
+const pickFallbackBrandColor = (identifier: string): string => {
+  if (!identifier) {
+    return FALLBACK_BRAND_COLORS[0];
+  }
+
+  let hash = 0;
+  for (let index = 0; index < identifier.length; index += 1) {
+    hash = (hash << 5) - hash + identifier.charCodeAt(index);
+    hash |= 0;
+  }
+
+  const paletteIndex = Math.abs(hash) % FALLBACK_BRAND_COLORS.length;
+  return FALLBACK_BRAND_COLORS[paletteIndex];
+};
 
 
 type StoreFilters = {
@@ -28,26 +59,353 @@ type StoreFilters = {
 };
 
 export default function StoreScreen() {
+  const { getStores, getStoreRatingsAverage } = useSession();
+
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [favoriteStoreIds, setFavoriteStoreIds] = useState<Record<string, boolean>>(
-    () =>
-      Object.fromEntries(
-        MOCKED_STORES.map((store) => [store.id, false])
-      ) as Record<string, boolean>
-  );
+  const [stores, setStores] = useState<Store[]>([]);
+  const [isLoadingStores, setIsLoadingStores] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [storeRatings, setStoreRatings] = useState<Record<string, number>>({});
+  const [isLoadingRatings, setIsLoadingRatings] = useState(false);
+  const [favoriteStoreIds, setFavoriteStoreIds] = useState<Record<string, boolean>>({});
+
   const [filters, setFilters] = useState<StoreFilters>({
     state: DEFAULT_FILTERS.state,
     city: DEFAULT_FILTERS.city,
     radiusKm: DEFAULT_FILTERS.radiusKm,
   });
+
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const locationLabel = filters.city && filters.state
     ? `${filters.city} - ${filters.state}`
     : filters.state ?? "Selecionar local";
+
+  const mapStoreFromApi = useCallback(
+    (raw: any): Store => {
+      const ensureString = (value: unknown, fallback = ""): string => {
+        if (typeof value === "string") return value;
+        if (value === null || value === undefined) return fallback;
+        if (typeof value === "number" || typeof value === "boolean") {
+          return String(value);
+        }
+        return fallback;
+      };
+
+      const ensureNumber = (value: unknown, fallback = 0): number => {
+        if (typeof value === "number" && Number.isFinite(value)) {
+          return value;
+        }
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : fallback;
+      };
+
+      const parseBoolean = (value: unknown, fallback = true): boolean => {
+        if (typeof value === "boolean") return value;
+        if (typeof value === "number") return value !== 0;
+        if (typeof value === "string") {
+          const normalized = value.trim().toLowerCase();
+          if (["true", "1", "sim"].includes(normalized)) return true;
+          if (["false", "0", "nao", "não"].includes(normalized)) return false;
+        }
+        return fallback;
+      };
+
+      const parseArray = <T,>(value: unknown): T[] => {
+        if (!value) return [];
+        if (Array.isArray(value)) return value as T[];
+        if (typeof value === "string") {
+          try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? (parsed as T[]) : [];
+          } catch (error) {
+            console.warn("StoreScreen: falha ao converter campo em array", error);
+            return [];
+          }
+        }
+        return [];
+      };
+
+      const rawDistance = raw?.distance ?? raw?.distance_km ?? raw?.distanceKm;
+      const distanceLabel =
+        typeof rawDistance === "number" && Number.isFinite(rawDistance)
+          ? `${rawDistance.toFixed(1)} km`
+          : ensureString(rawDistance, "Distância não informada");
+
+      const minDelivery =
+        raw?.delivery_time_min ??
+        raw?.min_delivery_time ??
+        raw?.deliveryTimeMin ??
+        raw?.minDeliveryTime;
+      const maxDelivery =
+        raw?.delivery_time_max ??
+        raw?.max_delivery_time ??
+        raw?.deliveryTimeMax ??
+        raw?.maxDeliveryTime;
+
+      let deliveryTime = ensureString(
+        raw?.delivery_time ?? raw?.deliveryTime ?? raw?.delivery_duration,
+        ""
+      );
+
+      if (!deliveryTime.trim()) {
+        const minValue = Number(minDelivery);
+        const maxValue = Number(maxDelivery);
+        if (Number.isFinite(minValue) && Number.isFinite(maxValue)) {
+          deliveryTime = `${Math.round(minValue)} - ${Math.round(maxValue)} min`;
+        } else if (Number.isFinite(minValue)) {
+          deliveryTime = `${Math.round(minValue)} min`;
+        } else if (Number.isFinite(maxValue)) {
+          deliveryTime = `${Math.round(maxValue)} min`;
+        } else {
+          deliveryTime = "Tempo não informado";
+        }
+      }
+
+      const promotion = ensureString(raw?.promotion ?? raw?.promo, "").trim();
+
+      const brandColor =
+        ensureString(
+          raw?.brand_color ??
+            raw?.brandColor ??
+            raw?.accent_color ??
+            raw?.accentColor,
+          ""
+        ) ||
+        pickFallbackBrandColor(ensureString(raw?.id ?? raw?.name, "")) ||
+        theme.colors.secondary;
+
+      const normalizedState = ensureString(
+        raw?.state ?? raw?.state_acronym ?? raw?.stateAcronym ?? raw?.uf,
+        ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const normalizedCity = ensureString(
+        raw?.city ?? raw?.city_name ?? raw?.cityName,
+        ""
+      ).trim();
+
+      return {
+        id: ensureString(raw?.id, "").trim(),
+        name: ensureString(raw?.name, "Loja"),
+        description: ensureString(raw?.description, "Descrição não informada."),
+        category: ensureString(raw?.category ?? raw?.segment, "Categoria"),
+        distance: distanceLabel,
+        deliveryTime,
+        rating: Math.max(0, Math.min(5, ensureNumber(raw?.rating, 0))),
+        isOpen: parseBoolean(raw?.is_open ?? raw?.isOpen ?? raw?.open, true),
+        promotion: promotion || undefined,
+        brandColor,
+        city: normalizedCity,
+        state: normalizedState,
+        bannerImage: ensureString(
+          raw?.banner_image ??
+            raw?.banner_url ??
+            raw?.bannerUrl ??
+            raw?.bannerImage ??
+            raw?.banner,
+          ""
+        ),
+        logo: ensureString(
+          raw?.logo ??
+            raw?.logo_url ??
+            raw?.logoUrl ??
+            raw?.profile_picture_url ??
+            raw?.profilePictureUrl,
+          ""
+        ),
+        about: ensureString(
+          raw?.about ?? raw?.long_description ?? raw?.longDescription ?? raw?.description,
+          ""
+        ),
+        info: parseArray<StoreInfoBlock>(
+          raw?.info ?? raw?.information ?? raw?.info_blocks ?? raw?.infoBlocks
+        ),
+        workingHours: parseArray<StoreInfoBlock>(
+          raw?.working_hours ??
+            raw?.workingHours ??
+            raw?.schedule ??
+            raw?.business_hours ??
+            raw?.businessHours
+        ),
+        promotions: parseArray<StorePromotion>(
+          raw?.promotions ??
+            raw?.highlighted_products ??
+            raw?.highlightedProducts ??
+            raw?.products
+        ),
+      };
+    },
+    [theme.colors.secondary]
+  );
+
+  const loadStores = useCallback(async () => {
+    if (!isMountedRef.current) return;
+
+    setIsLoadingStores(true);
+    setLoadError(null);
+
+    try {
+      const { data, error } = await getStores();
+
+
+      if (!isMountedRef.current) return;
+
+      if (error) {
+        console.error("StoreScreen: erro ao carregar lojas:", error);
+        setLoadError("Nao foi possivel carregar as lojas. Tente novamente.");
+        setStores([]);
+        return;
+      }
+
+      const mappedStoresRaw = Array.isArray(data)
+        ? data.filter(Boolean).map(mapStoreFromApi)
+        : [];
+
+      const seenIds = new Set<string>();
+      const dedupedStores: Store[] = [];
+
+      for (const store of mappedStoresRaw) {
+        const id = store.id.trim();
+        if (!id || seenIds.has(id)) {
+          continue;
+        }
+        seenIds.add(id);
+        dedupedStores.push(store);
+      }
+
+      dedupedStores.sort((a, b) =>
+        a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" })
+      );
+
+      setStores(dedupedStores);
+    } catch (error) {
+      if (!isMountedRef.current) return;
+      console.error("StoreScreen: erro inesperado ao carregar lojas:", error);
+      setLoadError("Nao foi possivel carregar as lojas. Tente novamente.");
+      setStores([]);
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoadingStores(false);
+      }
+    }
+  }, [getStores, mapStoreFromApi]);
+
+  useEffect(() => {
+    loadStores();
+  }, [loadStores]);
+
+  useEffect(() => {
+    setFavoriteStoreIds((current) => {
+      const next: Record<string, boolean> = {};
+      for (const store of stores) {
+        next[store.id] = current[store.id] ?? false;
+      }
+
+      const currentKeys = Object.keys(current);
+      const nextKeys = Object.keys(next);
+
+      const hasSameKeys =
+        currentKeys.length === nextKeys.length &&
+        currentKeys.every((key) => key in next);
+
+      if (hasSameKeys) {
+        let allSame = true;
+        for (const key of nextKeys) {
+          if (current[key] !== next[key]) {
+            allSame = false;
+            break;
+          }
+        }
+        if (allSame) {
+          return current;
+        }
+      }
+
+      return next;
+    });
+  }, [stores]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const fetchRatings = async () => {
+      const storeIds = stores.map((store) => store.id.trim()).filter(Boolean);
+
+      if (!storeIds.length) {
+        if (!isCancelled) {
+          setStoreRatings({});
+          setIsLoadingRatings(false);
+        }
+        return;
+      }
+
+      setIsLoadingRatings(true);
+      const ratingsAcc: Record<string, number> = {};
+
+      try {
+        await Promise.all(
+          storeIds.map(async (storeId) => {
+            try {
+              const { data, error } = await getStoreRatingsAverage(storeId);
+              if (error) {
+                console.error(
+                  `StoreScreen: erro ao buscar avaliacoes da loja ${storeId}:`,
+                  error
+                );
+                return;
+              }
+
+              if (!data) {
+                return;
+              }
+
+              const averageValue = Number(data?.average);
+              const ratingsCount = Number(data?.count ?? 0);
+
+              if (!Number.isFinite(averageValue) || ratingsCount <= 0) {
+                return;
+              }
+
+              ratingsAcc[storeId] = Math.max(0, Math.min(5, averageValue));
+            } catch (error) {
+              console.error(
+                `StoreScreen: erro inesperado ao buscar avaliacoes da loja ${storeId}:`,
+                error
+              );
+            }
+          })
+        );
+
+        if (!isCancelled) {
+          setStoreRatings(ratingsAcc);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingRatings(false);
+        }
+      }
+    };
+
+    fetchRatings();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [getStoreRatingsAverage, stores]);
 
   const parseDistance = useCallback((distance: string) => {
     const normalized = distance.replace(",", ".").replace(/[^\d.]/g, "");
@@ -57,7 +415,7 @@ export default function StoreScreen() {
 
   const filteredStores = useMemo(() => {
     const normalized = searchTerm.trim().toLowerCase();
-    return MOCKED_STORES.filter((store) => {
+    return stores.filter((store) => {
       const matchesSearch =
         !normalized ||
         store.name.toLowerCase().includes(normalized) ||
@@ -68,24 +426,37 @@ export default function StoreScreen() {
         return false;
       }
 
-      if (filters.state && store.state !== filters.state) {
+      const matchesState =
+        !filters.state ||
+        !store.state ||
+        store.state.toLowerCase() === filters.state.toLowerCase();
+
+      if (!matchesState) {
         return false;
       }
 
-      if (filters.city && store.city !== filters.city) {
+      const matchesCity =
+        !filters.city ||
+        !store.city ||
+        store.city.toLowerCase() === filters.city.toLowerCase();
+
+      if (!matchesCity) {
         return false;
       }
+
+      const distanceValue = parseDistance(store.distance);
 
       if (
         filters.radiusKm !== null &&
-        parseDistance(store.distance) > filters.radiusKm
+        Number.isFinite(distanceValue) &&
+        distanceValue > filters.radiusKm
       ) {
         return false;
       }
 
       return true;
     });
-  }, [filters.city, filters.radiusKm, filters.state, parseDistance, searchTerm]);
+  }, [filters.city, filters.radiusKm, filters.state, parseDistance, searchTerm, stores]);
 
   const handleOpenFilters = () => {
     setFilterModalVisible(true);
@@ -126,8 +497,68 @@ export default function StoreScreen() {
     }));
   };
 
+  const renderEmptyState = () => {
+    if (isLoadingStores) {
+      return (
+        <View style={styles.emptyState}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <View style={styles.emptyState}>
+          <View style={styles.emptyStateIcon}>
+            <Icon
+              type="MaterialCommunityIcons"
+              name="alert-circle-outline"
+              size={48}
+              color={theme.colors.danger}
+            />
+          </View>
+          <Text style={styles.emptyStateText}>{loadError}</Text>
+          <Button
+            title="Tentar novamente"
+            onPress={() => {
+              loadStores();
+            }}
+            style={{ marginTop: theme.spacing.md }}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyState}>
+        <View style={styles.emptyStateIcon}>
+          <Icon
+            type="MaterialCommunityIcons"
+            name="store-off"
+            size={48}
+            color={theme.colors.disabled}
+          />
+        </View>
+        <Text style={styles.emptyStateText}>
+          Nenhuma loja encontrada para a sua busca.
+        </Text>
+      </View>
+    );
+  };
+
   const renderStore = ({ item }: ListRenderItemInfo<Store>) => {
     const isFavorite = favoriteStoreIds[item.id];
+    const hasRemoteRating = Object.prototype.hasOwnProperty.call(
+      storeRatings,
+      item.id
+    );
+    const isRatingLoading = isLoadingRatings && !hasRemoteRating;
+    const ratingValue = hasRemoteRating
+      ? storeRatings[item.id]
+      : item.rating;
+    const ratingLabel = Number.isFinite(ratingValue)
+      ? ratingValue.toFixed(2)
+      : item.rating.toFixed(2);
 
     return (
       <TouchableOpacity
@@ -164,7 +595,7 @@ export default function StoreScreen() {
               activeOpacity={0.7}
               style={[
                 styles.favoriteButton,
-                isFavorite && styles.favoriteButtonActive,
+                // isFavorite && styles.favoriteButtonActive,
               ]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
@@ -172,7 +603,7 @@ export default function StoreScreen() {
                 type="MaterialCommunityIcons"
                 name={isFavorite ? "heart" : "heart-outline"}
                 size={18}
-                color={isFavorite ? theme.colors.onPrimary : theme.colors.primary}
+                color={theme.colors.primary}
               />
             </TouchableOpacity>
           </View>
@@ -183,28 +614,28 @@ export default function StoreScreen() {
             </View>
           )}
 
-          <Text style={styles.storeDescription} numberOfLines={2}>
+          {/* <Text style={styles.storeDescription} numberOfLines={2}>
             {item.description}
-          </Text>
+          </Text> */}
 
           <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <Icon
-              type="MaterialCommunityIcons"
-              name="star"
-              size={16}
-              color={theme.colors.primary}
-            />
-            <Text style={[styles.metaText, styles.metaTextWithIcon]}>
-              {item.rating.toFixed(1)}
-            </Text>
+              <Icon
+                type="MaterialCommunityIcons"
+                name="star"
+                size={16}
+                color={theme.colors.primary}
+              />
+              <Text style={[styles.metaText, styles.metaTextWithIcon]}>
+                {isRatingLoading ? "..." : ratingLabel}
+              </Text>
           </View>
 
-          <Text style={styles.metaDivider}>|</Text>
+          <Text style={styles.metaDivider}> | </Text>
 
           <Text style={styles.metaText}>{item.category}</Text>
 
-            <Text style={styles.metaDivider}>|</Text>
+            <Text style={styles.metaDivider}> | </Text>
 
             <View style={styles.metaItem}>
               <Icon
@@ -219,7 +650,7 @@ export default function StoreScreen() {
             </View>
           </View>
 
-          <View style={styles.metaRow}>
+          {/* <View style={styles.metaRow}>
             <View style={styles.metaItem}>
               <Icon
                 type="MaterialCommunityIcons"
@@ -231,7 +662,7 @@ export default function StoreScreen() {
                 {item.deliveryTime}
               </Text>
             </View>
-          </View>
+          </View> */}
 
           {item.promotion ? (
             <View style={styles.promoPill}>
@@ -333,7 +764,7 @@ export default function StoreScreen() {
                 </View>
               ) : null}
 
-              {!filters.city && !filters.state && filters.radiusKm === null ? (
+              {/* {!filters.city && !filters.state && filters.radiusKm === null ? (
                 <TouchableOpacity
                   style={styles.filterChipGhost}
                   onPress={handleOpenFilters}
@@ -345,7 +776,7 @@ export default function StoreScreen() {
                     Adicionar filtros
                   </Text>
                 </TouchableOpacity>
-              ) : null}
+              ) : null} */}
             </View>
           </View>
 
@@ -355,21 +786,11 @@ export default function StoreScreen() {
             renderItem={renderStore}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={listContentStyle}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <View style={styles.emptyStateIcon}>
-                  <Icon
-                    type="MaterialCommunityIcons"
-                    name="store-off"
-                    size={48}
-                    color={theme.colors.disabled}
-                  />
-                </View>
-                <Text style={styles.emptyStateText}>
-                  Nenhuma loja encontrada para a sua busca.
-                </Text>
-              </View>
-            }
+            ListEmptyComponent={renderEmptyState()}
+            refreshing={isLoadingStores}
+            onRefresh={() => {
+              loadStores();
+            }}
           />
         </View>
       </View>

@@ -16,6 +16,8 @@ export const DARK_COLORS = {
   warning: "#FFCA28",
   info: "#29B6F6",
 
+  star: "#FFD700",
+
   border: "#818181ff",
   disabled: "#666666",
   text: "#FFFFFF",

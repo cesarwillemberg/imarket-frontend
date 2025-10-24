@@ -101,12 +101,14 @@ const createStyles = (theme: Theme) =>
     storeLogo: {
       width: "100%",
       height: "100%",
+      borderRadius: theme.radius.full,
+      overflow: "hidden",
       resizeMode: "contain",
     },
     avatarInitials: {
       fontFamily: theme.fonts.regular,
       fontWeight: "700",
-      fontSize: theme.fontSizes.md,
+      fontSize: theme.fontSizes.sm,
       color: theme.colors.primary,
     },
     storeDetails: {
@@ -129,16 +131,16 @@ const createStyles = (theme: Theme) =>
     favoriteButton: {
       width: 34,
       height: 34,
-      borderRadius: theme.radius.full,
-      borderWidth: theme.size.xs,
-      borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surface,
+      // borderRadius: theme.radius.full,
+      // borderWidth: theme.size.xs,
+      // borderColor: theme.colors.primary,
+      // backgroundColor: theme.colors.surface,
       alignItems: "center",
       justifyContent: "center",
     },
-    favoriteButtonActive: {
-      backgroundColor: theme.colors.primary,
-    },
+    // favoriteButtonActive: {
+    //   backgroundColor: theme.colors.primary,
+    // },
     statusBadge: {
       alignSelf: "flex-start",
       borderRadius: theme.radius.full,

@@ -15,6 +15,8 @@ export const COLORS = {
   danger: "#D32F2F",
   warning: "#FFA000",
   info: "#0288D1",
+  
+  star: "#FFD700",
 
   border: "#E0E0E0",
   disabled: "#C7C7C7",
