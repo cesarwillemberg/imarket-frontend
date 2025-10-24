@@ -6,6 +6,12 @@ import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { Theme, useTheme } from "@/src/themes/ThemeContext";
+import {
+  geocodeAsync,
+  getCurrentPositionAsync,
+  LocationAccuracy,
+  requestForegroundPermissionsAsync,
+} from "expo-location";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -26,6 +32,102 @@ import {
   type StorePromotion,
 } from "./mockStores";
 import createStyles from "./styled";
+
+type Coordinates = { latitude: number; longitude: number };
+
+const EARTH_RADIUS_KM = 6371;
+
+const calculateDistanceKm = (from: Coordinates, to: Coordinates) => {
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+
+  const deltaLat = toRadians(to.latitude - from.latitude);
+  const deltaLon = toRadians(to.longitude - from.longitude);
+
+  const originLatRad = toRadians(from.latitude);
+  const targetLatRad = toRadians(to.latitude);
+
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(originLatRad) *
+      Math.cos(targetLatRad) *
+      Math.sin(deltaLon / 2) *
+      Math.sin(deltaLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return EARTH_RADIUS_KM * c;
+};
+
+const normalizeForComparison = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+
+const BRAZIL_STATE_ALIASES: Record<string, string> = {
+  ac: "ac",
+  acre: "ac",
+  al: "al",
+  alagoas: "al",
+  ap: "ap",
+  amapa: "ap",
+  am: "am",
+  amazonas: "am",
+  ba: "ba",
+  bahia: "ba",
+  ce: "ce",
+  ceara: "ce",
+  df: "df",
+  "distritofederal": "df",
+  es: "es",
+  "espiritosanto": "es",
+  go: "go",
+  goias: "go",
+  ma: "ma",
+  maranhao: "ma",
+  mt: "mt",
+  "matogrosso": "mt",
+  ms: "ms",
+  "matogrossodosul": "ms",
+  mg: "mg",
+  "minasgerais": "mg",
+  pa: "pa",
+  para: "pa",
+  pb: "pb",
+  paraiba: "pb",
+  pr: "pr",
+  parana: "pr",
+  pe: "pe",
+  pernambuco: "pe",
+  pi: "pi",
+  piaui: "pi",
+  rj: "rj",
+  "riodejaneiro": "rj",
+  rn: "rn",
+  "riograndedonorte": "rn",
+  rs: "rs",
+  "riograndedosul": "rs",
+  ro: "ro",
+  rondonia: "ro",
+  rr: "rr",
+  roraima: "rr",
+  sc: "sc",
+  "santacatarina": "sc",
+  sp: "sp",
+  "saopaulo": "sp",
+  se: "se",
+  sergipe: "se",
+  to: "to",
+  tocantins: "to",
+};
+
+const normalizeStateKey = (value: string | null | undefined) => {
+  if (!value) return null;
+  const normalized = normalizeForComparison(value).replace(/\s+/g, "");
+  return BRAZIL_STATE_ALIASES[normalized] ?? normalized;
+};
 
 const FALLBACK_BRAND_COLORS = [
   "#FEE9EA",
@@ -59,7 +161,7 @@ type StoreFilters = {
 };
 
 export default function StoreScreen() {
-  const { getStores, getStoreRatingsAverage } = useSession();
+  const { getStores, getStoreRatingsAverage, getAddressesStore } = useSession();
 
   const { theme } = useTheme();
   const styles = createStyles(theme);
@@ -71,6 +173,13 @@ export default function StoreScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [storeRatings, setStoreRatings] = useState<Record<string, number>>({});
   const [isLoadingRatings, setIsLoadingRatings] = useState(false);
+  const [storeDistances, setStoreDistances] = useState<Record<string, number>>({});
+  const [isLoadingDistances, setIsLoadingDistances] = useState(false);
+  const [isRequestingLocation, setIsRequestingLocation] = useState(false);
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [storeLocationMeta, setStoreLocationMeta] = useState<
+    Record<string, { city: string | null; state: string | null }>
+  >({});
   const [favoriteStoreIds, setFavoriteStoreIds] = useState<Record<string, boolean>>({});
 
   const [filters, setFilters] = useState<StoreFilters>({
@@ -81,10 +190,55 @@ export default function StoreScreen() {
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   const isMountedRef = useRef(true);
+  const geocodedStoreCoordsRef = useRef<Record<string, Coordinates>>({});
+  const storeLocationMetaRef = useRef(storeLocationMeta);
 
   useEffect(() => {
     return () => {
       isMountedRef.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    storeLocationMetaRef.current = storeLocationMeta;
+  }, [storeLocationMeta]);
+
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const requestLocationPermission = async () => {
+      setIsRequestingLocation(true);
+      try {
+        const { status } = await requestForegroundPermissionsAsync();
+
+        if (status !== "granted") {
+          console.warn("StoreScreen: permissão de localização não concedida.");
+          return;
+        }
+
+        const position = await getCurrentPositionAsync({
+          accuracy: LocationAccuracy.Balanced,
+        });
+
+        if (!cancelled) {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        }
+      } catch (error) {
+        console.error("StoreScreen: erro ao obter localização do usuário:", error);
+      } finally {
+        if (!cancelled) {
+          setIsRequestingLocation(false);
+        }
+      }
+    };
+
+    requestLocationPermission();
+
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -340,6 +494,246 @@ export default function StoreScreen() {
   }, [stores]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const computeStoreDistances = async () => {
+      if (!stores.length) {
+        geocodedStoreCoordsRef.current = {};
+        setStoreDistances({});
+        setStoreLocationMeta({});
+        return;
+      }
+
+      setIsLoadingDistances(true);
+
+      const shouldComputeDistances = Boolean(userLocation);
+
+      const ids = stores
+        .map((store) => store.id.trim())
+        .filter((id) => id.length > 0);
+
+      const storeById = new Map(
+        stores.map((store) => [store.id.trim(), store])
+      );
+
+      const idSet = new Set(ids);
+      for (const cachedId of Object.keys(geocodedStoreCoordsRef.current)) {
+        if (!idSet.has(cachedId)) {
+          delete geocodedStoreCoordsRef.current[cachedId];
+        }
+      }
+
+      const nextDistances: Record<string, number> = {};
+      const nextLocations: Record<string, { city: string | null; state: string | null }> = {};
+
+      for (const storeId of ids) {
+        try {
+          let coordinates = geocodedStoreCoordsRef.current[storeId];
+
+          if (!coordinates) {
+            const { data, error } = await getAddressesStore(storeId);
+
+            if (error) {
+              console.error(
+                `StoreScreen: erro ao buscar endereço da loja ${storeId}:`,
+                error
+              );
+              continue;
+            }
+
+            let addresses: any[] | undefined;
+
+            if (Array.isArray(data)) {
+              addresses = data;
+            } else if (data && Array.isArray((data as any).logAddress)) {
+              addresses = (data as any).logAddress;
+            }
+
+            const primaryAddress = addresses?.[0];
+
+            if (primaryAddress) {
+              const normalizedCity =
+                typeof primaryAddress?.city === "string"
+                  ? primaryAddress.city.trim()
+                  : "";
+              const normalizedStateAcronym =
+                typeof primaryAddress?.state_acronym === "string"
+                  ? primaryAddress.state_acronym.trim().toUpperCase()
+                  : "";
+              const normalizedStateName =
+                typeof primaryAddress?.state === "string"
+                  ? primaryAddress.state.trim().toUpperCase()
+                  : "";
+
+              nextLocations[storeId] = {
+                city: normalizedCity || null,
+                state:
+                  normalizedStateAcronym ||
+                  normalizedStateName ||
+                  null,
+              };
+
+              if (
+                typeof primaryAddress?.latitude === "number" &&
+                typeof primaryAddress?.longitude === "number"
+              ) {
+                const coords: Coordinates = {
+                  latitude: primaryAddress.latitude,
+                  longitude: primaryAddress.longitude,
+                };
+                coordinates = coords;
+                geocodedStoreCoordsRef.current[storeId] = coords;
+              }
+
+              if (!coordinates) {
+                const addressParts = [
+                  [primaryAddress.street, primaryAddress.street_number]
+                    .filter(Boolean)
+                    .join(", ")
+                    .trim(),
+                  primaryAddress.neighborhood,
+                  primaryAddress.city,
+                  primaryAddress.state_acronym ?? primaryAddress.state,
+                  primaryAddress.country ?? "Brasil",
+                ]
+                  .filter((part: string | null | undefined) => {
+                    if (typeof part !== "string") return false;
+                    return part.trim().length > 0;
+                  })
+                  .map((part: string) => part.trim());
+
+                if (addressParts.length) {
+                  const formattedAddress = addressParts.join(", ");
+
+                  if (formattedAddress) {
+                    const geocodedResults = await geocodeAsync(formattedAddress);
+
+                    const firstValid = geocodedResults.find(
+                      (entry) =>
+                        typeof entry?.latitude === "number" &&
+                        typeof entry?.longitude === "number"
+                    );
+
+                    if (firstValid) {
+                      const coords: Coordinates = {
+                        latitude: firstValid.latitude,
+                        longitude: firstValid.longitude,
+                      };
+
+                      geocodedStoreCoordsRef.current[storeId] = coords;
+                      coordinates = coords;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          if (!nextLocations[storeId]) {
+            const previousMeta = storeLocationMetaRef.current[storeId];
+            if (previousMeta) {
+              nextLocations[storeId] = {
+                city: previousMeta.city ?? null,
+                state: previousMeta.state ?? null,
+              };
+            } else {
+              const fallbackStore = storeById.get(storeId);
+              if (fallbackStore) {
+                const fallbackCity = fallbackStore.city?.trim() || null;
+                const fallbackState = fallbackStore.state?.trim() || null;
+                if (fallbackCity || fallbackState) {
+                  nextLocations[storeId] = {
+                    city: fallbackCity,
+                    state: fallbackState,
+                  };
+                }
+              }
+            }
+          } else {
+            const fallbackStore = storeById.get(storeId);
+            if (fallbackStore) {
+              const meta = nextLocations[storeId];
+              if (!meta.city && fallbackStore.city) {
+                meta.city = fallbackStore.city.trim();
+              }
+              if (!meta.state && fallbackStore.state) {
+                meta.state = fallbackStore.state.trim();
+              }
+            }
+          }
+
+          if (
+            shouldComputeDistances &&
+            userLocation &&
+            coordinates &&
+            Number.isFinite(coordinates.latitude) &&
+            Number.isFinite(coordinates.longitude)
+          ) {
+            const distanceKm = calculateDistanceKm(userLocation, coordinates);
+            nextDistances[storeId] = distanceKm;
+          }
+        } catch (error) {
+          console.error(
+            `StoreScreen: erro ao calcular distância para a loja ${storeId}:`,
+            error
+          );
+        }
+      }
+
+      if (!cancelled) {
+        setStoreLocationMeta((current) => {
+          const updated: Record<string, { city: string | null; state: string | null }> = {};
+
+          for (const id of ids) {
+            if (nextLocations[id]) {
+              updated[id] = nextLocations[id];
+            } else if (current[id]) {
+              updated[id] = current[id];
+            }
+          }
+
+          return updated;
+        });
+
+        if (shouldComputeDistances) {
+          setStoreDistances((current) => {
+            const updated: Record<string, number> = {};
+
+            for (const id of ids) {
+              if (nextDistances[id] !== undefined) {
+                updated[id] = nextDistances[id];
+              } else if (current[id] !== undefined) {
+                updated[id] = current[id];
+              }
+            }
+
+            return updated;
+          });
+        } else {
+          setStoreDistances({});
+        }
+      }
+    };
+
+    computeStoreDistances()
+      .catch((error) =>
+        console.error(
+          "StoreScreen: erro inesperado ao calcular distâncias:",
+          error
+        )
+      )
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingDistances(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getAddressesStore, stores, userLocation]);
+
+  useEffect(() => {
     let isCancelled = false;
 
     const fetchRatings = async () => {
@@ -426,37 +820,68 @@ export default function StoreScreen() {
         return false;
       }
 
-      const matchesState =
-        !filters.state ||
-        !store.state ||
-        store.state.toLowerCase() === filters.state.toLowerCase();
+      const locationMeta = storeLocationMeta[store.id];
+      const stateCandidate = (locationMeta?.state ?? store.state ?? "").trim();
+      const cityCandidate = (locationMeta?.city ?? store.city ?? "").trim();
 
-      if (!matchesState) {
-        return false;
-      }
-
-      const matchesCity =
-        !filters.city ||
-        !store.city ||
-        store.city.toLowerCase() === filters.city.toLowerCase();
-
-      if (!matchesCity) {
-        return false;
-      }
-
-      const distanceValue = parseDistance(store.distance);
+      const normalizedFilterState = normalizeStateKey(filters.state);
+      const normalizedStoreState = normalizeStateKey(stateCandidate);
 
       if (
-        filters.radiusKm !== null &&
-        Number.isFinite(distanceValue) &&
-        distanceValue > filters.radiusKm
+        normalizedFilterState &&
+        (!normalizedStoreState ||
+          normalizedStoreState !== normalizedFilterState)
       ) {
         return false;
       }
 
+      const normalizedFilterCity = filters.city
+        ? normalizeForComparison(filters.city)
+        : null;
+      const normalizedStoreCity = cityCandidate
+        ? normalizeForComparison(cityCandidate)
+        : null;
+
+      if (
+        normalizedFilterCity &&
+        (!normalizedStoreCity || normalizedStoreCity !== normalizedFilterCity)
+      ) {
+        return false;
+      }
+
+      if (filters.radiusKm !== null) {
+        const computedDistance = storeDistances[store.id];
+        const hasComputedDistance =
+          typeof computedDistance === "number" && Number.isFinite(computedDistance);
+
+        if (hasComputedDistance) {
+          if (computedDistance > filters.radiusKm) {
+            return false;
+          }
+        } else {
+          const fallbackDistance = parseDistance(store.distance);
+
+          if (
+            Number.isFinite(fallbackDistance) &&
+            fallbackDistance > filters.radiusKm
+          ) {
+            return false;
+          }
+        }
+      }
+
       return true;
     });
-  }, [filters.city, filters.radiusKm, filters.state, parseDistance, searchTerm, stores]);
+  }, [
+    filters.city,
+    filters.radiusKm,
+    filters.state,
+    parseDistance,
+    searchTerm,
+    storeDistances,
+    storeLocationMeta,
+    stores,
+  ]);
 
   const handleOpenFilters = () => {
     setFilterModalVisible(true);
@@ -559,6 +984,14 @@ export default function StoreScreen() {
     const ratingLabel = Number.isFinite(ratingValue)
       ? ratingValue.toFixed(2)
       : item.rating.toFixed(2);
+    const distanceValue = storeDistances[item.id];
+    const hasComputedDistance =
+      typeof distanceValue === "number" && Number.isFinite(distanceValue);
+    const distanceLabel = hasComputedDistance
+      ? `${distanceValue.toFixed(2)} km`
+      : isLoadingDistances || isRequestingLocation
+      ? "Calculando..."
+      : item.distance || "Distância indisponível";
 
     return (
       <TouchableOpacity
@@ -645,7 +1078,7 @@ export default function StoreScreen() {
                 color={theme.colors.primary}
               />
               <Text style={[styles.metaText, styles.metaTextWithIcon]}>
-                {item.distance}
+                {distanceLabel}
               </Text>
             </View>
           </View>
@@ -1059,10 +1492,6 @@ const FilterModal = ({
           <View style={styles.sliderValueRow}>
             {radiusEnabled ? (
               <>
-                <View style={styles.sliderValueBox}>
-                  <Text style={styles.sliderValueText}>{radiusValue ?? 5}</Text>
-                </View>
-                <Text style={styles.sliderValueSuffix}>km</Text>
               </>
             ) : (
               <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
@@ -1088,3 +1517,6 @@ const FilterModal = ({
     </Modal>
   );
 };
+
+
+
