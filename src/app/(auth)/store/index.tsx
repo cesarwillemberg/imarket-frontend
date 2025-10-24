@@ -1057,7 +1057,7 @@ export default function StoreScreen() {
                 type="MaterialCommunityIcons"
                 name="star"
                 size={16}
-                color={theme.colors.primary}
+                color={theme.colors.star}
               />
               <Text style={[styles.metaText, styles.metaTextWithIcon]}>
                 {isRatingLoading ? "..." : ratingLabel}
