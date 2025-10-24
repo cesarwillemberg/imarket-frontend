@@ -5,21 +5,19 @@ import { StyleSheet } from "react-native";
 const createStyles = (theme: Theme) =>
   StyleSheet.create({
     tabBar: {
-      borderTopWidth: 3,
+      borderTopWidth: theme.size.xs,
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.background
     },
     tabBarItem: {
-      bottom: 30,
-      borderRadius: 50,
+      bottom: theme.spacing.xl,
+      borderRadius: theme.radius.full,
       backgroundColor: theme.colors.primary,
-      width: 80,
-      height: 80,
-      justifyContent: "center",
-      alignItems: "center",
+      width: theme.size.md,
+      height: theme.size.xxl *  2.4,
     },
     tabBarIcon: {
-      marginTop: 10,
+      marginTop: 15,
     },
     tabBarLabel: {
       color: "#FFFFFF",

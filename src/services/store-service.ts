@@ -1,0 +1,5 @@
+
+const storeService = {
+
+    getStores: async () => {},
+};

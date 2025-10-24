@@ -18,6 +18,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="home"
         options={{
+          title: "Início",
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <Icon type="feather" size={28} name="home" color={color} />
@@ -27,7 +28,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="store"
         options={{
-          title: "Store",
+          title: "Lojas",
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <Icon
@@ -42,8 +43,11 @@ export default function TabLayout() {
       <Tabs.Screen
         name="cart"
         options={{
-          title: "Cart",
+          title: "Carrinho",
           headerShown: false,
+          tabBarLabel(props) {
+            return "";
+          },
           tabBarIcon: ({ color }) => (
             <Icon
               type="MaterialCommunityIcons"
@@ -60,7 +64,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="products"
         options={{
-          title: "Products",
+          title: "Produtos",
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <Icon type="feather" size={28} name="tag" color={color} />
@@ -70,6 +74,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
+          title: "Perfil",
           headerShown: false,
           tabBarIcon: ({ color }) => (
             <Icon type="feather" size={28} name="user" color={color} />
