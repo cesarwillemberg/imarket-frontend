@@ -3,7 +3,7 @@ import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { getCurrentPositionAsync, geocodeAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
+import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -139,11 +139,200 @@ const mapStoreResponseToStore = (data: StoreResponse | null): Store | undefined 
   };
 };
 
+type StoreScheduleItem = {
+  day_of_week: string;
+  opens_at?: string | null;
+  closes_at?: string | null;
+  is_open?: boolean;
+  is_holiday?: boolean;
+};
+
+const STORE_DAY_ORDER = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+
+const DAY_DISPLAY_MAP: Record<string, string> = {
+  Segunda: "Segunda",
+  Terça: "Terca",
+  Quarta: "Quarta",
+  Quinta: "Quinta",
+  Sexta: "Sexta",
+  Sábado: "Sabado",
+  Domingo: "Domingo",
+  Feriado: "Feriados",
+};
+
+const getDayOrderIndex = (day: string): number | null => {
+  const index = STORE_DAY_ORDER.indexOf(day);
+  return index >= 0 ? index : null;
+};
+
+const formatTime = (time?: string | null) => {
+  if (!time || typeof time !== "string") {
+    return null;
+  }
+
+  const [hours, minutes] = time.split(":");
+  if (!hours || !minutes) {
+    return null;
+  }
+
+  return `${hours.padStart(2, "0")}:${minutes.padStart(2, "0")}h`;
+};
+
+const formatScheduleValue = (entry: StoreScheduleItem) => {
+  if (entry.is_open === false) {
+    return "Fechado";
+  }
+
+  const opensAt = formatTime(entry.opens_at);
+  const closesAt = formatTime(entry.closes_at);
+
+  if (opensAt && closesAt) {
+    return `${opensAt} as ${closesAt}`;
+  }
+
+  if (opensAt) {
+    return `A partir das ${opensAt}`;
+  }
+
+  if (closesAt) {
+    return `Ate ${closesAt}`;
+  }
+
+  return "Horario nao informado";
+};
+
+const buildDayLabel = (days: string[]) => {
+  if (!days.length) {
+    return "Horario";
+  }
+
+  const hasHoliday = days.includes("Feriado");
+  const regularDays = days.filter((day) => day !== "Feriado");
+  const displayRegularDays = regularDays
+    .map((day) => DAY_DISPLAY_MAP[day] ?? day)
+    .filter((value) => typeof value === "string" && value.length > 0);
+  const holidayDisplay = DAY_DISPLAY_MAP.Feriado ?? "Feriados";
+
+  let label = "";
+
+  if (displayRegularDays.length === 1) {
+    label = displayRegularDays[0];
+  } else if (displayRegularDays.length === 2) {
+    label = `${displayRegularDays[0]} e ${displayRegularDays[1]}`;
+  } else if (displayRegularDays.length > 2) {
+    label = `${displayRegularDays[0]} a ${displayRegularDays[displayRegularDays.length - 1]}`;
+  }
+
+  if (hasHoliday) {
+    if (label) {
+      label = `${label} e ${holidayDisplay}`;
+    } else {
+      label = holidayDisplay;
+    }
+  }
+
+  if (!label) {
+    if (displayRegularDays.length) {
+      return displayRegularDays[0];
+    }
+    if (hasHoliday) {
+      return holidayDisplay;
+    }
+    const fallbackDay = days[0];
+    return DAY_DISPLAY_MAP[fallbackDay] ?? fallbackDay ?? "Horario";
+  }
+
+  return label;
+};
+
+const mapScheduleResponseToWorkingHours = (raw: unknown): Store["workingHours"] => {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  const entries = raw.filter((item): item is StoreScheduleItem => {
+    return (
+      typeof item === "object" &&
+      item !== null &&
+      typeof (item as any).day_of_week === "string"
+    );
+  });
+
+  if (!entries.length) {
+    return [];
+  }
+
+  type Group = { days: string[]; value: string; lastIndex: number | null };
+  const groups: Group[] = [];
+
+  const regularEntries = entries.filter((item) => !item.is_holiday);
+  regularEntries.sort((a, b) => {
+    const indexA = getDayOrderIndex(a.day_of_week);
+    const indexB = getDayOrderIndex(b.day_of_week);
+    const safeA = indexA ?? Number.MAX_SAFE_INTEGER;
+    const safeB = indexB ?? Number.MAX_SAFE_INTEGER;
+    return safeA - safeB;
+  });
+
+  regularEntries.forEach((entry) => {
+    const scheduleValue = formatScheduleValue(entry);
+    const dayIndex = getDayOrderIndex(entry.day_of_week);
+    const lastGroup = groups[groups.length - 1];
+
+    if (
+      lastGroup &&
+      lastGroup.value === scheduleValue &&
+      lastGroup.lastIndex !== null &&
+      dayIndex !== null &&
+      dayIndex === lastGroup.lastIndex + 1
+    ) {
+      lastGroup.days.push(entry.day_of_week);
+      lastGroup.lastIndex = dayIndex;
+      return;
+    }
+
+    groups.push({
+      days: [entry.day_of_week],
+      value: scheduleValue,
+      lastIndex: dayIndex,
+    });
+  });
+
+  const holidayEntries = entries.filter((item) => item.is_holiday);
+  if (holidayEntries.length) {
+    const holidayGroups = new Map<string, Group>();
+
+    holidayEntries.forEach((entry) => {
+      const holidayValue = formatScheduleValue(entry);
+      const existingGroup = groups.find((group) => group.value === holidayValue);
+
+      if (existingGroup) {
+        if (!existingGroup.days.includes("Feriado")) {
+          existingGroup.days.push("Feriado");
+        }
+        return;
+      }
+
+      let holidayGroup = holidayGroups.get(holidayValue);
+      if (!holidayGroup) {
+        holidayGroup = { days: ["Feriado"], value: holidayValue, lastIndex: null };
+        holidayGroups.set(holidayValue, holidayGroup);
+        groups.push(holidayGroup);
+      }
+    });
+  }
+
+  return groups.map((group) => ({
+    label: buildDayLabel(group.days),
+    value: group.value,
+  }));
+};
+
 export default function StoreProfile() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const storeId = useMemo(() => (Array.isArray(id) ? id[0] : id), [id]);
 
-  const { getStoreById, getStoreRatingsAverage, getAddressesStore } = useSession();
+  const { getStoreById, getStoreRatingsAverage, getAddressesStore, getStoreSchedule } = useSession();
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
@@ -163,6 +352,10 @@ export default function StoreProfile() {
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   const [isRequestingLocation, setIsRequestingLocation] = useState(false);
   const [storeAddressText, setStoreAddressText] = useState<string | null>(null);
+  const [storeWorkingHours, setStoreWorkingHours] = useState<Store["workingHours"]>([]);
+  const workingHoursToDisplay = storeWorkingHours.length
+    ? storeWorkingHours
+    : store?.workingHours ?? [];
   useEffect(() => {
     let cancelled = false;
 
@@ -174,11 +367,21 @@ export default function StoreProfile() {
 
       setIsLoadingStore(true);
       setStoreLoadError(null);
+      setStoreWorkingHours([]);
 
       try {
         const { data, error } = await getStoreById(storeId);
 
+        const { data: scheduleData, error: scheduleError } = await getStoreSchedule(storeId);
+
         if (cancelled) return;
+
+        if (scheduleError) {
+          console.error("StoreProfile: erro ao buscar horario da loja:", scheduleError);
+        }
+
+        const mappedSchedule = mapScheduleResponseToWorkingHours(scheduleData);
+        setStoreWorkingHours(mappedSchedule);
 
         if (error) {
           console.error("StoreProfile: erro ao buscar loja:", error);
@@ -310,6 +513,7 @@ export default function StoreProfile() {
       setDistanceKm(null);
       setDistanceError(null);
       setStoreAddressText(null);
+      setStoreWorkingHours([]);
       return;
     }
 
@@ -372,9 +576,8 @@ export default function StoreProfile() {
             .map((value: any) => String(value).trim())
             .filter(Boolean)
             .join(" - ");
-          const postalCodeLine = (primaryAddress.postal_code ?? "").trim();
 
-          const displayLines = [streetLine, neighborhoodLine, cityStateLine, postalCodeLine].filter(
+          const displayLines = [streetLine, neighborhoodLine, cityStateLine].filter(
             (line) => typeof line === "string" && line.length > 0
           );
 
@@ -611,7 +814,7 @@ export default function StoreProfile() {
                 type="MaterialCommunityIcons"
                 name="star"
                 size={16}
-                color={theme.colors.primary}
+                color={theme.colors.star}
               />
               <Text style={styles.metaText}>{ratingLabel}</Text>
             </View>
@@ -665,7 +868,7 @@ export default function StoreProfile() {
               ))}
             </View>
             <View style={styles.infoColumn}>
-              {store.workingHours.map((item) => (
+              {workingHoursToDisplay.map((item) => (
                 <View style={styles.infoItem} key={item.label}>
                   <Text style={styles.infoLabel}>{item.label}</Text>
                   <Text style={styles.infoValue}>{item.value}</Text>

@@ -16,6 +16,13 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       marginBottom: theme.spacing.md,
     },
+    metaSeparator: {
+      width: 4,
+      height: 4,
+      marginHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.disabled,
+    },
     locationRow: {
       flexDirection: "row",
       alignItems: "center",

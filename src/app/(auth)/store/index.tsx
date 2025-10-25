@@ -1047,29 +1047,21 @@ export default function StoreScreen() {
             </View>
           )}
 
-          {/* <Text style={styles.storeDescription} numberOfLines={2}>
-            {item.description}
-          </Text> */}
-
           <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-              <Icon
-                type="MaterialCommunityIcons"
-                name="star"
-                size={16}
-                color={theme.colors.star}
-              />
-              <Text style={[styles.metaText, styles.metaTextWithIcon]}>
-                {isRatingLoading ? "..." : ratingLabel}
-              </Text>
-          </View>
-
-          <Text style={styles.metaDivider}> | </Text>
-
-          <Text style={styles.metaText}>{item.category}</Text>
-
-            <Text style={styles.metaDivider}> | </Text>
-
+            <View style={styles.metaItem}>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="star"
+                  size={16}
+                  color={theme.colors.star}
+                />
+                <Text style={[styles.metaText, styles.metaTextWithIcon]}>
+                  {isRatingLoading ? "..." : ratingLabel}
+                </Text>
+            </View>
+            <View style={styles.metaSeparator} />
+            <Text style={styles.metaText}>{item.category}</Text>
+            <View style={styles.metaSeparator} />    
             <View style={styles.metaItem}>
               <Icon
                 type="MaterialCommunityIcons"
@@ -1082,20 +1074,6 @@ export default function StoreScreen() {
               </Text>
             </View>
           </View>
-
-          {/* <View style={styles.metaRow}>
-            <View style={styles.metaItem}>
-              <Icon
-                type="MaterialCommunityIcons"
-                name="clock-outline"
-                size={16}
-                color={theme.colors.primary}
-              />
-              <Text style={[styles.metaText, styles.metaTextWithIcon]}>
-                {item.deliveryTime}
-              </Text>
-            </View>
-          </View> */}
 
           {item.promotion ? (
             <View style={styles.promoPill}>
@@ -1196,20 +1174,6 @@ export default function StoreScreen() {
                   </TouchableOpacity>
                 </View>
               ) : null}
-
-              {/* {!filters.city && !filters.state && filters.radiusKm === null ? (
-                <TouchableOpacity
-                  style={styles.filterChipGhost}
-                  onPress={handleOpenFilters}
-                  activeOpacity={0.7}
-                  accessibilityRole="button"
-                  accessibilityLabel="Adicionar filtros"
-                >
-                  <Text style={styles.filterChipGhostText}>
-                    Adicionar filtros
-                  </Text>
-                </TouchableOpacity>
-              ) : null} */}
             </View>
           </View>
 
@@ -1241,7 +1205,6 @@ export default function StoreScreen() {
 
 const SliderComponent = (() => {
   try {
-     
     const sliderModule = require("@react-native-community/slider");
     return sliderModule?.default ?? sliderModule;
   } catch (error) {
