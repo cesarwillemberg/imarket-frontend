@@ -5,7 +5,7 @@ import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { DEFAULT_FILTERS, Store } from "../mockStores";
+import { DEFAULT_FILTERS, Store, StorePromotion } from "../mockStores";
 import createStyles from "./styled";
 
 
@@ -60,6 +60,160 @@ const parseArrayField = (value: unknown) => {
     }
   }
   return [];
+};
+
+type PromotionResponse = Record<string, unknown> & { id?: string };
+
+const parseCurrencyValue = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
+    if (!normalized || normalized === "-" || normalized === "." || normalized === "-.") {
+      return null;
+    }
+    const parsed = Number(normalized);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+};
+
+const pickFirstValue = (source: PromotionResponse, keys: string[]): unknown => {
+  for (const key of keys) {
+    if (key in source && source[key] !== undefined && source[key] !== null) {
+      return source[key];
+    }
+  }
+  return undefined;
+};
+
+const currencyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+const PRODUCT_IMAGE_URL_KEYS = [
+  "image_url",
+  "imageUrl",
+  "url",
+  "path",
+  "public_url",
+  "publicUrl",
+  "download_url",
+  "downloadUrl",
+] as const;
+
+const extractFirstImageUrl = (images: unknown): string | null => {
+  if (!Array.isArray(images)) {
+    return null;
+  }
+
+  for (const entry of images) {
+    if (!entry || typeof entry !== "object") {
+      continue;
+    }
+
+    for (const key of PRODUCT_IMAGE_URL_KEYS) {
+      const value = (entry as Record<string, unknown>)[key];
+      if (typeof value === "string" && value.trim().length > 0) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+};
+
+const mapPromotionResponse = (raw: PromotionResponse): StorePromotion | null => {
+  const identifier = raw.id ?? pickFirstValue(raw, ["uuid", "product_id"]);
+  if (!identifier) {
+    return null;
+  }
+
+  const nameRaw = pickFirstValue(raw, ["name", "title", "product_name"]);
+  const priceRaw = pickFirstValue(raw, [
+    "sale_price",
+    "promotional_price",
+    "promo_price",
+    "current_price",
+    "price",
+  ]);
+  const originalPriceRaw = pickFirstValue(raw, [
+    "regular_price",
+    "original_price",
+    "list_price",
+    "price_from",
+    "price_before",
+  ]);
+  const unitRaw = pickFirstValue(raw, ["unit", "unit_label", "measure_unit"]);
+  const imageRaw = pickFirstValue(raw, ["image_url", "image", "main_image_url", "thumbnail"]);
+
+  const priceValue = parseCurrencyValue(priceRaw ?? originalPriceRaw);
+  const originalPriceValue = parseCurrencyValue(originalPriceRaw);
+
+  const formattedPrice =
+    priceValue !== null ? currencyFormatter.format(priceValue) : "Sob consulta";
+  const formattedOriginal =
+    originalPriceValue !== null ? currencyFormatter.format(originalPriceValue) : undefined;
+
+  const resolvedUnit =
+    typeof unitRaw === "string" && unitRaw.trim().length ? unitRaw : "Un";
+
+  const discountValue =
+    originalPriceValue !== null && priceValue !== null
+      ? Math.max(originalPriceValue - priceValue, 0)
+      : null;
+
+  return {
+    id: String(identifier),
+    name:
+      typeof nameRaw === "string" && nameRaw.trim().length ? nameRaw : "Produto em promocao",
+    price: formattedPrice,
+    originalPrice: formattedOriginal,
+    unit: resolvedUnit,
+    image: typeof imageRaw === "string" ? imageRaw : "",
+    priceValue,
+    originalPriceValue,
+    discountValue,
+  };
+};
+
+const ensurePromotionMeta = (promo: StorePromotion): StorePromotion => {
+  const priceValue = promo.priceValue ?? parseCurrencyValue(promo.price);
+  const originalPriceValue =
+    promo.originalPriceValue ?? parseCurrencyValue(promo.originalPrice ?? null);
+  const discountValue =
+    promo.discountValue ??
+    (originalPriceValue !== null && priceValue !== null
+      ? Math.max(originalPriceValue - priceValue, 0)
+      : null);
+
+  return {
+    ...promo,
+    priceValue,
+    originalPriceValue,
+    discountValue,
+  };
+};
+
+const sortPromotionsByDiscount = (promos: StorePromotion[]): StorePromotion[] => {
+  return promos
+    .map((promo) => ensurePromotionMeta(promo))
+    .sort((a, b) => {
+      const discountA = a.discountValue ?? 0;
+      const discountB = b.discountValue ?? 0;
+      if (discountA === discountB) {
+        const priceA = a.priceValue ?? 0;
+        const priceB = b.priceValue ?? 0;
+        return priceA - priceB;
+      }
+      return discountB - discountA;
+    });
 };
 
 type StoreResponse = {
@@ -332,7 +486,14 @@ export default function StoreProfile() {
   const { id } = useLocalSearchParams<{ id?: string | string[] }>();
   const storeId = useMemo(() => (Array.isArray(id) ? id[0] : id), [id]);
 
-  const { getStoreById, getStoreRatingsAverage, getAddressesStore, getStoreSchedule } = useSession();
+  const {
+    getStoreById,
+    getStoreRatingsAverage,
+    getAddressesStore,
+    getStoreSchedule,
+    getImageProduct,
+    getItemPromotionByStore,
+  } = useSession();
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
@@ -353,9 +514,119 @@ export default function StoreProfile() {
   const [isRequestingLocation, setIsRequestingLocation] = useState(false);
   const [storeAddressText, setStoreAddressText] = useState<string | null>(null);
   const [storeWorkingHours, setStoreWorkingHours] = useState<Store["workingHours"]>([]);
+  const [promotions, setPromotions] = useState<StorePromotion[]>([]);
+  const [isLoadingPromotions, setIsLoadingPromotions] = useState(false);
+  const [promotionsError, setPromotionsError] = useState<string | null>(null);
   const workingHoursToDisplay = storeWorkingHours.length
     ? storeWorkingHours
     : store?.workingHours ?? [];
+  const promotionsToDisplay = useMemo(() => {
+    const source: StorePromotion[] = promotions.length
+      ? promotions
+      : Array.isArray(store?.promotions)
+      ? (store?.promotions as StorePromotion[])
+      : [];
+
+    if (!source.length) {
+      return [];
+    }
+
+    return sortPromotionsByDiscount(source).slice(0, 5);
+  }, [promotions, store]);
+  const hasPromotions = promotionsToDisplay.length > 0;
+
+  const fetchPromotions = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!storeId) {
+        if (!isCancelled?.()) {
+          setPromotions([]);
+          setPromotionsError(null);
+        }
+        return;
+      }
+
+      if (!isCancelled?.()) {
+        setIsLoadingPromotions(true);
+        setPromotionsError(null);
+      }
+
+      try {
+        const { data, error } = await getItemPromotionByStore(storeId);
+        if (isCancelled?.()) {
+          return;
+        }
+
+        if (error) {
+          console.error("StoreProfile: erro ao buscar promocoes da loja:", error);
+          if (!isCancelled?.()) {
+            setPromotionsError("Nao foi possivel carregar as promocoes da loja.");
+            setPromotions([]);
+          }
+          return;
+        }
+
+        const mappedPromotions = Array.isArray(data)
+          ? data
+              .map((item) => mapPromotionResponse((item ?? {}) as PromotionResponse))
+              .filter((item): item is StorePromotion => item !== null)
+          : [];
+
+        const promotionsWithImages = await Promise.all(
+          mappedPromotions.map(async (promo) => {
+            try {
+              const { data: images, error: imageError } = await getImageProduct(promo.id);
+              if (imageError) {
+                console.error("StoreProfile: erro ao buscar imagem da promocao:", imageError);
+                return promo;
+              }
+
+              const imageUrl = extractFirstImageUrl(images);
+              if (imageUrl) {
+                return { ...promo, image: imageUrl };
+              }
+
+              return promo;
+            } catch (imageFetchError) {
+              console.error(
+                "StoreProfile: erro inesperado ao buscar imagem da promocao:",
+                imageFetchError
+              );
+              return promo;
+            }
+          })
+        );
+
+        if (!isCancelled?.()) {
+          const sortedLimited = sortPromotionsByDiscount(promotionsWithImages).slice(0, 5);
+          setPromotions(sortedLimited);
+        }
+      } catch (error) {
+        if (!isCancelled?.()) {
+          console.error("StoreProfile: erro inesperado ao buscar promocoes da loja:", error);
+          setPromotionsError("Nao foi possivel carregar as promocoes da loja.");
+          setPromotions([]);
+        }
+      } finally {
+        if (!isCancelled?.()) {
+          setIsLoadingPromotions(false);
+        }
+      }
+    },
+    [getImageProduct, getItemPromotionByStore, storeId]
+  );
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchPromotions(() => cancelled);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchPromotions]);
+
+  const handleReloadPromotions = useCallback(() => {
+    fetchPromotions();
+  }, [fetchPromotions]);
   useEffect(() => {
     let cancelled = false;
 
@@ -692,6 +963,10 @@ export default function StoreProfile() {
   })();
 
   const handleScrollPromotions = (direction: "left" | "right") => {
+    if (!hasPromotions) {
+      return;
+    }
+
     const node = promoScrollRef.current;
     if (!node) return;
 
@@ -885,7 +1160,12 @@ export default function StoreProfile() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Produtos em Promocao</Text>
             <TouchableOpacity
-              onPress={() => {}}
+              onPress={() =>
+                router.push({
+                  pathname: "/(auth)/store/products_sotre",
+                  params: { storeId: store.id, storeName: store.name },
+                })
+              }
               activeOpacity={0.7}
               style={styles.sectionLinkWrapper}
             >
@@ -893,65 +1173,118 @@ export default function StoreProfile() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.promoCarousel}>
-            <TouchableOpacity
-              onPress={() => handleScrollPromotions("left")}
-              style={styles.carouselArrow}
-              activeOpacity={0.7}
-            >
-              <Icon
-                type="MaterialCommunityIcons"
-                name="chevron-left"
-                size={26}
-                color={theme.colors.primary}
-              />
-            </TouchableOpacity>
+          {isLoadingPromotions && !hasPromotions ? (
+            <View style={styles.promoFeedbackContainer}>
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+          ) : null}
 
-            <ScrollView
-              horizontal
-              ref={promoScrollRef}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.promoList}
-              onScroll={(event) => {
-                promoOffsetRef.current = event.nativeEvent.contentOffset.x;
-              }}
-              scrollEventThrottle={16}
-            >
-              {store.promotions.map((promo) => (
-                <View style={styles.promoCard} key={promo.id}>
-                  <Image source={{ uri: promo.image }} style={styles.promoImage} />
-                  <Text style={styles.promoName} numberOfLines={2}>
-                    {promo.name}
-                  </Text>
-                  {promo.originalPrice ? (
-                    <Text style={styles.promoOriginal}>
-                      De {promo.originalPrice}
+          {promotionsError && !isLoadingPromotions && !hasPromotions ? (
+            <View style={styles.promoFeedbackContainer}>
+              <Text style={styles.promoFeedbackText}>{promotionsError}</Text>
+              <TouchableOpacity
+                onPress={handleReloadPromotions}
+                activeOpacity={0.7}
+                style={styles.promoRetryButton}
+              >
+                <Text style={styles.promoRetryButtonText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {hasPromotions ? (
+            <View style={styles.promoCarousel}>
+              <TouchableOpacity
+                onPress={() => handleScrollPromotions("left")}
+                style={[
+                  styles.carouselArrow,
+                  !hasPromotions && styles.carouselArrowDisabled,
+                ]}
+                activeOpacity={0.7}
+                disabled={!hasPromotions}
+              >
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="chevron-left"
+                  size={26}
+                  color={theme.colors.primary}
+                />
+              </TouchableOpacity>
+
+              <ScrollView
+                horizontal
+                ref={promoScrollRef}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.promoList}
+                onScroll={(event) => {
+                  promoOffsetRef.current = event.nativeEvent.contentOffset.x;
+                }}
+                scrollEventThrottle={16}
+              >
+                {promotionsToDisplay.map((promo) => (
+                  <View style={styles.promoCard} key={promo.id}>
+                    {promo.image ? (
+                      <Image source={{ uri: promo.image }} style={styles.promoImage} />
+                    ) : (
+                      <View style={styles.promoFallbackImage}>
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name="package-variant-closed"
+                          size={30}
+                          color={theme.colors.disabled}
+                        />
+                      </View>
+                    )}
+                    <Text style={styles.promoName} numberOfLines={2}>
+                      {promo.name}
                     </Text>
-                  ) : null}
-                  <Text style={styles.promoPrice}>
-                    Por {promo.price} <Text style={styles.promoUnit}>{promo.unit}</Text>
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
+                    {promo.originalPrice ? (
+                      <Text style={styles.promoOriginal}>
+                        De {promo.originalPrice}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.promoPrice}>
+                      Por {promo.price} <Text style={styles.promoUnit}>{promo.unit}</Text>
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
 
-            <TouchableOpacity
-              onPress={() => handleScrollPromotions("right")}
-              style={styles.carouselArrow}
-              activeOpacity={0.7}
-            >
-              <Icon
-                type="MaterialCommunityIcons"
-                name="chevron-right"
-                size={26}
-                color={theme.colors.primary}
-              />
-            </TouchableOpacity>
-          </View>
+              <TouchableOpacity
+                onPress={() => handleScrollPromotions("right")}
+                style={[
+                  styles.carouselArrow,
+                  !hasPromotions && styles.carouselArrowDisabled,
+                ]}
+                activeOpacity={0.7}
+                disabled={!hasPromotions}
+              >
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="chevron-right"
+                  size={26}
+                  color={theme.colors.primary}
+                />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
+          {!isLoadingPromotions && !promotionsError && !hasPromotions ? (
+            <View style={styles.promoFeedbackContainer}>
+              <Text style={styles.promoFeedbackText}>
+                Esta loja ainda nao possui itens em promocao.
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         <TouchableOpacity
-          onPress={() => {}}
+          onPress={() =>
+            router.push({
+              pathname: "/(auth)/store/products_sotre",
+              params: { storeId: store.id, storeName: store.name },
+            })
+          }
           activeOpacity={0.7}
           style={styles.footerLinkWrapper}
         >

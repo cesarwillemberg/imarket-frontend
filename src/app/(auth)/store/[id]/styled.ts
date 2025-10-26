@@ -210,6 +210,31 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       marginTop: theme.spacing.md,
     },
+    promoFeedbackContainer: {
+      paddingVertical: theme.spacing.lg,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.spacing.sm,
+    },
+    promoFeedbackText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+      textAlign: "center",
+    },
+    promoRetryButton: {
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.full,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+    },
+    promoRetryButtonText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+    },
     carouselArrow: {
       width: 38,
       height: 38,
@@ -219,6 +244,9 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.colors.surface,
+    },
+    carouselArrowDisabled: {
+      opacity: theme.opacity.disabled,
     },
     promoList: {
       paddingHorizontal: theme.spacing.sm,
@@ -237,6 +265,14 @@ const createStyles = (theme: Theme) =>
       width: 100,
       height: 100,
       resizeMode: "contain",
+    },
+    promoFallbackImage: {
+      width: 100,
+      height: 100,
+      borderRadius: theme.radius.md,
+      backgroundColor: theme.colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
     },
     promoName: {
       marginTop: theme.spacing.sm,
@@ -257,7 +293,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontWeight: "700",
       fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
+      color: theme.colors.primary,
       textAlign: "center",
     },
     promoUnit: {

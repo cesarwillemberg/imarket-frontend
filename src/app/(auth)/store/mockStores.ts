@@ -5,6 +5,9 @@ export type StorePromotion = {
   originalPrice?: string;
   unit: string;
   image: string;
+  priceValue?: number | null;
+  originalPriceValue?: number | null;
+  discountValue?: number | null;
 };
 
 export type StoreInfoBlock = {
