@@ -141,12 +141,17 @@ const createStyles = (theme: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+      marginBottom: theme.spacing.sm,
     },
     sectionTitle: {
       fontFamily: theme.fonts.regular,
       fontWeight: "700",
       fontSize: theme.fontSizes.gl,
       color: theme.colors.text,
+      letterSpacing: 0.2,
+      textDecorationLine: "underline",
+      textDecorationStyle: "solid",
+      textDecorationColor: theme.colors.text,
     },
     sectionText: {
       marginTop: theme.spacing.sm,
@@ -154,6 +159,7 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
       lineHeight: 20,
+      textAlign: "justify",
     },
     sectionLinkWrapper: {
       paddingVertical: theme.spacing.xs,
@@ -162,7 +168,11 @@ const createStyles = (theme: Theme) =>
     sectionLink: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
+      fontWeight: "700",
       color: theme.colors.primary,
+      textDecorationLine: "underline",
+      textDecorationStyle: "solid",
+      textDecorationColor: theme.colors.primary,
     },
     infoRow: {
       flexDirection: "row",
@@ -171,6 +181,13 @@ const createStyles = (theme: Theme) =>
     },
     infoColumn: {
       flex: 1,
+    },
+    infoScheduleHeading: {
+      fontFamily: theme.fonts.regular,
+      fontWeight: "700",
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+      marginBottom: theme.spacing.xs,
     },
     infoItem: {
       marginBottom: theme.spacing.sm,
@@ -259,8 +276,12 @@ const createStyles = (theme: Theme) =>
     footerLink: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
+      fontWeight: "700",
       color: theme.colors.primary,
       textAlign: "center",
+      textDecorationLine: "underline",
+      textDecorationStyle: "solid",
+      textDecorationColor: theme.colors.primary,
     },
     notFoundContainer: {
       flex: 1,

@@ -868,6 +868,9 @@ export default function StoreProfile() {
               ))}
             </View>
             <View style={styles.infoColumn}>
+              {workingHoursToDisplay.length ? (
+                <Text style={styles.infoScheduleHeading}>Horario de Atendimento:</Text>
+              ) : null}
               {workingHoursToDisplay.map((item) => (
                 <View style={styles.infoItem} key={item.label}>
                   <Text style={styles.infoLabel}>{item.label}</Text>
