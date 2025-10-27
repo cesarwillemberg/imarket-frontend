@@ -120,6 +120,7 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
     },
     productInfo: {
+      marginLeft: theme.spacing.md,
       flex: 1,
     },
     productName: {
@@ -157,18 +158,6 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.xs,
       color: theme.colors.disabled,
       marginTop: theme.spacing.xs,
-    },
-    productLink: {
-      alignSelf: "flex-start",
-      paddingHorizontal: theme.spacing.xs,
-      marginLeft: theme.spacing.md,
-      marginTop: theme.spacing.sm,
-    },
-    productLinkText: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.primary,
-      textDecorationLine: "underline",
     },
     emptyState: {
       paddingVertical: theme.spacing.xl,
@@ -323,6 +312,8 @@ const createStyles = (theme: Theme) =>
     },
     priceInputWrapper: {
       flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.lg,
       borderWidth: theme.size.xs,
@@ -333,6 +324,7 @@ const createStyles = (theme: Theme) =>
     },
     priceInputWrapperLast: {
       marginRight: 0,
+      flexDirection: "row",
     },
     priceInputLabel: {
       fontFamily: theme.fonts.regular,

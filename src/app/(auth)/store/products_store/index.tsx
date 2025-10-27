@@ -25,6 +25,7 @@ import createStyles from "./styled";
 type LocalSearchParams = {
   storeId?: string;
   storeName?: string;
+  onlyPromotion?: string;
 };
 
 type RawProduct = Record<string, unknown> & { id?: string };
@@ -231,15 +232,26 @@ export default function StoreProductsScreen() {
   const router = useRouter();
 
   const { getProductsByStoreId, getImageProduct } = useSession();
-  const { storeId, storeName } = useLocalSearchParams<LocalSearchParams>();
+  const { storeId, storeName, onlyPromotion } = useLocalSearchParams<LocalSearchParams>();
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
+  const [filters, setFilters] = useState<Filters>(() => {
+    const baseFilters = createDefaultFilters();
+    if (onlyPromotion && ["true", "1"].includes(String(onlyPromotion).toLowerCase())) {
+      return {
+        ...baseFilters,
+        onlyPromotion: true,
+      };
+    }
+    return baseFilters;
+  });
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
-  const [draftOnlyPromotion, setDraftOnlyPromotion] = useState(false);
+  const [draftOnlyPromotion, setDraftOnlyPromotion] = useState(
+    Boolean(onlyPromotion && ["true", "1"].includes(String(onlyPromotion).toLowerCase()))
+  );
   const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
@@ -476,7 +488,11 @@ export default function StoreProductsScreen() {
     };
 
     return (
-      <View style={styles.productCard}>
+      <TouchableOpacity
+        style={styles.productCard}
+        onPress={navigateToProduct}
+        activeOpacity={0.7}
+      >
         <View style={styles.productImageWrapper}>
           {item.imageUrl ? (
             <Image
@@ -520,15 +536,7 @@ export default function StoreProductsScreen() {
             <Text style={styles.productCode}>Cod: {item.code}</Text>
           ) : null}
         </View>
-
-        <TouchableOpacity
-          onPress={navigateToProduct}
-          style={styles.productLink}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.productLinkText}>Ver Produto</Text>
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
     );
   };
 

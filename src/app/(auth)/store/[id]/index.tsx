@@ -1163,7 +1163,11 @@ export default function StoreProfile() {
               onPress={() =>
                 router.push({
                   pathname: "/(auth)/store/products_store",
-                  params: { storeId: store.id, storeName: store.name },
+                  params: {
+                    storeId: store.id,
+                    storeName: store.name,
+                    onlyPromotion: "true",
+                  },
                 })
               }
               activeOpacity={0.7}
