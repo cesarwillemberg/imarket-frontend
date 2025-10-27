@@ -1162,7 +1162,7 @@ export default function StoreProfile() {
             <TouchableOpacity
               onPress={() =>
                 router.push({
-                  pathname: "/(auth)/store/products_sotre",
+                  pathname: "/(auth)/store/products_store",
                   params: { storeId: store.id, storeName: store.name },
                 })
               }
@@ -1281,7 +1281,7 @@ export default function StoreProfile() {
         <TouchableOpacity
           onPress={() =>
             router.push({
-              pathname: "/(auth)/store/products_sotre",
+              pathname: "/(auth)/store/products_store",
               params: { storeId: store.id, storeName: store.name },
             })
           }
