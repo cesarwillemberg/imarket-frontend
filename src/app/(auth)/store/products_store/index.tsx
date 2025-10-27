@@ -40,6 +40,7 @@ type Product = {
   unit?: string | null;
   code?: string | null;
   category?: string | null;
+  inPromotion: boolean;
 };
 
 const parseCurrencyValue = (value: unknown): number | null => {
@@ -63,6 +64,20 @@ const pickFirstValue = (source: RawProduct, keys: string[]): unknown => {
     }
   }
   return undefined;
+};
+
+const parseBooleanValue = (value: unknown): boolean => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["true", "1", "yes", "sim"].includes(normalized);
+  }
+  return false;
 };
 
 const mapRawProduct = (rawProduct: RawProduct): Product | null => {
@@ -107,6 +122,18 @@ const mapRawProduct = (rawProduct: RawProduct): Product | null => {
 
   const currentPrice = parseCurrencyValue(currentPriceRaw ?? basePriceRaw);
   const basePrice = parseCurrencyValue(basePriceRaw);
+  const promotionFlagRaw = pickFirstValue(rawProduct, [
+    "in_promotion",
+    "inPromotion",
+    "has_promotion",
+    "hasPromotion",
+    "is_promotion",
+    "isPromotion",
+  ]);
+  const explicitPromotion = parseBooleanValue(promotionFlagRaw);
+  const derivedPromotion =
+    basePrice !== null && currentPrice !== null && basePrice > currentPrice;
+  const inPromotion = explicitPromotion || derivedPromotion;
 
   return {
     id: String(identifier),
@@ -118,6 +145,7 @@ const mapRawProduct = (rawProduct: RawProduct): Product | null => {
     unit: typeof unitRaw === "string" ? unitRaw : null,
     code: typeof codeRaw === "string" ? codeRaw : typeof codeRaw === "number" ? String(codeRaw) : null,
     category: typeof categoryRaw === "string" ? categoryRaw : null,
+    inPromotion,
   };
 };
 
@@ -342,10 +370,12 @@ export default function StoreProductsScreen() {
       const matchesSearch = !hasSearch || haystack.includes(normalizedSearch);
 
       const priceValue = product.price ?? product.originalPrice;
-      const isPromotional =
+      const hasDiscount =
         product.originalPrice !== null &&
         product.price !== null &&
         product.originalPrice > product.price;
+
+      const isPromotional = product.inPromotion || hasDiscount;
 
       const matchesPromotion = !filters.onlyPromotion || isPromotional;
 
