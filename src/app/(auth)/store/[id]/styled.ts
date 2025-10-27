@@ -215,6 +215,8 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
       gap: theme.spacing.sm,
+      borderBottomWidth: theme.size.xs,
+      borderBottomColor: theme.colors.border,
     },
     promoFeedbackText: {
       fontFamily: theme.fonts.regular,
@@ -305,8 +307,6 @@ const createStyles = (theme: Theme) =>
       marginTop: theme.spacing.xl,
       marginHorizontal: theme.spacing.lg,
       paddingVertical: theme.spacing.md,
-      borderTopWidth: theme.size.xs,
-      borderTopColor: theme.colors.border,
       alignItems: "center",
     },
     footerLink: {

@@ -1221,33 +1221,46 @@ export default function StoreProfile() {
                 }}
                 scrollEventThrottle={16}
               >
-                {promotionsToDisplay.map((promo) => (
-                  <View style={styles.promoCard} key={promo.id}>
-                    {promo.image ? (
-                      <Image source={{ uri: promo.image }} style={styles.promoImage} />
-                    ) : (
-                      <View style={styles.promoFallbackImage}>
-                        <Icon
-                          type="MaterialCommunityIcons"
-                          name="package-variant-closed"
-                          size={30}
-                          color={theme.colors.disabled}
-                        />
-                      </View>
-                    )}
-                    <Text style={styles.promoName} numberOfLines={2}>
-                      {promo.name}
-                    </Text>
-                    {promo.originalPrice ? (
-                      <Text style={styles.promoOriginal}>
-                        De {promo.originalPrice}
+                {promotionsToDisplay.map((promo) => {
+                  const handleNavigateToProduct = () =>
+                    router.push({
+                      pathname: "/(auth)/store/products_store/[id_product]",
+                      params: { id_product: promo.id },
+                    });
+
+                  return (
+                    <TouchableOpacity
+                      key={promo.id}
+                      style={styles.promoCard}
+                      activeOpacity={0.75}
+                      onPress={handleNavigateToProduct}
+                    >
+                      {promo.image ? (
+                        <Image source={{ uri: promo.image }} style={styles.promoImage} />
+                      ) : (
+                        <View style={styles.promoFallbackImage}>
+                          <Icon
+                            type="MaterialCommunityIcons"
+                            name="package-variant-closed"
+                            size={30}
+                            color={theme.colors.disabled}
+                          />
+                        </View>
+                      )}
+                      <Text style={styles.promoName} numberOfLines={2}>
+                        {promo.name}
                       </Text>
-                    ) : null}
-                    <Text style={styles.promoPrice}>
-                      Por {promo.price} <Text style={styles.promoUnit}>{promo.unit}</Text>
-                    </Text>
-                  </View>
-                ))}
+                      {promo.originalPrice ? (
+                        <Text style={styles.promoOriginal}>
+                          De {promo.originalPrice}
+                        </Text>
+                      ) : null}
+                      <Text style={styles.promoPrice}>
+                        Por {promo.price} <Text style={styles.promoUnit}>{promo.unit}</Text>
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
 
               <TouchableOpacity
