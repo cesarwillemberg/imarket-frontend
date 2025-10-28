@@ -246,6 +246,24 @@ export default function StoreScreen() {
     ? `${filters.city} - ${filters.state}`
     : filters.state ?? "Selecionar local";
 
+  const hasFilterOverrides = useMemo(
+    () =>
+      (filters.state ?? null) !== DEFAULT_FILTERS.state ||
+      (filters.city ?? null) !== DEFAULT_FILTERS.city ||
+      (filters.radiusKm ?? null) !== DEFAULT_FILTERS.radiusKm,
+    [filters]
+  );
+
+  const hasVisibleFilters = useMemo(
+    () =>
+      Boolean(
+        (filters.state && filters.state.length) ||
+          (filters.city && filters.city.length) ||
+          filters.radiusKm !== null
+      ),
+    [filters.city, filters.radiusKm, filters.state]
+  );
+
   const mapStoreFromApi = useCallback(
     (raw: any): Store => {
       const ensureString = (value: unknown, fallback = ""): string => {
@@ -922,6 +940,120 @@ export default function StoreScreen() {
     }));
   };
 
+  const handleResetFilters = useCallback(() => {
+    setFilters({
+      state: null,
+      city: null,
+      radiusKm: null,
+    });
+  }, []);
+
+  const renderListHeader = useCallback(() => {
+    const filterIconColor = theme.colors.primary;
+
+    return (
+      <View style={styles.listHeader}>
+        <View style={styles.searchRow}>
+          <SearchBar
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            placeholder="Pesquisar..."
+          />
+        </View>
+
+        <View style={styles.filtersSection}>
+          <View style={styles.filterActionsRow}>
+            <TouchableOpacity
+              onPress={handleOpenFilters}
+              style={styles.filterShortcut}
+              accessibilityRole="button"
+              activeOpacity={0.7}
+              accessibilityLabel="Abrir filtros"
+            >
+              <Icon type="feather" name="sliders" size={18} color={filterIconColor} />
+            </TouchableOpacity>
+
+            {hasVisibleFilters ? (
+              <TouchableOpacity onPress={handleResetFilters} style={styles.clearFiltersButton} activeOpacity={0.7}>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="broom"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <View style={styles.filterChipsWrapper}>
+            {filters.city || filters.state ? (
+              <View style={styles.filterChip}>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="map-marker"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.filterChipText}>{locationLabel}</Text>
+                <TouchableOpacity
+                  onPress={handleClearLocation}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar localidade"
+                  style={styles.filterChipRemove}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {filters.radiusKm !== null ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{filters.radiusKm} km</Text>
+                <TouchableOpacity
+                  onPress={handleClearRadius}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar raio"
+                  style={styles.filterChipRemove}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    );
+  }, [
+    filters.city,
+    filters.radiusKm,
+    filters.state,
+    handleClearLocation,
+    handleClearRadius,
+    handleOpenFilters,
+    handleResetFilters,
+    hasFilterOverrides,
+    hasVisibleFilters,
+    locationLabel,
+    searchTerm,
+    setSearchTerm,
+    styles,
+    theme.colors.onPrimary,
+    theme.colors.primary,
+  ]);
+
   const renderEmptyState = () => {
     if (isLoadingStores) {
       return (
@@ -1102,82 +1234,13 @@ export default function StoreScreen() {
       <View style={styles.container}>
         <HeaderScreen title="Lojas" />
         <View style={styles.content}>
-          <View style={styles.searchRow}>
-            <SearchBar
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-              placeholder="Search..."
-            />
-          </View>
-
-          <View style={styles.locationRow}>
-            <TouchableOpacity
-              onPress={handleOpenFilters}
-              style={styles.filterShortcut}
-              accessibilityRole="button"
-              activeOpacity={0.7}
-              accessibilityLabel="Abrir filtros"
-            >
-              <Icon type="feather" name="sliders" size={18} color={theme.colors.primary} />
-            </TouchableOpacity>
-
-            <View style={styles.filterChipsWrapper}>
-              {filters.city || filters.state ? (
-                <View style={styles.filterChip}>
-                  <Icon
-                    type="MaterialCommunityIcons"
-                    name="map-marker"
-                    size={16}
-                    color={theme.colors.primary}
-                  />
-                  <Text style={styles.filterChipText}>{locationLabel}</Text>
-                  <TouchableOpacity
-                    onPress={handleClearLocation}
-                    accessibilityRole="button"
-                    accessibilityLabel="Limpar localidade"
-                    style={styles.filterChipRemove}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="close-circle"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-
-              {filters.radiusKm !== null ? (
-                <View style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>
-                    {filters.radiusKm} km
-                  </Text>
-                  <TouchableOpacity
-                    onPress={handleClearRadius}
-                    accessibilityRole="button"
-                    accessibilityLabel="Limpar raio"
-                    style={styles.filterChipRemove}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="close-circle"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-            </View>
-          </View>
-
           <FlatList
             data={filteredStores}
             keyExtractor={(item) => item.id}
             renderItem={renderStore}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={listContentStyle}
+            ListHeaderComponent={renderListHeader}
             ListEmptyComponent={renderEmptyState()}
             refreshing={isLoadingStores}
             onRefresh={() => {
@@ -1475,6 +1538,4 @@ const FilterModal = ({
     </Modal>
   );
 };
-
-
 
