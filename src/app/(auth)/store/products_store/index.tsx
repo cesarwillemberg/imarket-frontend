@@ -451,9 +451,11 @@ export default function StoreProductsScreen() {
       nextMaxPrice !== null &&
       nextMinPrice > nextMaxPrice
     ) {
-      const temp = nextMinPrice;
-      nextMinPrice = nextMaxPrice;
-      nextMaxPrice = temp;
+      Alert.alert(
+        "Filtro invalido",
+        "O valor minimo nao pode ser maior que o valor maximo."
+      );
+      return;
     }
 
     setFilters({
