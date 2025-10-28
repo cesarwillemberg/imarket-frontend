@@ -1,6 +1,8 @@
 import { supabase } from "@/src/lib/supabase";
 import addressService from "@/src/services/address-service";
 import authService, { UserInfo } from "@/src/services/auth-service";
+import productService from "@/src/services/products-service";
+import storeService from "@/src/services/store-service";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Session, User } from "@supabase/supabase-js";
 import { useRouter } from "expo-router";
@@ -92,6 +94,15 @@ interface SessionContextProps {
     complement?: string;
     postal_code?: string;
   }) => Promise<{ data: any; error: any }>;
+  getStores: () => Promise<{ data: any; error: any }>;
+  getStoreById: (storeId: string) => Promise<{ data: any; error: any }>;
+  getStoreRatings: (storeId: string) => Promise<{ data: any; error: any }>;
+  getStoreRatingsAverage: (storeId: string) => Promise<{ data: any; error: any }>;
+  getAddressesStore: (storeId: string) => Promise<{ data: any; error: any }>;
+  getStoreSchedule: (storeId: string) => Promise<{ data: any; error: any }>;
+  getProductsByStoreId: (storeId: string) => Promise<{ data: any; error: any }>;
+  getImageProduct: (productId: string) => Promise<{ data: any; error: any }>;
+  getItemPromotionByStore: (storeId: string) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -185,6 +196,33 @@ const SessionContext = createContext<SessionContextProps>({
   }): Promise<{ data: any; error: any }> => {
     throw new Error("PostAddress not implemented.");
   },
+  getStores: async (): Promise<{ data: any; error: any }> => {
+    throw new Error("getStores not implemented.");
+  },
+  getStoreById: async (_storeId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("getStoreById not implemented."); 
+  },
+  getStoreRatings: async (_storeId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("getStoreRatings not implemented.");
+  },
+  getStoreRatingsAverage: async (_storeId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("getStoreRatingsAverage not implemented.");
+  },
+  getAddressesStore: async (storeId: string) => {
+    throw new Error("getAddressesStore not implemented.");
+  },
+  getStoreSchedule: async (storeId: string) => {
+    throw new Error("getStoreSchedule not implemented.");
+  },
+  getProductsByStoreId: async (storeId: string) => {
+    throw new Error("getProductsByStoreId not implemented.");
+  },
+  getImageProduct: async (_productId: string) => {
+    throw new Error("getImageProduct not implemented.");
+  },
+  getItemPromotionByStore: async (_storeId: string) => {
+    throw new Error("getItemPromotionByStore not implemented.");
+  }
 
 });
 
@@ -272,8 +310,6 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    // router.dismissAll();
-    // router.replace("/");
     router.replace("/signin");
     setSession(null);
   };
@@ -429,6 +465,96 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const getStores = async (): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStores();
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar lojas:", error);
+      return { data: null, error };
+    }
+  };
+
+  const getStoreRatings = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStoreRatings(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar avaliações da loja:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getStoreRatingsAverage = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStoreRatingsAverage(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar avaliações da loja:", error);
+      return { data: null, error };
+    }
+  };
+
+  const getAddressesStore = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getAddressesStore(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar endereços da loja:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getStoreById = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStoreById(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar loja:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getStoreSchedule = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getStoreSchedule(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("❌ SessionContext: Erro ao buscar horário da loja:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getProductsByStoreId = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await productService.getProductsByStoreId(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar produtos da loja:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getImageProduct = async (productId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await productService.getImageProduct(productId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar imagem do produto:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getItemPromotionByStore = async (storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await productService.getItemPromotionByStore(storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar promocoes da loja:", error);
+      return { data: null, error };
+    }
+  }
+
   return (
     <SessionContext.Provider
       value={{
@@ -450,6 +576,15 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         deleteAddress,
         changeDefaultAddress,
         checkDuplicity,
+        getStores,
+        getStoreRatings,
+        getStoreRatingsAverage,
+        getAddressesStore,
+        getStoreById,
+        getStoreSchedule,
+        getProductsByStoreId,
+        getImageProduct,
+        getItemPromotionByStore,
       }}
     >
       {children}
