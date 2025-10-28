@@ -79,13 +79,13 @@ const createStyles = (theme: Theme) =>
       marginLeft: theme.spacing.xs,
     },
     clearFiltersWrapper: {
-      marginLeft: theme.spacing.sm,
+      marginLeft: theme.spacing.sx,
     },
     clearFiltersButton: {
       flexDirection: "row",
       alignItems: "center",
       borderWidth: theme.size.xs,
-      marginRight: theme.spacing.sm,
+      marginRight: theme.spacing.sx,
       borderRadius: theme.radius.full,
       paddingVertical: theme.spacing.xs,
       borderColor: theme.colors.primary,
