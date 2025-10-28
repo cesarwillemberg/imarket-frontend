@@ -11,8 +11,13 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Modal,
+  Platform,
+  Pressable,
   RefreshControl,
+  ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -26,6 +31,7 @@ type ProductListItem = {
   name: string;
   storeId: string | null;
   storeName: string | null;
+  category: string | null;
   unit: string | null;
   code: string | null;
   price: number | null;
@@ -149,6 +155,77 @@ const extractStoreName = (store: Record<string, unknown> | null | undefined): st
   return null;
 };
 
+const FILTER_CATEGORIES = [
+  "Padaria",
+  "Acougue",
+  "Hortifruti",
+  "Nao Pereciveis",
+  "Laticinios e Frios",
+  "Bebidas",
+  "Congelados",
+  "Limpeza",
+  "Higiene Pessoal e Perfumaria",
+  "Outros",
+] as const;
+
+type FilterCategory = (typeof FILTER_CATEGORIES)[number];
+
+type Filters = {
+  onlyPromotion: boolean;
+  categories: FilterCategory[];
+  minPrice: number | null;
+  maxPrice: number | null;
+};
+
+const NON_OUTROS_CATEGORIES: FilterCategory[] = FILTER_CATEGORIES.filter(
+  (category) => category !== "Outros"
+) as FilterCategory[];
+
+const createDefaultFilters = (): Filters => ({
+  onlyPromotion: false,
+  categories: [],
+  minPrice: null,
+  maxPrice: null,
+});
+
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const isSameCategory = (categoryA: string | null | undefined, categoryB: FilterCategory) => {
+  if (!categoryA) return false;
+  const normalizedA = normalizeText(categoryA);
+  const normalizedB = normalizeText(categoryB);
+  return (
+    normalizedA === normalizedB ||
+    normalizedA.includes(normalizedB) ||
+    normalizedB.includes(normalizedA)
+  );
+};
+
+const formatCurrencyInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits.length) {
+    return "";
+  }
+  const numberValue = Number(digits) / 100;
+  return currencyFormatter.format(numberValue);
+};
+
+const parseCurrencyInput = (value: string): number | null => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits.length) {
+    return null;
+  }
+  return Number(digits) / 100;
+};
+
+const formatCurrencyFromNumber = (value: number | null) =>
+  value !== null ? currencyFormatter.format(value) : "";
+
 const mapProduct = (raw: RawProduct): ProductListItem | null => {
   const identifier =
     raw.id ??
@@ -181,6 +258,13 @@ const mapProduct = (raw: RawProduct): ProductListItem | null => {
   ]);
   const unitRaw = pickFirstValue(raw, ["unit", "unit_label", "measure_unit"]);
   const codeRaw = pickFirstValue(raw, ["code", "sku", "ean", "barcode"]);
+  const categoryRaw = pickFirstValue(raw, [
+    "category",
+    "category_name",
+    "department",
+    "section",
+    "segment",
+  ]);
 
   const basePriceRaw = pickFirstValue(raw, [
     "price",
@@ -294,6 +378,8 @@ const mapProduct = (raw: RawProduct): ProductListItem | null => {
       typeof nameRaw === "string" && nameRaw.trim().length ? nameRaw : "Produto",
     storeId,
     storeName,
+    category:
+      typeof categoryRaw === "string" && categoryRaw.trim().length ? categoryRaw : null,
     unit:
       typeof unitRaw === "string" && unitRaw.trim().length ? unitRaw : null,
     code:
@@ -320,8 +406,127 @@ export default function Products() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
+  const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [draftOnlyPromotion, setDraftOnlyPromotion] = useState(false);
+  const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
+  const [draftMinPrice, setDraftMinPrice] = useState("");
+  const [draftMaxPrice, setDraftMaxPrice] = useState("");
 
   const storeCache = useMemo(() => new Map<string, string | null>(), []);
+
+  const hasActiveFilters = useMemo(
+    () =>
+      filters.onlyPromotion ||
+      filters.categories.length > 0 ||
+      filters.minPrice !== null ||
+      filters.maxPrice !== null,
+    [filters]
+  );
+
+  const hasFilterOverrides = hasActiveFilters;
+  const hasVisibleFilters = hasActiveFilters;
+
+  const priceRangeLabel = useMemo(() => {
+    if (filters.minPrice !== null && filters.maxPrice !== null) {
+      return `De: ${currencyFormatter.format(filters.minPrice)} Até ${currencyFormatter.format(
+        filters.maxPrice
+      )}`;
+    }
+    if (filters.minPrice !== null) {
+      return `A partir de ${currencyFormatter.format(filters.minPrice)}`;
+    }
+    if (filters.maxPrice !== null) {
+      return `Até ${currencyFormatter.format(filters.maxPrice)}`;
+    }
+    return "";
+  }, [filters.maxPrice, filters.minPrice]);
+
+  const priceKeyboardType = Platform.OS === "ios" ? "number-pad" : "numeric";
+
+  const handleFilterButtonPress = useCallback(() => {
+    setDraftOnlyPromotion(filters.onlyPromotion);
+    setDraftCategories(filters.categories);
+    setDraftMinPrice(formatCurrencyFromNumber(filters.minPrice));
+    setDraftMaxPrice(formatCurrencyFromNumber(filters.maxPrice));
+    setIsFilterModalVisible(true);
+  }, [filters]);
+
+  const handleCancelFilters = useCallback(() => {
+    setIsFilterModalVisible(false);
+  }, []);
+
+  const handleApplyFilters = useCallback(() => {
+    const minPriceValue = parseCurrencyInput(draftMinPrice);
+    const maxPriceValue = parseCurrencyInput(draftMaxPrice);
+
+    let nextMinPrice = minPriceValue;
+    let nextMaxPrice = maxPriceValue;
+
+    if (
+      nextMinPrice !== null &&
+      nextMaxPrice !== null &&
+      nextMinPrice > nextMaxPrice
+    ) {
+      const temp = nextMinPrice;
+      nextMinPrice = nextMaxPrice;
+      nextMaxPrice = temp;
+    }
+
+    setFilters({
+      onlyPromotion: draftOnlyPromotion,
+      categories: [...draftCategories],
+      minPrice: nextMinPrice,
+      maxPrice: nextMaxPrice,
+    });
+    setIsFilterModalVisible(false);
+  }, [draftCategories, draftMaxPrice, draftMinPrice, draftOnlyPromotion]);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(createDefaultFilters());
+    setDraftOnlyPromotion(false);
+    setDraftCategories([]);
+    setDraftMinPrice("");
+    setDraftMaxPrice("");
+  }, []);
+
+  const handleRemoveCategoryFilter = useCallback((category: FilterCategory) => {
+    setFilters((current) => ({
+      ...current,
+      categories: current.categories.filter((item) => item !== category),
+    }));
+  }, []);
+
+  const handleRemovePromotionFilter = useCallback(() => {
+    setFilters((current) => ({
+      ...current,
+      onlyPromotion: false,
+    }));
+  }, []);
+
+  const handleRemovePriceFilter = useCallback(() => {
+    setFilters((current) => ({
+      ...current,
+      minPrice: null,
+      maxPrice: null,
+    }));
+  }, []);
+
+  const toggleDraftCategory = useCallback((category: FilterCategory) => {
+    setDraftCategories((current) =>
+      current.includes(category)
+        ? current.filter((item) => item !== category)
+        : [...current, category]
+    );
+  }, []);
+
+  const handleDraftMinPriceChange = useCallback((value: string) => {
+    setDraftMinPrice(formatCurrencyInput(value));
+  }, []);
+
+  const handleDraftMaxPriceChange = useCallback((value: string) => {
+    setDraftMaxPrice(formatCurrencyInput(value));
+  }, []);
 
   const fetchProductImage = useCallback(async (product: ProductListItem) => {
     try {
@@ -437,18 +642,177 @@ export default function Products() {
   }, [loadProducts]);
 
   const filteredProducts = useMemo(() => {
-    if (!searchTerm.trim()) {
-      return products;
-    }
+    const needle = searchTerm.trim().toLowerCase();
 
-    const needle = searchTerm.toLowerCase();
     return products.filter((product) => {
-      const nameMatch = product.name?.toLowerCase().includes(needle);
-      const codeMatch = product.code?.toLowerCase().includes(needle);
-      const storeMatch = product.storeName?.toLowerCase().includes(needle);
-      return Boolean(nameMatch || codeMatch || storeMatch);
+      const matchesSearch =
+        !needle ||
+        product.name?.toLowerCase().includes(needle) ||
+        product.code?.toLowerCase().includes(needle) ||
+        product.storeName?.toLowerCase().includes(needle);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
+      if (filters.onlyPromotion && !product.inPromotion) {
+        return false;
+      }
+
+      if (filters.categories.length) {
+        const matchesCategory = filters.categories.some((category) => {
+          if (category === "Outros") {
+            const matchesKnown = NON_OUTROS_CATEGORIES.some((knownCategory) =>
+              isSameCategory(product.category, knownCategory)
+            );
+            return !matchesKnown;
+          }
+          return isSameCategory(product.category, category);
+        });
+
+        if (!matchesCategory) {
+          return false;
+        }
+      }
+
+      const effectivePrice = product.price ?? product.originalPrice;
+
+      if (filters.minPrice !== null) {
+        if (effectivePrice === null || effectivePrice < filters.minPrice) {
+          return false;
+        }
+      }
+
+      if (filters.maxPrice !== null) {
+        if (effectivePrice === null || effectivePrice > filters.maxPrice) {
+          return false;
+        }
+      }
+
+      return true;
     });
-  }, [products, searchTerm]);
+  }, [filters, products, searchTerm]);
+
+  const renderListHeader = useCallback(() => {
+    const filterIconColor = theme.colors.primary;
+
+    return (
+      <View style={styles.listHeader}>
+        <View style={styles.searchSection}>
+          <SearchBar
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            placeholder="Pesquisar..."
+            containerStyle={styles.searchBar}
+            inputProps={{ autoCapitalize: "none", autoCorrect: false }}
+          />
+        </View>
+
+        <View style={styles.filtersSection}>
+          <View style={styles.filterActionsRow}>
+            <TouchableOpacity
+              onPress={handleFilterButtonPress}
+              style={styles.filterButton}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir filtros"
+              activeOpacity={0.7}
+            >
+              <Icon type="feather" name="sliders" size={18} color={filterIconColor} />
+            </TouchableOpacity>
+
+            {hasVisibleFilters ? (
+              <TouchableOpacity onPress={handleClearFilters} style={styles.clearFiltersButton} activeOpacity={0.7}>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="broom"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          {hasVisibleFilters ? (
+            <View style={styles.filterChipsWrapper}>
+              {filters.onlyPromotion ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>Em promocao</Text>
+                  <TouchableOpacity
+                    onPress={handleRemovePromotionFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {filters.categories.map((category) => (
+                <View key={category} style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>{category}</Text>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveCategoryFilter(category)}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              {priceRangeLabel ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>{priceRangeLabel}</Text>
+                  <TouchableOpacity
+                    onPress={handleRemovePriceFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+        </View>
+      </View>
+    );
+  }, [
+    filters.categories,
+    filters.onlyPromotion,
+    handleClearFilters,
+    handleFilterButtonPress,
+    handleRemoveCategoryFilter,
+    handleRemovePriceFilter,
+    handleRemovePromotionFilter,
+    hasFilterOverrides,
+    hasVisibleFilters,
+    priceRangeLabel,
+    searchTerm,
+    setSearchTerm,
+    styles,
+    theme.colors.onPrimary,
+    theme.colors.primary,
+  ]);
 
   const renderProductItem = useCallback(
     ({ item }: { item: ProductListItem }) => {
@@ -464,14 +828,13 @@ export default function Products() {
           params: { id_produto: item.id },
         });
       };
-
-        return (
-          <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
-            <View style={styles.cardImageWrapper}>
-              {item.imageUrl ? (
-                <Image
-                  source={{ uri: item.imageUrl }}
-                  style={styles.cardImage}
+      return (
+        <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
+          <View style={styles.cardImageWrapper}>
+            {item.imageUrl ? (
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.cardImage}
                 resizeMode="contain"
               />
             ) : (
@@ -481,16 +844,16 @@ export default function Products() {
             )}
           </View>
 
-            <View style={styles.cardContent}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle} numberOfLines={2}>
-                  {item.name}
-                </Text>
-              </View>
-
-              <Text style={styles.cardStore}>
-                Mercado: {item.storeName ?? "Nao informado"}
+          <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle} numberOfLines={2}>
+                {item.name}
               </Text>
+            </View>
+
+            <Text style={styles.cardStore}>
+              Vendido por: {item.storeName ?? "Nao informado"}
+            </Text>
 
             {formattedOriginalPrice ? (
               <Text style={styles.cardOriginalPrice}>De {formattedOriginalPrice}</Text>
@@ -506,14 +869,14 @@ export default function Products() {
             )}
 
             {item.code ? <Text style={styles.cardCode}>Cod: {item.code}</Text> : null}
-            </View>
-          </TouchableOpacity>
-        );
-      },
-      [router, styles, theme.colors.disabled]
-    );
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [router, styles, theme.colors.disabled]
+  );
 
-  const renderList = () => {
+  const renderEmptyState = () => {
     if (isLoading) {
       return (
         <View style={styles.feedbackWrapper}>
@@ -527,60 +890,206 @@ export default function Products() {
       return (
         <View style={styles.feedbackWrapper}>
           <Text style={styles.feedbackText}>{error}</Text>
-          <TouchableOpacity onPress={() => loadProducts()} style={styles.retryButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={loadProducts} style={styles.retryButton} activeOpacity={0.7}>
             <Text style={styles.retryButtonText}>Tentar novamente</Text>
           </TouchableOpacity>
         </View>
       );
     }
 
-    if (!filteredProducts.length) {
+    if (hasActiveFilters) {
       return (
         <View style={styles.feedbackWrapper}>
-          <Text style={styles.feedbackText}>Nenhum produto encontrado.</Text>
-          {products.length > 0 ? (
-            <TouchableOpacity onPress={() => setSearchTerm("")} style={styles.retryButton} activeOpacity={0.7}>
-              <Text style={styles.retryButtonText}>Limpar busca</Text>
-            </TouchableOpacity>
-          ) : null}
+          <Text style={styles.feedbackText}>Nenhum produto encontrado para os filtros selecionados.</Text>
+          <TouchableOpacity onPress={handleClearFilters} style={styles.retryButton} activeOpacity={0.7}>
+            <Text style={styles.retryButtonText}>Limpar filtros</Text>
+          </TouchableOpacity>
         </View>
       );
     }
 
     return (
-      <FlatList
-        data={filteredProducts}
-        keyExtractor={(item) => item.id}
-        renderItem={renderProductItem}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor={theme.colors.primary} />
-        }
-        ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
-      />
+      <View style={styles.feedbackWrapper}>
+        <Text style={styles.feedbackText}>Nenhum produto encontrado.</Text>
+      </View>
     );
   };
 
   return (
-    <ScreenContainer style={styles.container}>
-      <HeaderScreen title="Produtos" />
+    <>
+      <ScreenContainer style={styles.container}>
+        <HeaderScreen title="Produtos" />
+        <View style={styles.content}>
+          <FlatList
+            data={filteredProducts}
+            keyExtractor={(item) => item.id}
+            renderItem={renderProductItem}
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={renderListHeader}
+            ListEmptyComponent={renderEmptyState}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefreshing}
+                onRefresh={handleRefresh}
+                tintColor={theme.colors.primary}
+              />
+            }
+            ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
+            showsVerticalScrollIndicator={false}
+          />
+        </View>
+      </ScreenContainer>
 
-      <View style={styles.searchSection}>
-        <SearchBar
-          value={searchTerm}
-          onChangeText={setSearchTerm}
-          placeholder="Buscar produtos..."
-          containerStyle={styles.searchBar}
-          inputProps={{ autoCapitalize: "none", autoCorrect: false }}
-        />
-      </View>
-      <View style={styles.filterSection}>
-        <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
-          <Icon type="feather" name="sliders" size={18} color={theme.colors.primary} />
-        </TouchableOpacity>
-      </View>
+      <Modal
+        visible={isFilterModalVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={handleCancelFilters}
+      >
+        <View style={styles.filterModalOverlay}>
+          <Pressable style={styles.filterModalBackdrop} onPress={handleCancelFilters} />
+          <View style={styles.filterModalCard}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.filterModalContent}
+              keyboardShouldPersistTaps="handled"
+            >
+              <Text style={styles.filterModalTitle}>Filtros</Text>
 
-      {renderList()}
-    </ScreenContainer>
+              <TouchableOpacity
+                onPress={() => setDraftOnlyPromotion((current) => !current)}
+                style={[
+                  styles.filterCheckboxRow,
+                  draftOnlyPromotion && styles.filterCheckboxRowActive,
+                ]}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.filterCheckbox,
+                    draftOnlyPromotion && styles.filterCheckboxSelected,
+                  ]}
+                >
+                  {draftOnlyPromotion ? (
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="check"
+                      size={16}
+                      color={theme.colors.onPrimary}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.filterCheckboxLabel,
+                    draftOnlyPromotion && styles.filterCheckboxLabelActive,
+                  ]}
+                >
+                  Em promocao
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Categorias</Text>
+
+                <View style={styles.categoriesGrid}>
+                  {FILTER_CATEGORIES.map((category) => {
+                    const isSelected = draftCategories.includes(category);
+                    return (
+                      <TouchableOpacity
+                        key={category}
+                        onPress={() => toggleDraftCategory(category)}
+                        style={[
+                          styles.categoryPill,
+                          isSelected && styles.categoryPillSelected,
+                        ]}
+                        activeOpacity={0.75}
+                      >
+                        <View
+                          style={[
+                            styles.categoryCheckbox,
+                            isSelected && styles.categoryCheckboxSelected,
+                          ]}
+                        >
+                          {isSelected ? (
+                            <Icon
+                              type="MaterialCommunityIcons"
+                              name="check"
+                              size={14}
+                              color={theme.colors.onPrimary}
+                            />
+                          ) : null}
+                        </View>
+                        <Text
+                          style={[
+                            styles.categoryLabel,
+                            isSelected && styles.categoryLabelSelected,
+                          ]}
+                        >
+                          {category}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Filtro por preco</Text>
+                <View style={styles.priceInputsRow}>
+                  <View style={styles.priceInputWrapper}>
+                    <Text style={styles.priceInputLabel}>De:</Text>
+                    <TextInput
+                      value={draftMinPrice}
+                      onChangeText={handleDraftMinPriceChange}
+                      placeholder="R$ 00,00"
+                      style={styles.priceInput}
+                      keyboardType={priceKeyboardType}
+                      placeholderTextColor={theme.colors.disabled}
+                    />
+                  </View>
+
+                  <View style={[styles.priceInputWrapper, styles.priceInputWrapperLast]}>
+                    <Text style={styles.priceInputLabel}>Até:</Text>
+                    <TextInput
+                      value={draftMaxPrice}
+                      onChangeText={handleDraftMaxPriceChange}
+                      placeholder="R$ 00,00"
+                      style={styles.priceInput}
+                      keyboardType={priceKeyboardType}
+                      placeholderTextColor={theme.colors.disabled}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.filterActions}>
+                <TouchableOpacity
+                  onPress={handleApplyFilters}
+                  style={styles.applyFiltersButton}
+                  activeOpacity={0.8}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="filter"
+                    size={18}
+                    color={theme.colors.onPrimary}
+                  />
+                  <Text style={styles.applyFiltersText}>Aplicar filtros</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={handleCancelFilters}
+                  style={styles.cancelFiltersButton}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelFiltersText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }

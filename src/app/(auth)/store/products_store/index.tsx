@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   ListRenderItemInfo,
@@ -414,17 +415,17 @@ export default function StoreProductsScreen() {
 
   const priceRangeLabel = useMemo(() => {
     if (filters.minPrice !== null && filters.maxPrice !== null) {
-      return `De: ${currencyFormatter.format(filters.minPrice)} ate ${currencyFormatter.format(
+      return `De: ${currencyFormatter.format(filters.minPrice)} Até ${currencyFormatter.format(
         filters.maxPrice
       )}`;
-  }
-  if (filters.minPrice !== null) {
-    return `A partir de ${currencyFormatter.format(filters.minPrice)}`;
-  }
-  if (filters.maxPrice !== null) {
-    return `Ate ${currencyFormatter.format(filters.maxPrice)}`;
-  }
-  return "";
+    }
+    if (filters.minPrice !== null) {
+      return `A partir de ${currencyFormatter.format(filters.minPrice)}`;
+    }
+    if (filters.maxPrice !== null) {
+      return `Até ${currencyFormatter.format(filters.maxPrice)}`;
+    }
+    return "";
 }, [filters.maxPrice, filters.minPrice]);
 
   const handleFilterButtonPress = () => {
@@ -889,7 +890,7 @@ export default function StoreProductsScreen() {
                   <View
                     style={[styles.priceInputWrapper, styles.priceInputWrapperLast]}
                   >
-                    <Text style={styles.priceInputLabel}>Ate:</Text>
+                    <Text style={styles.priceInputLabel}>Até:</Text>
                     <TextInput
                       value={draftMaxPrice}
                       onChangeText={handleDraftMaxPriceChange}
