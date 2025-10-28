@@ -417,15 +417,16 @@ export default function StoreProductsScreen() {
       return `De: ${currencyFormatter.format(filters.minPrice)} ate ${currencyFormatter.format(
         filters.maxPrice
       )}`;
-    }
-    if (filters.minPrice !== null) {
-      return `A partir De: ${currencyFormatter.format(filters.minPrice)}`;
-    }
-    if (filters.maxPrice !== null) {
-      return `Ate ${currencyFormatter.format(filters.maxPrice)}`;
-    }
-    return "";
-  }, [filters.maxPrice, filters.minPrice]);
+  }
+  if (filters.minPrice !== null) {
+    return `A partir de ${currencyFormatter.format(filters.minPrice)}`;
+  }
+  if (filters.maxPrice !== null) {
+    return `Ate ${currencyFormatter.format(filters.maxPrice)}`;
+  }
+  return "";
+}, [filters.maxPrice, filters.minPrice]);
+
   const handleFilterButtonPress = () => {
     setDraftOnlyPromotion(filters.onlyPromotion);
     setDraftCategories([...filters.categories]);
@@ -620,150 +621,156 @@ export default function StoreProductsScreen() {
     );
   };
 
+  const renderListHeader = useCallback(() => (
+    <View style={styles.listHeader}>
+      <View style={styles.searchSection}>
+        <SearchBar
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Buscar por nome ou codigo..."
+          containerStyle={styles.searchBar}
+        />
+      </View>
+
+      <View style={styles.filtersSection}>
+        <View style={styles.filterActionsRow}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            activeOpacity={0.7}
+            onPress={handleFilterButtonPress}
+          >
+            <Icon
+              type="feather"
+              name="sliders"
+              size={20}
+              color={theme.colors.primary}
+            />
+          </TouchableOpacity>
+
+          {hasActiveFilters ? (
+            <View style={styles.clearFiltersWrapper}>
+              <TouchableOpacity
+                onPress={handleClearFilters}
+                style={styles.clearFiltersButton}
+                activeOpacity={0.7}
+              >
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="broom"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+
+        {hasActiveFilters ? (
+          <View style={styles.filterChipsWrapper}>
+            {filters.onlyPromotion ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>Em Promocao</Text>
+                <TouchableOpacity
+                  onPress={handleRemovePromotionFilter}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {filters.categories.map((category) => (
+              <View key={category} style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{category}</Text>
+                <TouchableOpacity
+                  onPress={() => handleRemoveCategoryFilter(category)}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {priceRangeLabel ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{priceRangeLabel}</Text>
+                <TouchableOpacity
+                  onPress={handleRemovePriceFilter}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
+      {isLoading ? (
+        <View style={styles.loadingWrapper}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      ) : null}
+    </View>
+  ), [
+    filters.categories,
+    filters.onlyPromotion,
+    hasActiveFilters,
+    handleClearFilters,
+    handleFilterButtonPress,
+    handleRemoveCategoryFilter,
+    handleRemovePriceFilter,
+    handleRemovePromotionFilter,
+    isLoading,
+    priceRangeLabel,
+    searchTerm,
+    styles,
+    theme.colors.onPrimary,
+    theme.colors.primary,
+  ]);
+
   const resolvedTitle =
     storeName && typeof storeName === "string" && storeName.trim().length
       ? `Produtos de ${storeName}`
       : "Produtos da loja";
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-
-    if (filters.onlyPromotion) count += 1;
-
-    count += filters.categories.length;
-
-    if (filters.minPrice !== null || filters.maxPrice !== null) {
-      count += 1; // trata o intervalo de preço como um filtro
-    }
-
-    return count;
-  }, [filters]);
-
 
   return (
     <>
       <ScreenContainer style={styles.container}>
         <HeaderScreen title={resolvedTitle} showButtonBack />
         <View style={styles.content}>
-          <View style={styles.searchSection}>
-            <SearchBar
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-              placeholder="Buscar por nome ou codigo..."
-              containerStyle={styles.searchBar}
-            />
-          </View>
-          <View style={styles.filtersSection}>
-            <View style={styles.filterActionsRow}>
-              <TouchableOpacity
-                style={[styles.filterButton]}
-                activeOpacity={0.7}
-                onPress={handleFilterButtonPress}
-              >
-                <Icon
-                  type="feather"
-                  name="sliders"
-                  size={20}
-                  color={theme.colors.primary}
-                />
-              </TouchableOpacity>
-
-              {hasActiveFilters ? (
-                <View style={styles.clearFiltersWrapper}>
-                  <TouchableOpacity
-                    onPress={handleClearFilters}
-                    style={styles.clearFiltersButton}
-                    activeOpacity={0.7}
-                  >
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="broom"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                    <Text style={styles.clearFiltersText}>Limpar filtros</Text>
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-            </View>
-
-            {hasActiveFilters ? (
-              <View style={styles.filterChipsWrapper}>
-                {filters.onlyPromotion ? (
-                  <View style={styles.filterChip}>
-                    <Text style={styles.filterChipText}>Em Promocao</Text>
-                    <TouchableOpacity
-                      onPress={handleRemovePromotionFilter}
-                      style={styles.filterChipRemove}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Icon
-                        type="MaterialCommunityIcons"
-                        name="close-circle"
-                        size={16}
-                        color={theme.colors.primary}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
-
-                {filters.categories.map((category) => (
-                  <View key={category} style={styles.filterChip}>
-                    <Text style={styles.filterChipText}>{category}</Text>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveCategoryFilter(category)}
-                      style={styles.filterChipRemove}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Icon
-                        type="MaterialCommunityIcons"
-                        name="close-circle"
-                        size={16}
-                        color={theme.colors.primary}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                ))}
-
-                {priceRangeLabel ? (
-                  <View style={styles.filterChip}>
-                    <Text style={styles.filterChipText}>{priceRangeLabel}</Text>
-                    <TouchableOpacity
-                      onPress={handleRemovePriceFilter}
-                      style={styles.filterChipRemove}
-                      activeOpacity={0.7}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <Icon
-                        type="MaterialCommunityIcons"
-                        name="close-circle"
-                        size={16}
-                        color={theme.colors.primary}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
-          </View>
-
-
-          {isLoading ? (
-            <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            </View>
-          ) : null}
-
           <FlatList
             data={filteredProducts}
             keyExtractor={(item) => item.id}
             renderItem={renderProduct}
             style={styles.productsList}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={renderListHeader}
             ListEmptyComponent={listEmptyComponent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           />
         </View>
       </ScreenContainer>

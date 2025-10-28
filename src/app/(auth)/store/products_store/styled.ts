@@ -13,16 +13,21 @@ const createStyles = (theme: Theme) =>
       paddingTop: theme.spacing.lg,
       paddingBottom: theme.spacing.xl,
     },
+    listHeader: {
+      width: "100%",
+      gap: theme.spacing.md,
+      paddingBottom: theme.spacing.md,
+    },
     searchSection: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: theme.spacing.md,
+      marginBottom: 0,
     },
     searchBar: {
       flex: 1,
     },
     filtersSection: {
-      marginBottom: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
       flexDirection: "column",
       alignItems: "stretch",
       width: "100%",
