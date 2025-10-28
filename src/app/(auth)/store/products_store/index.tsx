@@ -656,7 +656,7 @@ export default function StoreProductsScreen() {
           <View style={styles.filtersSection}>
             <View style={styles.filterActionsRow}>
               <TouchableOpacity
-                style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
+                style={[styles.filterButton]}
                 activeOpacity={0.7}
                 onPress={handleFilterButtonPress}
               >
@@ -664,7 +664,7 @@ export default function StoreProductsScreen() {
                   type="feather"
                   name="sliders"
                   size={20}
-                  color={hasActiveFilters ? theme.colors.onPrimary : theme.colors.primary}
+                  color={theme.colors.primary}
                 />
               </TouchableOpacity>
 
