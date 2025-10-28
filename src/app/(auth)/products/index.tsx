@@ -460,18 +460,18 @@ export default function Products() {
 
       const handleNavigate = () => {
         router.push({
-          pathname: "/(auth)/store/products_store/[id_product]",
-          params: { id_product: item.id },
+          pathname: "/(auth)/products/[id_produto]",
+          params: { id_produto: item.id },
         });
       };
 
-      return (
-        <View style={styles.card}>
-          <View style={styles.cardImageWrapper}>
-            {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.cardImage}
+        return (
+          <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
+            <View style={styles.cardImageWrapper}>
+              {item.imageUrl ? (
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  style={styles.cardImage}
                 resizeMode="contain"
               />
             ) : (
@@ -481,19 +481,16 @@ export default function Products() {
             )}
           </View>
 
-          <View style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {item.name}
-              </Text>
-              <TouchableOpacity onPress={handleNavigate} activeOpacity={0.7}>
-                <Text style={styles.cardLink}>Ver Produto</Text>
-              </TouchableOpacity>
-            </View>
+            <View style={styles.cardContent}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle} numberOfLines={2}>
+                  {item.name}
+                </Text>
+              </View>
 
-            <Text style={styles.cardStore}>
-              Mercado: {item.storeName ?? "Nao informado"}
-            </Text>
+              <Text style={styles.cardStore}>
+                Mercado: {item.storeName ?? "Nao informado"}
+              </Text>
 
             {formattedOriginalPrice ? (
               <Text style={styles.cardOriginalPrice}>De {formattedOriginalPrice}</Text>
@@ -509,12 +506,12 @@ export default function Products() {
             )}
 
             {item.code ? <Text style={styles.cardCode}>Cod: {item.code}</Text> : null}
-          </View>
-        </View>
-      );
-    },
-    [router, styles, theme.colors.disabled]
-  );
+            </View>
+          </TouchableOpacity>
+        );
+      },
+      [router, styles, theme.colors.disabled]
+    );
 
   const renderList = () => {
     if (isLoading) {
@@ -566,7 +563,7 @@ export default function Products() {
 
   return (
     <ScreenContainer style={styles.container}>
-      <HeaderScreen title="Produtos" showButtonBack />
+      <HeaderScreen title="Produtos" />
 
       <View style={styles.searchSection}>
         <SearchBar

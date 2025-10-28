@@ -21,14 +21,21 @@ const createStyles = (theme: Theme) =>
     searchBar: {
       flex: 1,
     },
-    filtersSection:{
+    filtersSection: {
       marginBottom: theme.spacing.md,
+      flexDirection: "column",
+      alignItems: "stretch",
+      width: "100%",
+    },
+    filterActionsRow: {
       flexDirection: "row",
       alignItems: "center",
+      gap: theme.spacing.sm,
+      marginBottom: theme.spacing.sm,
     },
     filterButton: {
-      width: 44,
-      height: 44,
+      width: 38,
+      height: 38,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: theme.size.xs,
@@ -40,12 +47,12 @@ const createStyles = (theme: Theme) =>
     filterButtonActive: {
       backgroundColor: theme.colors.primary,
     },
-    activeFiltersContainer: {
+    filterChipsWrapper: {
+      width: "100%",
       flexDirection: "row",
-      flexWrap: "wrap",
       alignItems: "center",
-      marginBottom: theme.spacing.md,
-      marginRight: theme.spacing.md,
+      flexWrap: "wrap",
+      gap: theme.spacing.xs,
     },
     filterChip: {
       flexDirection: "row",
@@ -53,15 +60,21 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.primary,
-      marginRight: theme.spacing.sm,
-      marginBottom: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
     },
     filterChipText: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
-      color: theme.colors.onPrimary,
-      marginRight: theme.spacing.xs,
+      color: theme.colors.text,
+      marginHorizontal: theme.spacing.xs,
+    },
+    filterChipRemove: {
+      marginLeft: theme.spacing.xs,
+    },
+    clearFiltersWrapper: {
+      marginLeft: theme.spacing.sm,
     },
     clearFiltersButton: {
       flexDirection: "row",

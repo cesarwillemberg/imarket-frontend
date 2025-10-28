@@ -26,8 +26,8 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     filterButton: {
-      width: 44,
-      height: 44,
+      width: 38,
+      height: 38,
       borderRadius: theme.radius.full,
       alignItems: "center",
       justifyContent: "center",
@@ -87,12 +87,6 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
-      fontWeight: "600",
-    },
-    cardLink: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.primary,
       fontWeight: "600",
     },
     cardStore: {
