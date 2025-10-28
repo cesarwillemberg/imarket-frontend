@@ -1118,12 +1118,7 @@ export default function StoreScreen() {
               activeOpacity={0.7}
               accessibilityLabel="Abrir filtros"
             >
-              <Icon
-                type="MaterialCommunityIcons"
-                name="tune"
-                size={18}
-                color={theme.colors.primary}
-              />
+              <Icon type="feather" name="sliders" size={18} color={theme.colors.primary} />
             </TouchableOpacity>
 
             <View style={styles.filterChipsWrapper}>

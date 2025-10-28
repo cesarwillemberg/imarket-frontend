@@ -1,6 +1,7 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { Icon } from "@/src/components/common/Icon";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import SearchBar from "@/src/components/common/SearchBar";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
@@ -12,7 +13,6 @@ import {
   Image,
   RefreshControl,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -569,20 +569,15 @@ export default function Products() {
       <HeaderScreen title="Produtos" showButtonBack />
 
       <View style={styles.searchSection}>
-        <View style={styles.searchInputWrapper}>
-          <Icon type="feather" name="search" size={18} color={theme.colors.disabled} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar produtos..."
-            placeholderTextColor={theme.colors.disabled}
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-        </View>
-
+        <SearchBar
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Buscar produtos..."
+          containerStyle={styles.searchBar}
+          inputProps={{ autoCapitalize: "none", autoCorrect: false }}
+        />
+      </View>
+      <View style={styles.filterSection}>
         <TouchableOpacity style={styles.filterButton} activeOpacity={0.7}>
           <Icon type="feather" name="sliders" size={18} color={theme.colors.primary} />
         </TouchableOpacity>

@@ -15,24 +15,15 @@ const createStyles = (theme: Theme) =>
       paddingBottom: theme.spacing.md,
       gap: theme.spacing.sm,
     },
-    searchInputWrapper: {
+    searchBar: {
       flex: 1,
+    },
+    filterSection: {
       flexDirection: "row",
       alignItems: "center",
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.radius.full,
-      borderWidth: theme.size.xs,
-      borderColor: theme.colors.primary,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xs,
-      gap: theme.spacing.xs,
-    },
-    searchInput: {
-      flex: 1,
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
-      paddingVertical: theme.spacing.sx,
+      paddingHorizontal: theme.spacing.lg,
+      paddingBottom: theme.spacing.md,
+      gap: theme.spacing.sm,
     },
     filterButton: {
       width: 44,
