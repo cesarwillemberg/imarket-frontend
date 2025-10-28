@@ -2,6 +2,7 @@ import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import productService from "@/src/services/products-service";
+import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -26,6 +27,7 @@ type RawProductImage = Record<string, unknown> & { id?: string };
 type Product = {
   id: string;
   name: string;
+  storeId: string | null;
   description: string | null;
   storeName: string | null;
   unit: string | null;
@@ -122,12 +124,67 @@ const mapProduct = (raw: RawProduct): Product | null => {
 
   const nameRaw = pickFirstValue(raw, ["name", "title", "product_name"]);
   const descriptionRaw = pickFirstValue(raw, ["description", "details", "short_description"]);
-  const storeRaw = pickFirstValue(raw, [
+  const storeNameRaw = pickFirstValue(raw, [
     "store_name",
     "storeName",
-    "market",
     "market_name",
+    "marketName",
   ]);
+  const storeReferenceRaw = pickFirstValue(raw, [
+    "store",
+    "market",
+    "store_id",
+    "storeId",
+    "id_store",
+    "idStore",
+    "market_id",
+    "marketId",
+  ]);
+
+  let storeName: string | null = null;
+  if (typeof storeNameRaw === "string") {
+    const trimmed = storeNameRaw.trim();
+    if (trimmed.length > 0) {
+      storeName = trimmed;
+    }
+  }
+
+  let storeId: string | null = null;
+  const assignStoreId = (value: unknown) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        storeId = trimmed;
+      }
+    } else if (typeof value === "number" && Number.isFinite(value)) {
+      storeId = String(value);
+    }
+  };
+
+  if (storeReferenceRaw && typeof storeReferenceRaw === "object") {
+    const storeObject = storeReferenceRaw as RawProduct;
+    const nestedId = pickFirstValue(storeObject, ["id", "store_id", "storeId", "uuid"]);
+    assignStoreId(nestedId);
+
+    if (!storeName) {
+      const nestedName = pickFirstValue(storeObject, [
+        "name",
+        "store_name",
+        "storeName",
+        "title",
+        "fantasy_name",
+      ]);
+
+      if (typeof nestedName === "string") {
+        const trimmed = nestedName.trim();
+        if (trimmed.length > 0) {
+          storeName = trimmed;
+        }
+      }
+    }
+  } else {
+    assignStoreId(storeReferenceRaw);
+  }
   const imageRaw = pickFirstValue(raw, [
     "image_url",
     "image",
@@ -201,10 +258,8 @@ const mapProduct = (raw: RawProduct): Product | null => {
       typeof descriptionRaw === "string" && descriptionRaw.trim().length
         ? descriptionRaw
         : null,
-    storeName:
-      typeof storeRaw === "string" && storeRaw.trim().length
-        ? storeRaw
-        : null,
+    storeId,
+    storeName,
     unit:
       typeof unitRaw === "string" && unitRaw.trim().length
         ? unitRaw
@@ -236,6 +291,34 @@ const resolveImageUrl = (raw: RawProductImage): string | null => {
   if (typeof urlNested === "string" && urlNested.trim().length) {
     return urlNested;
   }
+  return null;
+};
+
+const extractStoreName = (store: Record<string, unknown> | null | undefined): string | null => {
+  if (!store || typeof store !== "object") {
+    return null;
+  }
+
+  const candidates = [
+    "name",
+    "store_name",
+    "storeName",
+    "fantasy_name",
+    "fantasyName",
+    "display_name",
+    "displayName",
+  ];
+
+  for (const key of candidates) {
+    const value = store[key];
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+  }
+
   return null;
 };
 
@@ -314,6 +397,38 @@ export default function ProductDetails() {
         return;
       }
 
+      let finalProduct =
+        mappedProduct.storeName &&
+        mappedProduct.storeId &&
+        mappedProduct.storeName === mappedProduct.storeId
+          ? { ...mappedProduct, storeName: null }
+          : mappedProduct;
+
+      if (mappedProduct.storeId) {
+        try {
+          const { data: storeData, error: storeError } = await storeService.getStoreById(
+            mappedProduct.storeId
+          );
+
+          if (storeError) {
+            console.warn("ProductDetails: falha ao carregar loja", storeError);
+          }
+
+          const resolvedStoreName = extractStoreName(
+            (storeData as Record<string, unknown> | null) ?? null
+          );
+
+          if (resolvedStoreName) {
+            finalProduct = {
+              ...finalProduct,
+              storeName: resolvedStoreName,
+            };
+          }
+        } catch (storeFetchError) {
+          console.warn("ProductDetails: erro ao buscar loja", storeFetchError);
+        }
+      }
+
       const { data: imagesData, error: imagesError } =
         await productService.getImageProduct(mappedProduct.id);
 
@@ -323,10 +438,10 @@ export default function ProductDetails() {
 
       const resolvedImages = resolveImages(
         (imagesData as RawProductImage[]) ?? [],
-        mappedProduct.imageUrl
+        finalProduct.imageUrl
       );
 
-      setProduct(mappedProduct);
+      setProduct(finalProduct);
       setImages(resolvedImages);
       setActiveImage(0);
     } catch (caughtError) {
@@ -492,7 +607,8 @@ export default function ProductDetails() {
 
           <View style={styles.metaInfo}>
             <Text style={styles.metaInfoText}>
-              Mercado: {product.storeName ?? "Nao informado"}
+              <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
+              {product.storeName ?? "Nao informado"}
             </Text>
             {product.code ? (
               <Text style={styles.metaInfoText}>Cod: {product.code}</Text>

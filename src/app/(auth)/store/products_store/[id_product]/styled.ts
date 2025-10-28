@@ -76,6 +76,7 @@ const createStyles = (theme: Theme) =>
     productImage: {
       width: "100%",
       height: "100%",
+      borderRadius: theme.radius.xxl,
     },
     productFallbackImage: {
       flex: 1,
@@ -143,6 +144,12 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
       marginBottom: theme.spacing.xs,
+    },
+    metaInfoLabel: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+      fontWeight: "bold",
     },
     quantitySection: {
       marginTop: theme.spacing.xl,
