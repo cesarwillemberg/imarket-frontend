@@ -231,7 +231,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: theme.spacing.md,
     },
     filterCheckboxRow: {
-      marginTop: theme.spacing.md,
+      marginBottom: theme.spacing.md,
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.colors.surface,
@@ -275,8 +275,9 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
-      fontWeight: "600",
+      fontWeight: "bold",
       marginBottom: theme.spacing.sm,
+      textDecorationLine: "underline",
     },
     categoriesGrid: {
       flexDirection: "row",
@@ -432,6 +433,90 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
+    },
+
+    // Select (Estado/Cidade)
+    selectField: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    selectValueText: {
+      flex: 1,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+      marginRight: theme.spacing.sm,
+    },
+    selectPlaceholderText: {
+      flex: 1,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.disabled,
+      marginRight: theme.spacing.sm,
+    },
+
+    // Generic selection modal
+    selectionModalOverlay: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.4)",
+      justifyContent: "flex-end",
+    },
+    selectionModalCard: {
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.lg,
+      borderTopLeftRadius: theme.radius.xxl,
+      borderTopRightRadius: theme.radius.xxl,
+    },
+    selectionModalTitle: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+      fontWeight: "600",
+      textAlign: "center",
+      marginBottom: theme.spacing.sm,
+    },
+    selectionOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      marginBottom: theme.spacing.sx,
+    },
+    selectionOptionActive: {
+      backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
+    },
+    selectionOptionText: {
+      flex: 1,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+    },
+    selectionOptionTextActive: {
+      color: theme.colors.onPrimary,
+      fontWeight: "600",
+    },
+
+    // Row for Estado/Cidade selects
+    selectsRow: {
+      flexDirection: "row",
+      gap: theme.spacing.sm,
+    },
+    selectColumn: {
+      flex: 1,
     },
   });
 
