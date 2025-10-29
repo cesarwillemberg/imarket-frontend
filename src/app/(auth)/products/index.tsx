@@ -737,7 +737,7 @@ export default function Products() {
             <View style={styles.filterChipsWrapper}>
               {filters.onlyPromotion ? (
                 <View style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>Em promocao</Text>
+                  <Text style={styles.filterChipText}>Em Promoção</Text>
                   <TouchableOpacity
                     onPress={handleRemovePromotionFilter}
                     style={styles.filterChipRemove}
@@ -985,7 +985,7 @@ export default function Products() {
                     draftOnlyPromotion && styles.filterCheckboxLabelActive,
                   ]}
                 >
-                  Em promocao
+                  Em Promoção
                 </Text>
               </TouchableOpacity>
 

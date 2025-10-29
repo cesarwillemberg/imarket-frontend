@@ -565,11 +565,11 @@ export default function StoreProductsScreen() {
               {item.unit ? <Text style={styles.productUnit}> {item.unit}</Text> : null}
             </Text>
           ) : (
-            <Text style={styles.productPriceUnavailable}>Preco nao informado</Text>
+            <Text style={styles.productPriceUnavailable}>Preço não informado</Text>
           )}
 
           {item.code ? (
-            <Text style={styles.productCode}>Cod: {item.code}</Text>
+            <Text style={styles.productCode}>Cód: {item.code}</Text>
           ) : null}
         </View>
       </TouchableOpacity>
@@ -630,7 +630,7 @@ export default function StoreProductsScreen() {
         <SearchBar
           value={searchTerm}
           onChangeText={setSearchTerm}
-          placeholder="Buscar por nome ou codigo..."
+          placeholder="Pesquisar..."
           containerStyle={styles.searchBar}
         />
       </View>
@@ -673,7 +673,7 @@ export default function StoreProductsScreen() {
           <View style={styles.filterChipsWrapper}>
             {filters.onlyPromotion ? (
               <View style={styles.filterChip}>
-                <Text style={styles.filterChipText}>Em Promocao</Text>
+                <Text style={styles.filterChipText}>Em Promoção</Text>
                 <TouchableOpacity
                   onPress={handleRemovePromotionFilter}
                   style={styles.filterChipRemove}
@@ -756,13 +756,13 @@ export default function StoreProductsScreen() {
 
   const resolvedTitle =
     storeName && typeof storeName === "string" && storeName.trim().length
-      ? `Produtos de ${storeName}`
+      ? `Catálogo de Produtos de ${storeName}`
       : "Produtos da loja";
 
   return (
     <>
       <ScreenContainer style={styles.container}>
-        <HeaderScreen title={resolvedTitle} showButtonBack />
+        <HeaderScreen title={resolvedTitle} showButtonBack styleTitle={{ textAlign: "center" }} />
         <View style={styles.content}>
           <FlatList
             data={filteredProducts}
