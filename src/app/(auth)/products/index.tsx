@@ -1,5 +1,6 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import { Input } from "@/src/components/common/Input";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchInputBar from "@/src/components/common/SearchBar";
 import productService from "@/src/services/products-service";
@@ -7,7 +8,6 @@ import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useRouter } from "expo-router";
-import { Picker } from "@react-native-picker/picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -524,31 +524,12 @@ export default function Products() {
   const [draftCity, setDraftCity] = useState("");
   const [draftRadiusKm, setDraftRadiusKm] = useState<number>(5);
   const [draftRadiusEnabled, setDraftRadiusEnabled] = useState<boolean>(false);
-  
 
   const storeCache = useMemo(() => new Map<string, string | null>(), []);
   const [storeLocationMeta, setStoreLocationMeta] = useState<Record<string, { city: string | null; state: string | null }>>({});
   const [storeDistances, setStoreDistances] = useState<Record<string, number>>({});
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
   // no-op ref kept out
-
-  // Cities available for selection based on known store locations and current draftState
-  const availableCities = useMemo(() => {
-    const seen: string[] = [];
-    const matchState = draftState ? normalizeStateKey(draftState) : null;
-    Object.values(storeLocationMeta).forEach((meta) => {
-      if (!meta.city) return;
-      if (matchState) {
-        const st = normalizeStateKey(meta.state ?? null);
-        if (!st || st !== matchState) return;
-      }
-      const city = meta.city.trim();
-      if (!city) return;
-      const exists = seen.some((c) => normalizeForComparison(c) === normalizeForComparison(city));
-      if (!exists) seen.push(city);
-    });
-    return seen.sort((a, b) => a.localeCompare(b));
-  }, [storeLocationMeta, draftState]);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -1297,124 +1278,115 @@ export default function Products() {
 
               {/* Filtros Lojas */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Filtros de Lojas:</Text>
+                <Text style={styles.filterSectionTitle}>Filtros Lojas</Text>
 
-                <View style={styles.selectsRow}>
-                  <View style={styles.selectColumn}>
+                <View style={{ gap: theme.spacing.sm }}>
+                  <View>
                     <Text style={styles.priceInputLabel}>Estado</Text>
-                    <View style={styles.selectField}>
-                      <Picker
-                        selectedValue={draftState}
-                        onValueChange={(val) => {
-                          setDraftState(String(val));
-                          setDraftCity("");
-                        }}
-                        dropdownIconColor={theme.colors.primary}
-                        mode={Platform.OS === "android" ? "dropdown" : undefined}
-                        style={{ flex: 1, color: draftState ? theme.colors.text : theme.colors.disabled }}
-                      >
-                        <Picker.Item label="UF" value="" />
-                        {STATE_OPTIONS.map((opt) => (
-                          <Picker.Item key={opt} label={opt} value={opt} />
-                        ))}
-                      </Picker>
+                    <Input
+                      value={draftState}
+                      onChangeText={(text) => setDraftState(text.toUpperCase())}
+                      maxLength={2}
+                      autoCapitalize="characters"
+                      placeholder="UF"
+                      style={{ backgroundColor: theme.colors.secondary, borderRadius: theme.radius.lg }}
+                    />
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+                      {STATE_OPTIONS.map((option: string) => (
+                        <TouchableOpacity
+                          key={option}
+                          style={[
+                            styles.filterChip,
+                            draftState === option && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+                          ]}
+                          onPress={() => setDraftState(option)}
+                        >
+                          <Text style={[styles.filterChipText, draftState === option && { color: theme.colors.onPrimary }]}> {option} </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
                   </View>
 
-                  <View style={styles.selectColumn}>
+                  <View>
                     <Text style={styles.priceInputLabel}>Cidade</Text>
-                    <View style={styles.selectField}>
-                      <Picker
-                        selectedValue={draftCity}
-                        onValueChange={(val) => setDraftCity(String(val))}
-                        enabled={Boolean(draftState)}
-                        dropdownIconColor={theme.colors.primary}
-                        mode={Platform.OS === "android" ? "dropdown" : undefined}
-                        style={{ flex: 1, color: draftCity ? theme.colors.text : theme.colors.disabled }}
+                    <Input
+                      value={draftCity}
+                      onChangeText={setDraftCity}
+                      placeholder="Cidade"
+                      autoCapitalize="words"
+                      style={{ backgroundColor: theme.colors.secondary, borderRadius: theme.radius.lg }}
+                    />
+                  </View>
+
+                  <View>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.xs }}>
+                      <Text style={styles.priceInputLabel}>Em um raio de distancia:</Text>
+                      <TouchableOpacity onPress={() => setDraftRadiusEnabled((c) => !c)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.xs }}>
+                        <Icon type="MaterialCommunityIcons" name={draftRadiusEnabled ? "close-circle-outline" : "check-circle"} size={18} color={theme.colors.primary} />
+                        <Text style={{ color: theme.colors.primary }}>{draftRadiusEnabled ? "Sem limite" : "Com limite"}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={[styles.sliderFallback, !draftRadiusEnabled && styles.sliderDisabled]}>
+                      <TouchableOpacity
+                        style={[styles.sliderFallbackButton, !draftRadiusEnabled && styles.sliderFallbackButtonDisabled]}
+                        onPress={() => setDraftRadiusKm((v) => Math.max(1, Math.min(20, v - 1)))}
+                        disabled={!draftRadiusEnabled}
                       >
-                        <Picker.Item label={draftState ? "Cidade" : "Selecione um estado"} value="" />
-                        {draftState
-                          ? availableCities.map((opt) => (
-                              <Picker.Item key={opt} label={opt} value={opt} />
-                            ))
-                          : null}
-                      </Picker>
+                        <Text style={styles.sliderFallbackButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.sliderFallbackValue}>{draftRadiusKm} km</Text>
+                      <TouchableOpacity
+                        style={[styles.sliderFallbackButton, !draftRadiusEnabled && styles.sliderFallbackButtonDisabled]}
+                        onPress={() => setDraftRadiusKm((v) => Math.max(1, Math.min(20, v + 1)))}
+                        disabled={!draftRadiusEnabled}
+                      >
+                        <Text style={styles.sliderFallbackButtonText}>+</Text>
+                      </TouchableOpacity>
                     </View>
+                    {!draftRadiusEnabled ? (
+                      <View style={styles.sliderValueRow}>
+                        <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
+                      </View>
+                    ) : null}
                   </View>
-                </View>
-
-                <View style={{ marginTop: theme.spacing.sm }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.xs }}>
-                    <Text style={styles.priceInputLabel}>Em um raio de distancia:</Text>
-                    <TouchableOpacity onPress={() => setDraftRadiusEnabled((c) => !c)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.xs }}>
-                      <Icon type="MaterialCommunityIcons" name={draftRadiusEnabled ? "close-circle-outline" : "check-circle"} size={18} color={theme.colors.primary} />
-                      <Text style={{ color: theme.colors.primary }}>{draftRadiusEnabled ? "Sem limite" : "Com limite"}</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  <View style={[styles.sliderFallback, !draftRadiusEnabled && styles.sliderDisabled]}>
-                    <TouchableOpacity
-                      style={[styles.sliderFallbackButton, !draftRadiusEnabled && styles.sliderFallbackButtonDisabled]}
-                      onPress={() => setDraftRadiusKm((v) => Math.max(1, Math.min(20, v - 1)))}
-                      disabled={!draftRadiusEnabled}
-                    >
-                      <Text style={styles.sliderFallbackButtonText}>-</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.sliderFallbackValue}>{draftRadiusKm} km</Text>
-                    <TouchableOpacity
-                      style={[styles.sliderFallbackButton, !draftRadiusEnabled && styles.sliderFallbackButtonDisabled]}
-                      onPress={() => setDraftRadiusKm((v) => Math.max(1, Math.min(20, v + 1)))}
-                      disabled={!draftRadiusEnabled}
-                    >
-                      <Text style={styles.sliderFallbackButtonText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {!draftRadiusEnabled ? (
-                    <View style={styles.sliderValueRow}>
-                      <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
-                    </View>
-                  ) : null}
                 </View>
               </View>
 
-              <View style={styles.filterSection}>
-
-                <Text style={styles.filterSectionTitle}>Filtros de Produtos:</Text>
-                <TouchableOpacity
-                  onPress={() => setDraftOnlyPromotion((current) => !current)}
+              <TouchableOpacity
+                onPress={() => setDraftOnlyPromotion((current) => !current)}
+                style={[
+                  styles.filterCheckboxRow,
+                  draftOnlyPromotion && styles.filterCheckboxRowActive,
+                ]}
+                activeOpacity={0.7}
+              >
+                <View
                   style={[
-                    styles.filterCheckboxRow,
-                    draftOnlyPromotion && styles.filterCheckboxRowActive,
+                    styles.filterCheckbox,
+                    draftOnlyPromotion && styles.filterCheckboxSelected,
                   ]}
-                  activeOpacity={0.7}
                 >
-                  <View
-                    style={[
-                      styles.filterCheckbox,
-                      draftOnlyPromotion && styles.filterCheckboxSelected,
-                    ]}
-                  >
-                    {draftOnlyPromotion ? (
-                      <Icon
-                        type="MaterialCommunityIcons"
-                        name="check"
-                        size={16}
-                        color={theme.colors.onPrimary}
-                      />
-                    ) : null}
-                  </View>
-                  <Text
-                    style={[
-                      styles.filterCheckboxLabel,
-                      draftOnlyPromotion && styles.filterCheckboxLabelActive,
-                    ]}
-                  >
-                    Em Promoção
-                  </Text>
-                </TouchableOpacity>
+                  {draftOnlyPromotion ? (
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="check"
+                      size={16}
+                      color={theme.colors.onPrimary}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.filterCheckboxLabel,
+                    draftOnlyPromotion && styles.filterCheckboxLabelActive,
+                  ]}
+                >
+                  Em Promoção
+                </Text>
+              </TouchableOpacity>
 
-
-
+              <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>Categorias</Text>
 
                 <View style={styles.categoriesGrid}>
@@ -1515,8 +1487,6 @@ export default function Products() {
           </View>
         </View>
       </Modal>
-
-      {/* Selection modals removed in favor of Picker components */}
     </>
   );
 }
