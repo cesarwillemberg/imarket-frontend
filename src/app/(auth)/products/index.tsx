@@ -1,11 +1,11 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
-import { Input } from "@/src/components/common/Input";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchInputBar from "@/src/components/common/SearchBar";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
+import { Picker } from "@react-native-picker/picker";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -331,7 +331,9 @@ const normalizeStateKey = (value: string | null | undefined) => {
   return BRAZIL_STATE_ALIASES[normalized] ?? normalized;
 };
 
-const STATE_OPTIONS = ["RS", "SC", "PR"] as const;
+// IBGE States API type and cache
+type IbgeState = { id: number; sigla: string; nome: string };
+let IBGE_STATES_CACHE: IbgeState[] | null = null;
 
 const mapProduct = (raw: RawProduct): ProductListItem | null => {
   const identifier =
@@ -524,6 +526,9 @@ export default function Products() {
   const [draftCity, setDraftCity] = useState("");
   const [draftRadiusKm, setDraftRadiusKm] = useState<number>(5);
   const [draftRadiusEnabled, setDraftRadiusEnabled] = useState<boolean>(false);
+  // IBGE States
+  const [ibgeStates, setIbgeStates] = useState<IbgeState[]>([]);
+  const [statesLoading, setStatesLoading] = useState<boolean>(false);
 
   const storeCache = useMemo(() => new Map<string, string | null>(), []);
   const [storeLocationMeta, setStoreLocationMeta] = useState<Record<string, { city: string | null; state: string | null }>>({});
@@ -618,6 +623,39 @@ export default function Products() {
     setDraftRadiusKm(5);
     setDraftRadiusEnabled(false);
   }, []);
+  
+  // Fetch states from IBGE API only when modal opens and data not loaded yet
+  useEffect(() => {
+    if (!isFilterModalVisible) return;
+    if (ibgeStates.length > 0) return; // Already loaded
+    if (statesLoading) return; // Already loading
+    
+    let isMounted = true;
+    (async () => {
+      try {
+        setStatesLoading(true);
+        if (IBGE_STATES_CACHE) {
+          setIbgeStates(IBGE_STATES_CACHE);
+        } else {
+          const res = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados");
+          const data: IbgeState[] = await res.json();
+          if (!isMounted) return;
+          const ordered = (Array.isArray(data) ? data : [])
+            .filter((s): s is IbgeState => !!s && typeof s.id === "number" && typeof s.sigla === "string")
+            .sort((a, b) => (a.sigla || "").localeCompare(b.sigla || ""));
+          IBGE_STATES_CACHE = ordered;
+          setIbgeStates(ordered);
+        }
+      } catch {
+        setIbgeStates([]);
+      } finally {
+        if (isMounted) setStatesLoading(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [isFilterModalVisible, ibgeStates.length, statesLoading]);
 
   const handleRemoveCategoryFilter = useCallback((category: FilterCategory) => {
     setFilters((current) => ({
@@ -641,12 +679,8 @@ export default function Products() {
     }));
   }, []);
 
-  const handleRemoveStateFilter = useCallback(() => {
-    setFilters((current) => ({ ...current, state: null }));
-  }, []);
-
-  const handleRemoveCityFilter = useCallback(() => {
-    setFilters((current) => ({ ...current, city: null }));
+  const handleRemoveLocationFilter = useCallback(() => {
+    setFilters((current) => ({ ...current, state: null, city: null }));
   }, []);
 
   const handleRemoveRadiusFilter = useCallback(() => {
@@ -994,30 +1028,11 @@ export default function Products() {
 
           {hasVisibleFilters ? (
             <View style={styles.filterChipsWrapper}>
-              {filters.state ? (
+                  {filters.city && filters.state ? (
                 <View style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>UF: {filters.state}</Text>
+                  <Text style={styles.filterChipText}>{filters.city} - {filters.state}</Text>
                   <TouchableOpacity
-                    onPress={handleRemoveStateFilter}
-                    style={styles.filterChipRemove}
-                    activeOpacity={0.7}
-                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                  >
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="close-circle"
-                      size={16}
-                      color={theme.colors.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ) : null}
-
-              {filters.city ? (
-                <View style={styles.filterChip}>
-                  <Text style={styles.filterChipText}>Cidade: {filters.city}</Text>
-                  <TouchableOpacity
-                    onPress={handleRemoveCityFilter}
+                    onPress={handleRemoveLocationFilter}
                     style={styles.filterChipRemove}
                     activeOpacity={0.7}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -1123,8 +1138,7 @@ export default function Products() {
     handleRemoveCategoryFilter,
     handleRemovePriceFilter,
     handleRemovePromotionFilter,
-    handleRemoveStateFilter,
-    handleRemoveCityFilter,
+  handleRemoveLocationFilter,
     handleRemoveRadiusFilter,
     hasVisibleFilters,
     priceRangeLabel,
@@ -1278,44 +1292,56 @@ export default function Products() {
 
               {/* Filtros Lojas */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Filtros Lojas</Text>
+                <Text style={styles.filterSectionTitle}>Filtros de Lojas</Text>
 
                 <View style={{ gap: theme.spacing.sm }}>
-                  <View>
-                    <Text style={styles.priceInputLabel}>Estado</Text>
-                    <Input
-                      value={draftState}
-                      onChangeText={(text) => setDraftState(text.toUpperCase())}
-                      maxLength={2}
-                      autoCapitalize="characters"
-                      placeholder="UF"
-                      style={{ backgroundColor: theme.colors.secondary, borderRadius: theme.radius.lg }}
-                    />
-                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
-                      {STATE_OPTIONS.map((option: string) => (
-                        <TouchableOpacity
-                          key={option}
-                          style={[
-                            styles.filterChip,
-                            draftState === option && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
-                          ]}
-                          onPress={() => setDraftState(option)}
+                  <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+                    {/* Estado */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.priceInputLabel}>Estado</Text>
+                      <View
+                        style={{
+                          backgroundColor: theme.colors.secondary,
+                          borderRadius: theme.radius.lg,
+                          borderWidth: 1,
+                          borderColor: theme.colors.primary,
+                        }}
+                      >
+                        <Picker
+                          selectedValue={draftState}
+                          onValueChange={(value) => setDraftState(String(value))}
+                          enabled={!statesLoading}
+                          dropdownIconColor={theme.colors.primary}
+                          style={{ color: theme.colors.text }}
+                          {...(Platform.OS === "android" ? { mode: "dropdown" as const } : {})}
                         >
-                          <Text style={[styles.filterChipText, draftState === option && { color: theme.colors.onPrimary }]}> {option} </Text>
-                        </TouchableOpacity>
-                      ))}
+                          <Picker.Item
+                            label={statesLoading ? "Carregando..." : "Selecione o estado"}
+                            value=""
+                            color={theme.colors.disabled}
+                          />
+                          {ibgeStates.map((state) => (
+                            <Picker.Item
+                              key={state.id}
+                              label={`${state.sigla} - ${state.nome}`}
+                              value={state.sigla}
+                            />
+                          ))}
+                        </Picker>
+                      </View>
                     </View>
-                  </View>
 
-                  <View>
-                    <Text style={styles.priceInputLabel}>Cidade</Text>
-                    <Input
-                      value={draftCity}
-                      onChangeText={setDraftCity}
-                      placeholder="Cidade"
-                      autoCapitalize="words"
-                      style={{ backgroundColor: theme.colors.secondary, borderRadius: theme.radius.lg }}
-                    />
+                    {/* Cidade */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.priceInputLabel}>Cidade</Text>
+                      <TextInput
+                        style={styles.priceInput}
+                        placeholder="Ex: Porto Alegre"
+                        placeholderTextColor={theme.colors.disabled}
+                        value={draftCity}
+                        onChangeText={setDraftCity}
+                      />
+                    </View>
                   </View>
 
                   <View>
@@ -1353,6 +1379,7 @@ export default function Products() {
                 </View>
               </View>
 
+              <Text style={styles.filterSectionTitle}>Filtros de Produtos</Text>
               <TouchableOpacity
                 onPress={() => setDraftOnlyPromotion((current) => !current)}
                 style={[

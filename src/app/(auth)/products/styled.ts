@@ -231,7 +231,7 @@ const createStyles = (theme: Theme) =>
       marginBottom: theme.spacing.md,
     },
     filterCheckboxRow: {
-      marginTop: theme.spacing.md,
+      // marginTop: theme.spacing.md,
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.colors.surface,
@@ -269,14 +269,15 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
     },
     filterSection: {
-      marginTop: theme.spacing.lg,
+      marginVertical: theme.spacing.lg,
     },
     filterSectionTitle: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
-      fontWeight: "600",
+      fontWeight: "bold",
       marginBottom: theme.spacing.sm,
+      textDecorationLine: "underline"
     },
     categoriesGrid: {
       flexDirection: "row",
