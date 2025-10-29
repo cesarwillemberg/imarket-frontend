@@ -7,6 +7,7 @@ import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useRouter } from "expo-router";
+import { Picker } from "@react-native-picker/picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -523,8 +524,7 @@ export default function Products() {
   const [draftCity, setDraftCity] = useState("");
   const [draftRadiusKm, setDraftRadiusKm] = useState<number>(5);
   const [draftRadiusEnabled, setDraftRadiusEnabled] = useState<boolean>(false);
-  const [showStateSelect, setShowStateSelect] = useState(false);
-  const [showCitySelect, setShowCitySelect] = useState(false);
+  
 
   const storeCache = useMemo(() => new Map<string, string | null>(), []);
   const [storeLocationMeta, setStoreLocationMeta] = useState<Record<string, { city: string | null; state: string | null }>>({});
@@ -1302,28 +1302,44 @@ export default function Products() {
                 <View style={styles.selectsRow}>
                   <View style={styles.selectColumn}>
                     <Text style={styles.priceInputLabel}>Estado</Text>
-                    <Pressable onPress={() => setShowStateSelect(true)} style={styles.selectField}>
-                      <Text
-                        style={draftState ? styles.selectValueText : styles.selectPlaceholderText}
-                        numberOfLines={1}
+                    <View style={styles.selectField}>
+                      <Picker
+                        selectedValue={draftState}
+                        onValueChange={(val) => {
+                          setDraftState(String(val));
+                          setDraftCity("");
+                        }}
+                        dropdownIconColor={theme.colors.primary}
+                        mode={Platform.OS === "android" ? "dropdown" : undefined}
+                        style={{ flex: 1, color: draftState ? theme.colors.text : theme.colors.disabled }}
                       >
-                        {draftState || "UF"}
-                      </Text>
-                      <Icon type="MaterialCommunityIcons" name="chevron-down" size={20} color={theme.colors.primary} />
-                    </Pressable>
+                        <Picker.Item label="UF" value="" />
+                        {STATE_OPTIONS.map((opt) => (
+                          <Picker.Item key={opt} label={opt} value={opt} />
+                        ))}
+                      </Picker>
+                    </View>
                   </View>
 
                   <View style={styles.selectColumn}>
                     <Text style={styles.priceInputLabel}>Cidade</Text>
-                    <Pressable onPress={() => setShowCitySelect(true)} style={styles.selectField}>
-                      <Text
-                        style={draftCity ? styles.selectValueText : styles.selectPlaceholderText}
-                        numberOfLines={1}
+                    <View style={styles.selectField}>
+                      <Picker
+                        selectedValue={draftCity}
+                        onValueChange={(val) => setDraftCity(String(val))}
+                        enabled={Boolean(draftState)}
+                        dropdownIconColor={theme.colors.primary}
+                        mode={Platform.OS === "android" ? "dropdown" : undefined}
+                        style={{ flex: 1, color: draftCity ? theme.colors.text : theme.colors.disabled }}
                       >
-                        {draftCity || "Cidade"}
-                      </Text>
-                      <Icon type="MaterialCommunityIcons" name="chevron-down" size={20} color={theme.colors.primary} />
-                    </Pressable>
+                        <Picker.Item label={draftState ? "Cidade" : "Selecione um estado"} value="" />
+                        {draftState
+                          ? availableCities.map((opt) => (
+                              <Picker.Item key={opt} label={opt} value={opt} />
+                            ))
+                          : null}
+                      </Picker>
+                    </View>
                   </View>
                 </View>
 
@@ -1500,104 +1516,7 @@ export default function Products() {
         </View>
       </Modal>
 
-      {/* Estado - Selection Modal */}
-      <Modal transparent animationType="fade" visible={showStateSelect} onRequestClose={() => setShowStateSelect(false)}>
-        <View style={styles.selectionModalOverlay}>
-          <Pressable style={styles.selectionModalOverlay} onPress={() => setShowStateSelect(false)} />
-          <View style={styles.selectionModalCard}>
-            <Text style={styles.selectionModalTitle}>Selecionar Estado</Text>
-            <ScrollView style={{ maxHeight: 320 }}>
-              <TouchableOpacity
-                style={styles.selectionOption}
-                onPress={() => {
-                  setDraftState("");
-                  setDraftCity("");
-                  setShowStateSelect(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.selectionOptionText}>Limpar seleção</Text>
-              </TouchableOpacity>
-              {STATE_OPTIONS.map((opt) => (
-                <TouchableOpacity
-                  key={opt}
-                  style={[
-                    styles.selectionOption,
-                    draftState === opt && styles.selectionOptionActive,
-                  ]}
-                  onPress={() => {
-                    setDraftState(opt);
-                    setDraftCity("");
-                    setShowStateSelect(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text
-                    style={[
-                      styles.selectionOptionText,
-                      draftState === opt && styles.selectionOptionTextActive,
-                    ]}
-                  >
-                    {opt}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Cidade - Selection Modal */}
-      <Modal transparent animationType="fade" visible={showCitySelect} onRequestClose={() => setShowCitySelect(false)}>
-        <View style={styles.selectionModalOverlay}>
-          <Pressable style={styles.selectionModalOverlay} onPress={() => setShowCitySelect(false)} />
-          <View style={styles.selectionModalCard}>
-            <Text style={styles.selectionModalTitle}>Selecionar Cidade</Text>
-            <ScrollView style={{ maxHeight: 360 }}>
-              <TouchableOpacity
-                style={styles.selectionOption}
-                onPress={() => {
-                  setDraftCity("");
-                  setShowCitySelect(false);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.selectionOptionText}>Limpar seleção</Text>
-              </TouchableOpacity>
-              {availableCities.length ? (
-                availableCities.map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[
-                      styles.selectionOption,
-                      draftCity === opt && styles.selectionOptionActive,
-                    ]}
-                    onPress={() => {
-                      setDraftCity(opt);
-                      setShowCitySelect(false);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <Text
-                      style={[
-                        styles.selectionOptionText,
-                        draftCity === opt && styles.selectionOptionTextActive,
-                      ]}
-                      numberOfLines={1}
-                    >
-                      {opt}
-                    </Text>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View style={styles.selectionOption}>
-                  <Text style={styles.selectionOptionText}>Nenhuma cidade disponível</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {/* Selection modals removed in favor of Picker components */}
     </>
   );
 }
