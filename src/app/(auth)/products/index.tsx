@@ -1,10 +1,12 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import { Input } from "@/src/components/common/Input";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
-import SearchBar from "@/src/components/common/SearchBar";
+import SearchInputBar from "@/src/components/common/SearchBar";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
+import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -38,6 +40,31 @@ type ProductListItem = {
   originalPrice: number | null;
   inPromotion: boolean;
   imageUrl: string | null;
+};
+
+type Coordinates = { latitude: number; longitude: number };
+
+const EARTH_RADIUS_KM = 6371;
+
+const calculateDistanceKm = (from: Coordinates, to: Coordinates) => {
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+
+  const deltaLat = toRadians(to.latitude - from.latitude);
+  const deltaLon = toRadians(to.longitude - from.longitude);
+
+  const originLatRad = toRadians(from.latitude);
+  const targetLatRad = toRadians(to.latitude);
+
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(originLatRad) *
+      Math.cos(targetLatRad) *
+      Math.sin(deltaLon / 2) *
+      Math.sin(deltaLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return EARTH_RADIUS_KM * c;
 };
 
 const PROMOTION_FLAG_KEYS = [
@@ -175,6 +202,10 @@ type Filters = {
   categories: FilterCategory[];
   minPrice: number | null;
   maxPrice: number | null;
+  // Loja
+  state: string | null;
+  city: string | null;
+  radiusKm: number | null;
 };
 
 const NON_OUTROS_CATEGORIES: FilterCategory[] = FILTER_CATEGORIES.filter(
@@ -186,6 +217,9 @@ const createDefaultFilters = (): Filters => ({
   categories: [],
   minPrice: null,
   maxPrice: null,
+  state: null,
+  city: null,
+  radiusKm: null,
 });
 
 const normalizeText = (value: string) =>
@@ -225,6 +259,79 @@ const parseCurrencyInput = (value: string): number | null => {
 
 const formatCurrencyFromNumber = (value: number | null) =>
   value !== null ? currencyFormatter.format(value) : "";
+
+const BRAZIL_STATE_ALIASES: Record<string, string> = {
+  ac: "ac",
+  acre: "ac",
+  al: "al",
+  alagoas: "al",
+  ap: "ap",
+  amapa: "ap",
+  am: "am",
+  amazonas: "am",
+  ba: "ba",
+  bahia: "ba",
+  ce: "ce",
+  ceara: "ce",
+  df: "df",
+  distritofederal: "df",
+  es: "es",
+  espiritosanto: "es",
+  go: "go",
+  goias: "go",
+  ma: "ma",
+  maranhao: "ma",
+  mt: "mt",
+  matogrosso: "mt",
+  ms: "ms",
+  matogrossodosul: "ms",
+  mg: "mg",
+  minasgerais: "mg",
+  pa: "pa",
+  para: "pa",
+  pb: "pb",
+  paraiba: "pb",
+  pr: "pr",
+  parana: "pr",
+  pe: "pe",
+  pernambuco: "pe",
+  pi: "pi",
+  piaui: "pi",
+  rj: "rj",
+  riodejaneiro: "rj",
+  rn: "rn",
+  riograndedonorte: "rn",
+  rs: "rs",
+  riograndedosul: "rs",
+  ro: "ro",
+  rondonia: "ro",
+  rr: "rr",
+  roraima: "rr",
+  sc: "sc",
+  santacatarina: "sc",
+  sp: "sp",
+  saopaulo: "sp",
+  se: "se",
+  sergipe: "se",
+  to: "to",
+  tocantins: "to",
+};
+
+const normalizeForComparison = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim();
+
+const normalizeStateKey = (value: string | null | undefined) => {
+  if (!value) return null;
+  const normalized = normalizeForComparison(value).replace(/\s+/g, "");
+  return BRAZIL_STATE_ALIASES[normalized] ?? normalized;
+};
+
+const STATE_OPTIONS = ["RS", "SC", "PR"] as const;
 
 const mapProduct = (raw: RawProduct): ProductListItem | null => {
   const identifier =
@@ -412,19 +519,30 @@ export default function Products() {
   const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
+  // Loja - drafts
+  const [draftState, setDraftState] = useState("");
+  const [draftCity, setDraftCity] = useState("");
+  const [draftRadiusKm, setDraftRadiusKm] = useState<number>(5);
+  const [draftRadiusEnabled, setDraftRadiusEnabled] = useState<boolean>(false);
 
   const storeCache = useMemo(() => new Map<string, string | null>(), []);
+  const [storeLocationMeta, setStoreLocationMeta] = useState<Record<string, { city: string | null; state: string | null }>>({});
+  const [storeDistances, setStoreDistances] = useState<Record<string, number>>({});
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  // no-op ref kept out
 
   const hasActiveFilters = useMemo(
     () =>
       filters.onlyPromotion ||
       filters.categories.length > 0 ||
       filters.minPrice !== null ||
-      filters.maxPrice !== null,
+      filters.maxPrice !== null ||
+      (filters.state ?? null) !== null ||
+      (filters.city ?? null) !== null ||
+      filters.radiusKm !== null,
     [filters]
   );
 
-  const hasFilterOverrides = hasActiveFilters;
   const hasVisibleFilters = hasActiveFilters;
 
   const priceRangeLabel = useMemo(() => {
@@ -449,6 +567,10 @@ export default function Products() {
     setDraftCategories(filters.categories);
     setDraftMinPrice(formatCurrencyFromNumber(filters.minPrice));
     setDraftMaxPrice(formatCurrencyFromNumber(filters.maxPrice));
+    setDraftState(filters.state ?? "");
+    setDraftCity(filters.city ?? "");
+    setDraftRadiusKm(filters.radiusKm ?? 5);
+    setDraftRadiusEnabled(filters.radiusKm !== null);
     setIsFilterModalVisible(true);
   }, [filters]);
 
@@ -478,9 +600,12 @@ export default function Products() {
       categories: [...draftCategories],
       minPrice: nextMinPrice,
       maxPrice: nextMaxPrice,
+      state: draftState ? draftState : null,
+      city: draftCity ? draftCity : null,
+      radiusKm: draftRadiusEnabled ? draftRadiusKm : null,
     });
     setIsFilterModalVisible(false);
-  }, [draftCategories, draftMaxPrice, draftMinPrice, draftOnlyPromotion]);
+  }, [draftCategories, draftMaxPrice, draftMinPrice, draftOnlyPromotion, draftState, draftCity, draftRadiusKm, draftRadiusEnabled]);
 
   const handleClearFilters = useCallback(() => {
     setFilters(createDefaultFilters());
@@ -488,6 +613,10 @@ export default function Products() {
     setDraftCategories([]);
     setDraftMinPrice("");
     setDraftMaxPrice("");
+    setDraftState("");
+    setDraftCity("");
+    setDraftRadiusKm(5);
+    setDraftRadiusEnabled(false);
   }, []);
 
   const handleRemoveCategoryFilter = useCallback((category: FilterCategory) => {
@@ -510,6 +639,18 @@ export default function Products() {
       minPrice: null,
       maxPrice: null,
     }));
+  }, []);
+
+  const handleRemoveStateFilter = useCallback(() => {
+    setFilters((current) => ({ ...current, state: null }));
+  }, []);
+
+  const handleRemoveCityFilter = useCallback(() => {
+    setFilters((current) => ({ ...current, city: null }));
+  }, []);
+
+  const handleRemoveRadiusFilter = useCallback(() => {
+    setFilters((current) => ({ ...current, radiusKm: null }));
   }, []);
 
   const toggleDraftCategory = useCallback((category: FilterCategory) => {
@@ -587,6 +728,24 @@ export default function Products() {
     [storeCache]
   );
 
+  // Request user location once
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const position = await getCurrentPositionAsync({ accuracy: LocationAccuracy.Balanced });
+        if (!cancelled) {
+          setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+        }
+      } catch (e) {
+        console.warn("Products: localização não obtida", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const loadProducts = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
       setIsLoading(true);
@@ -641,6 +800,85 @@ export default function Products() {
     loadProducts();
   }, [loadProducts]);
 
+  // Compute store location meta and distances for products
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      const ids = Array.from(new Set(products.map((p) => (p.storeId ?? "").trim()).filter(Boolean)));
+      if (!ids.length) return;
+
+      const nextLocations: Record<string, { city: string | null; state: string | null }> = {};
+      const nextDistances: Record<string, number> = {};
+
+      for (const storeId of ids) {
+        try {
+          const currentMeta = storeLocationMeta[storeId];
+          let city = currentMeta?.city ?? null;
+          let state = currentMeta?.state ?? null;
+
+          let coords: Coordinates | null = null;
+
+          const { data, error } = await storeService.getAddressesStore(storeId);
+          if (!error) {
+            let addresses: any[] | undefined;
+            if (Array.isArray(data)) addresses = data as any[];
+            else if (data && Array.isArray((data as any).logAddress)) addresses = (data as any).logAddress;
+            const primary = addresses?.[0];
+            if (primary) {
+              if (!city && typeof primary?.city === "string") city = primary.city.trim() || null;
+              if (!state && typeof primary?.state_acronym === "string") state = (primary.state_acronym as string).trim().toUpperCase();
+              if (!state && typeof primary?.state === "string") state = (primary.state as string).trim().toUpperCase();
+
+              if (typeof primary?.latitude === "number" && typeof primary?.longitude === "number") {
+                coords = { latitude: primary.latitude, longitude: primary.longitude };
+              } else {
+                const addressParts = [
+                  [primary.street, primary.street_number].filter(Boolean).join(", ").trim(),
+                  primary.neighborhood,
+                  primary.city,
+                  primary.state_acronym ?? primary.state,
+                  primary.country ?? "Brasil",
+                ]
+                  .filter((part: string | null | undefined) => typeof part === "string" && part.trim().length > 0)
+                  .map((part: string) => part.trim());
+
+                if (addressParts.length) {
+                  const formatted = addressParts.join(", ");
+                  try {
+                    const results = await geocodeAsync(formatted);
+                    const first = results.find((r) => typeof r?.latitude === "number" && typeof r?.longitude === "number");
+                    if (first) coords = { latitude: first.latitude, longitude: first.longitude };
+                  } catch {}
+                }
+              }
+            }
+          }
+
+          if (city || state) nextLocations[storeId] = { city: city ?? null, state: state ?? null };
+
+          if (coords && userLocation) {
+            const d = calculateDistanceKm(userLocation, coords);
+            nextDistances[storeId] = d;
+          }
+        } catch (e) {
+          console.warn("Products: erro ao obter endereço da loja", storeId, e);
+        }
+      }
+
+      if (!cancelled) {
+        if (Object.keys(nextLocations).length) {
+          setStoreLocationMeta((prev) => ({ ...prev, ...nextLocations }));
+        }
+        if (Object.keys(nextDistances).length) {
+          setStoreDistances((prev) => ({ ...prev, ...nextDistances }));
+        }
+      }
+    };
+
+    run();
+    return () => { cancelled = true; };
+  }, [products, userLocation, storeLocationMeta]);
+
   const filteredProducts = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
 
@@ -657,6 +895,27 @@ export default function Products() {
 
       if (filters.onlyPromotion && !product.inPromotion) {
         return false;
+      }
+
+      // Loja: estado/cidade
+      if (filters.state) {
+        const meta = product.storeId ? storeLocationMeta[product.storeId] : undefined;
+        const storeState = normalizeStateKey(meta?.state ?? null);
+        const target = normalizeStateKey(filters.state);
+        if (!storeState || !target || storeState !== target) return false;
+      }
+
+      if (filters.city) {
+        const meta = product.storeId ? storeLocationMeta[product.storeId] : undefined;
+        const storeCity = meta?.city ? normalizeForComparison(meta.city) : null;
+        const targetCity = normalizeForComparison(filters.city);
+        if (!storeCity || storeCity !== targetCity) return false;
+      }
+
+      if (filters.radiusKm !== null) {
+        if (!product.storeId) return false;
+        const distance = storeDistances[product.storeId];
+        if (!(typeof distance === "number") || distance > filters.radiusKm) return false;
       }
 
       if (filters.categories.length) {
@@ -691,7 +950,7 @@ export default function Products() {
 
       return true;
     });
-  }, [filters, products, searchTerm]);
+  }, [filters, products, searchTerm, storeDistances, storeLocationMeta]);
 
   const renderListHeader = useCallback(() => {
     const filterIconColor = theme.colors.primary;
@@ -699,7 +958,7 @@ export default function Products() {
     return (
       <View style={styles.listHeader}>
         <View style={styles.searchSection}>
-          <SearchBar
+          <SearchInputBar
             value={searchTerm}
             onChangeText={setSearchTerm}
             placeholder="Pesquisar..."
@@ -735,6 +994,63 @@ export default function Products() {
 
           {hasVisibleFilters ? (
             <View style={styles.filterChipsWrapper}>
+              {filters.state ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>UF: {filters.state}</Text>
+                  <TouchableOpacity
+                    onPress={handleRemoveStateFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {filters.city ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>Cidade: {filters.city}</Text>
+                  <TouchableOpacity
+                    onPress={handleRemoveCityFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {typeof filters.radiusKm === "number" ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>Até {filters.radiusKm} km</Text>
+                  <TouchableOpacity
+                    onPress={handleRemoveRadiusFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               {filters.onlyPromotion ? (
                 <View style={styles.filterChip}>
                   <Text style={styles.filterChipText}>Em Promoção</Text>
@@ -799,18 +1115,22 @@ export default function Products() {
   }, [
     filters.categories,
     filters.onlyPromotion,
+    filters.city,
+    filters.state,
+    filters.radiusKm,
     handleClearFilters,
     handleFilterButtonPress,
     handleRemoveCategoryFilter,
     handleRemovePriceFilter,
     handleRemovePromotionFilter,
-    hasFilterOverrides,
+    handleRemoveStateFilter,
+    handleRemoveCityFilter,
+    handleRemoveRadiusFilter,
     hasVisibleFilters,
     priceRangeLabel,
     searchTerm,
     setSearchTerm,
     styles,
-    theme.colors.onPrimary,
     theme.colors.primary,
   ]);
 
@@ -890,7 +1210,7 @@ export default function Products() {
       return (
         <View style={styles.feedbackWrapper}>
           <Text style={styles.feedbackText}>{error}</Text>
-          <TouchableOpacity onPress={loadProducts} style={styles.retryButton} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => loadProducts()} style={styles.retryButton} activeOpacity={0.7}>
             <Text style={styles.retryButtonText}>Tentar novamente</Text>
           </TouchableOpacity>
         </View>
@@ -955,6 +1275,83 @@ export default function Products() {
               keyboardShouldPersistTaps="handled"
             >
               <Text style={styles.filterModalTitle}>Filtros</Text>
+
+              {/* Filtros Lojas */}
+              <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Filtros Lojas</Text>
+
+                <View style={{ gap: theme.spacing.sm }}>
+                  <View>
+                    <Text style={styles.priceInputLabel}>Estado</Text>
+                    <Input
+                      value={draftState}
+                      onChangeText={(text) => setDraftState(text.toUpperCase())}
+                      maxLength={2}
+                      autoCapitalize="characters"
+                      placeholder="UF"
+                      style={{ backgroundColor: theme.colors.secondary, borderRadius: theme.radius.lg }}
+                    />
+                    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.xs, marginTop: theme.spacing.sm }}>
+                      {STATE_OPTIONS.map((option: string) => (
+                        <TouchableOpacity
+                          key={option}
+                          style={[
+                            styles.filterChip,
+                            draftState === option && { backgroundColor: theme.colors.primary, borderColor: theme.colors.primary },
+                          ]}
+                          onPress={() => setDraftState(option)}
+                        >
+                          <Text style={[styles.filterChipText, draftState === option && { color: theme.colors.onPrimary }]}> {option} </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+
+                  <View>
+                    <Text style={styles.priceInputLabel}>Cidade</Text>
+                    <Input
+                      value={draftCity}
+                      onChangeText={setDraftCity}
+                      placeholder="Cidade"
+                      autoCapitalize="words"
+                      style={{ backgroundColor: theme.colors.secondary, borderRadius: theme.radius.lg }}
+                    />
+                  </View>
+
+                  <View>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: theme.spacing.xs }}>
+                      <Text style={styles.priceInputLabel}>Em um raio de distancia:</Text>
+                      <TouchableOpacity onPress={() => setDraftRadiusEnabled((c) => !c)} activeOpacity={0.7} style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.xs }}>
+                        <Icon type="MaterialCommunityIcons" name={draftRadiusEnabled ? "close-circle-outline" : "check-circle"} size={18} color={theme.colors.primary} />
+                        <Text style={{ color: theme.colors.primary }}>{draftRadiusEnabled ? "Sem limite" : "Com limite"}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={[styles.sliderFallback, !draftRadiusEnabled && styles.sliderDisabled]}>
+                      <TouchableOpacity
+                        style={[styles.sliderFallbackButton, !draftRadiusEnabled && styles.sliderFallbackButtonDisabled]}
+                        onPress={() => setDraftRadiusKm((v) => Math.max(1, Math.min(20, v - 1)))}
+                        disabled={!draftRadiusEnabled}
+                      >
+                        <Text style={styles.sliderFallbackButtonText}>-</Text>
+                      </TouchableOpacity>
+                      <Text style={styles.sliderFallbackValue}>{draftRadiusKm} km</Text>
+                      <TouchableOpacity
+                        style={[styles.sliderFallbackButton, !draftRadiusEnabled && styles.sliderFallbackButtonDisabled]}
+                        onPress={() => setDraftRadiusKm((v) => Math.max(1, Math.min(20, v + 1)))}
+                        disabled={!draftRadiusEnabled}
+                      >
+                        <Text style={styles.sliderFallbackButtonText}>+</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {!draftRadiusEnabled ? (
+                      <View style={styles.sliderValueRow}>
+                        <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
 
               <TouchableOpacity
                 onPress={() => setDraftOnlyPromotion((current) => !current)}

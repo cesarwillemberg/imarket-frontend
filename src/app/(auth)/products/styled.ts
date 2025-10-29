@@ -144,12 +144,12 @@ const createStyles = (theme: Theme) =>
     },
     cardStore: {
       fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sx,
+      fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
     },
     cardOriginalPrice: {
       fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sx,
+      fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
       textDecorationLine: "line-through",
     },
@@ -161,7 +161,7 @@ const createStyles = (theme: Theme) =>
     },
     cardUnit: {
       fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sx,
+      fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
     },
     cardUnavailable: {
@@ -171,7 +171,7 @@ const createStyles = (theme: Theme) =>
     },
     cardCode: {
       fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sx,
+      fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
     },
     feedbackWrapper: {
@@ -386,6 +386,52 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.md,
       color: theme.colors.primary,
       fontWeight: "600",
+    },
+    // Distance slider fallback (mirrors store styles)
+    sliderFallback: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: theme.spacing.sm,
+      borderRadius: theme.radius.full,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+    },
+    sliderDisabled: {
+      opacity: 0.5,
+    },
+    sliderFallbackButton: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.full,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.primary,
+    },
+    sliderFallbackButtonDisabled: {
+      backgroundColor: theme.colors.disabled,
+    },
+    sliderFallbackButtonText: {
+      color: theme.colors.onPrimary,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+    },
+    sliderFallbackValue: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+    },
+    sliderValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: theme.spacing.sm,
+    },
+    sliderValueUnlimited: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
     },
   });
 
