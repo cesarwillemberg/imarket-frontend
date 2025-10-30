@@ -36,6 +36,7 @@ type Product = {
   originalPrice: number | null;
   inPromotion: boolean;
   imageUrl: string | null;
+  variableWeight: boolean;
 };
 
 const PROMOTION_FLAG_KEYS = [
@@ -45,6 +46,15 @@ const PROMOTION_FLAG_KEYS = [
   "hasPromotion",
   "is_promotion",
   "isPromotion",
+] as const;
+
+const VARIABLE_WEIGHT_FLAG_KEYS = [
+  "variable_weight",
+  "variableWeight",
+  "is_variable_weight",
+  "isVariableWeight",
+  "weight_variable",
+  "is_weight_variable",
 ] as const;
 
 const PRODUCT_IMAGE_URL_KEYS = [
@@ -221,6 +231,9 @@ const mapProduct = (raw: RawProduct): Product | null => {
   const explicitPromotionFlag = parseBooleanValue(
     pickFirstValue(raw, PROMOTION_FLAG_KEYS) ?? false
   );
+  const variableWeight = parseBooleanValue(
+    pickFirstValue(raw, VARIABLE_WEIGHT_FLAG_KEYS) ?? false
+  );
 
   // Robust price mapping to avoid 0,00 on non-promotional items
   let price: number | null = null;
@@ -287,6 +300,7 @@ const mapProduct = (raw: RawProduct): Product | null => {
       typeof imageRaw === "string" && imageRaw.trim().length
         ? imageRaw
         : null,
+    variableWeight,
   };
 };
 
@@ -632,6 +646,15 @@ export default function ProductDetails() {
             ) : null}
           </View>
         </View>
+
+        {product.variableWeight ? (
+          <View style={styles.variableWeightWrapper}>
+            <Text style={styles.variableWeightTitle}>Produto de peso variável</Text>
+            <Text style={styles.variableWeightDescription}>
+              Preço estimado que pode ser ajustado em até 50% após a pesagem final. Essa diferença será cobrada ou estornada, conforme necessário.
+            </Text>
+          </View>
+        ) : null}
 
         <View style={styles.quantitySection}>
           <Text style={styles.quantityLabel}>Quantidade</Text>

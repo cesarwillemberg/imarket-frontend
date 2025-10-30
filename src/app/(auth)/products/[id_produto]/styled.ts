@@ -239,6 +239,23 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       lineHeight: 20,
     },
+    variableWeightWrapper: {
+      marginTop: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
+    variableWeightTitle: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.primary,
+      fontWeight: "600",
+      marginBottom: theme.spacing.xs,
+    },
+    variableWeightDescription: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+      lineHeight: 18,
+    },
   });
 
 export default createStyles;
