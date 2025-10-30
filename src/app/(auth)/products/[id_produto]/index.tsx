@@ -222,29 +222,38 @@ const mapProduct = (raw: RawProduct): Product | null => {
     pickFirstValue(raw, PROMOTION_FLAG_KEYS) ?? false
   );
 
-  let price: number | null = promotionalPrice ?? basePrice ?? null;
+  // Robust price mapping to avoid 0,00 on non-promotional items
+  let price: number | null = null;
   let originalPrice: number | null = null;
-  let inPromotion = explicitPromotionFlag;
+  let inPromotion = false;
 
-  if (promotionalPrice !== null) {
+  const promoIsValid =
+    promotionalPrice !== null &&
+    promotionalPrice > 0 &&
+    (
+      explicitPromotionFlag ||
+      (typeof basePrice === "number" && promotionalPrice < basePrice) ||
+      (typeof originalPriceCandidate === "number" && promotionalPrice < originalPriceCandidate)
+    );
+
+  if (promoIsValid) {
     const referencePrice = originalPriceCandidate ?? basePrice ?? promotionalPrice;
-    if (promotionalPrice < referencePrice) {
-      originalPrice = referencePrice;
-      price = promotionalPrice;
-      inPromotion = true;
-    } else if (explicitPromotionFlag && referencePrice !== promotionalPrice) {
-      originalPrice = referencePrice;
-      price = promotionalPrice;
-      inPromotion = true;
-    } else {
-      price = promotionalPrice;
-    }
-  } else if (explicitPromotionFlag && originalPriceCandidate !== null && basePrice !== null) {
-    price = basePrice;
-    originalPrice = originalPriceCandidate;
+    price = promotionalPrice;
+    originalPrice = referencePrice !== promotionalPrice ? referencePrice : null;
     inPromotion = true;
+  } else if (explicitPromotionFlag && originalPriceCandidate !== null && basePrice !== null) {
+    // Promotion flagged with base as discounted and original as list price
+    price = basePrice;
+    originalPrice = originalPriceCandidate > basePrice ? originalPriceCandidate : null;
+    inPromotion = originalPrice !== null;
   } else {
-    price = basePrice ?? originalPriceCandidate ?? null;
+    // No valid promotion; choose best available positive price
+    const base = typeof basePrice === "number" && basePrice > 0 ? basePrice : null;
+    const orig =
+      typeof originalPriceCandidate === "number" && originalPriceCandidate > 0
+        ? originalPriceCandidate
+        : null;
+    price = base ?? orig ?? null;
     originalPrice = null;
     inPromotion = false;
   }
@@ -577,13 +586,20 @@ export default function ProductDetails() {
         {images.length > 1 ? (
           <View style={styles.dotsWrapper}>
             {images.map((_, index) => (
-              <View
+              <TouchableOpacity
                 key={`${product.id}-${index}`}
-                style={[
-                  styles.dot,
-                  index === activeImage ? styles.dotActive : styles.dotInactive,
-                ]}
-              />
+                onPress={() => setActiveImage(index)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para imagem ${index + 1}`}
+              >
+                <View
+                  style={[
+                    styles.dot,
+                    index === activeImage ? styles.dotActive : styles.dotInactive,
+                  ]}
+                />
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}

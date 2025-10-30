@@ -7,7 +7,7 @@ import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync, reverseGeocodeAsync } from "expo-location";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -91,6 +91,79 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
 });
+
+// Memoized product card to reduce FlatList re-renders
+type ProductCardProps = {
+  item: ProductListItem;
+  onPress: (id: string) => void;
+  styles: ReturnType<typeof createStyles>;
+  primaryColor: string;
+  disabledColor: string;
+};
+
+const ProductCard = memo(
+  ({ item, onPress, styles, primaryColor, disabledColor }: ProductCardProps) => {
+    const formattedPrice = item.price !== null ? currencyFormatter.format(item.price) : null;
+    const formattedOriginalPrice =
+      item.originalPrice !== null ? currencyFormatter.format(item.originalPrice) : null;
+    const unitLabel = item.unit ? ` ${item.unit}` : "";
+
+    const handleNavigate = useCallback(() => {
+      onPress(item.id);
+    }, [item.id, onPress]);
+
+    return (
+      <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
+        <View style={styles.cardImageWrapper}>
+          {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.cardImage} resizeMode="contain" />
+          ) : (
+            <View style={styles.cardImageFallback}>
+              <Icon type="MaterialCommunityIcons" name="image-off" size={32} color={disabledColor} />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.cardContent}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {item.name}
+            </Text>
+          </View>
+
+          {item.category ? (
+            <Text style={styles.cardCategory} numberOfLines={1}>
+              Categoria: {item.category}
+            </Text>
+          ) : null}
+
+          <Text style={styles.cardStore}>Vendido por: {item.storeName ?? "Nao informado"}</Text>
+
+          {formattedOriginalPrice ? (
+            <Text style={styles.cardOriginalPrice}>De {formattedOriginalPrice}</Text>
+          ) : null}
+
+          {formattedPrice ? (
+            <Text style={styles.cardPrice}>
+              Por {formattedPrice}
+              {unitLabel ? <Text style={styles.cardUnit}>{unitLabel}</Text> : null}
+            </Text>
+          ) : (
+            <Text style={styles.cardUnavailable}>Preco nao informado</Text>
+          )}
+
+          {item.code ? <Text style={styles.cardCode}>Cod: {item.code}</Text> : null}
+        </View>
+      </TouchableOpacity>
+    );
+  },
+  (prev, next) =>
+    prev.item === next.item &&
+    prev.styles === next.styles &&
+    prev.primaryColor === next.primaryColor &&
+    prev.disabledColor === next.disabledColor
+);
+ProductCard.displayName = "ProductCard";
 
 const pickFirstValue = (source: RawProduct | RawProductImage, keys: readonly string[]) => {
   for (const key of keys) {
@@ -1216,72 +1289,24 @@ export default function Products() {
     theme.colors.primary,
   ]);
 
-  const renderProductItem = useCallback(
-    ({ item }: { item: ProductListItem }) => {
-      const formattedPrice =
-        item.price !== null ? currencyFormatter.format(item.price) : null;
-      const formattedOriginalPrice =
-        item.originalPrice !== null ? currencyFormatter.format(item.originalPrice) : null;
-      const unitLabel = item.unit ? ` ${item.unit}` : "";
-
-      const handleNavigate = () => {
-        router.push({
-          pathname: "/(auth)/products/[id_produto]",
-          params: { id_produto: item.id },
-        });
-      };
-      return (
-        <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
-          <View style={styles.cardImageWrapper}>
-            {item.imageUrl ? (
-              <Image
-                source={{ uri: item.imageUrl }}
-                style={styles.cardImage}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={styles.cardImageFallback}>
-                <Icon type="MaterialCommunityIcons" name="image-off" size={32} color={theme.colors.disabled} />
-              </View>
-            )}
-          </View>
-
-          <View style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.cardTitle} numberOfLines={2}>
-                {item.name}
-              </Text>
-            </View>
-
-            {item.category ? (
-              <Text style={styles.cardCategory} numberOfLines={1}>
-                Categoria: {item.category}
-              </Text>
-            ) : null}
-
-            <Text style={styles.cardStore}>
-              Vendido por: {item.storeName ?? "Nao informado"}
-            </Text>
-
-            {formattedOriginalPrice ? (
-              <Text style={styles.cardOriginalPrice}>De {formattedOriginalPrice}</Text>
-            ) : null}
-
-            {formattedPrice ? (
-              <Text style={styles.cardPrice}>
-                Por {formattedPrice}
-                {unitLabel ? <Text style={styles.cardUnit}>{unitLabel}</Text> : null}
-              </Text>
-            ) : (
-              <Text style={styles.cardUnavailable}>Preco nao informado</Text>
-            )}
-
-            {item.code ? <Text style={styles.cardCode}>Cod: {item.code}</Text> : null}
-          </View>
-        </TouchableOpacity>
-      );
+  const onNavigate = useCallback(
+    (id: string) => {
+      router.push({ pathname: "/(auth)/products/[id_produto]", params: { id_produto: id } });
     },
-    [router, styles, theme.colors.disabled]
+    [router]
+  );
+
+  const renderProductItem = useCallback(
+    ({ item }: { item: ProductListItem }) => (
+      <ProductCard
+        item={item}
+        onPress={onNavigate}
+        styles={styles}
+        primaryColor={theme.colors.primary}
+        disabledColor={theme.colors.disabled}
+      />
+    ),
+    [onNavigate, styles, theme.colors.primary, theme.colors.disabled]
   );
 
   const renderEmptyState = () => {
@@ -1332,6 +1357,11 @@ export default function Products() {
             data={filteredProducts}
             keyExtractor={(item) => item.id}
             renderItem={renderProductItem}
+            initialNumToRender={10}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={50}
+            windowSize={7}
+            removeClippedSubviews
             contentContainerStyle={styles.listContent}
             ListHeaderComponent={renderListHeader}
             ListEmptyComponent={renderEmptyState}
