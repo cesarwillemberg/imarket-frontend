@@ -454,29 +454,41 @@ const mapProduct = (raw: RawProduct): ProductListItem | null => {
     pickFirstValue(raw, PROMOTION_FLAG_KEYS) ?? false
   );
 
-  let price: number | null = promotionalPrice ?? basePrice ?? null;
+  // Determine effective price and promotion flag.
+  // Rule: Ignore promotionalPrice when it's null, <= 0, or when there is no evidence of a real discount
+  // (i.e., no explicit flag and not cheaper than the base/original price). This avoids 0,00 showing when
+  // in_promotion is false but a 0 placeholder exists in the promo column.
+  let price: number | null = null;
   let originalPrice: number | null = null;
-  let inPromotion = explicitPromotionFlag;
+  let inPromotion = false;
 
-  if (promotionalPrice !== null) {
+  const promoIsValid =
+    promotionalPrice !== null &&
+    promotionalPrice > 0 &&
+    (
+      explicitPromotionFlag ||
+      (typeof basePrice === "number" && promotionalPrice < basePrice) ||
+      (typeof originalPriceCandidate === "number" && promotionalPrice < originalPriceCandidate)
+    );
+
+  if (promoIsValid) {
     const referencePrice = originalPriceCandidate ?? basePrice ?? promotionalPrice;
-    if (promotionalPrice < referencePrice) {
-      originalPrice = referencePrice;
-      price = promotionalPrice;
-      inPromotion = true;
-    } else if (explicitPromotionFlag && referencePrice !== promotionalPrice) {
-      originalPrice = referencePrice;
-      price = promotionalPrice;
-      inPromotion = true;
-    } else {
-      price = promotionalPrice;
-    }
-  } else if (explicitPromotionFlag && originalPriceCandidate !== null && basePrice !== null) {
-    price = basePrice;
-    originalPrice = originalPriceCandidate;
+    price = promotionalPrice;
+    originalPrice = referencePrice !== promotionalPrice ? referencePrice : null;
     inPromotion = true;
+  } else if (explicitPromotionFlag && originalPriceCandidate !== null && basePrice !== null) {
+    // Some datasets mark promotion via flag and keep base as discounted, original as list price.
+    price = basePrice;
+    originalPrice = originalPriceCandidate > basePrice ? originalPriceCandidate : null;
+    inPromotion = originalPrice !== null;
   } else {
-    price = basePrice ?? originalPriceCandidate ?? null;
+    // No valid promotion; use the best available non-zero positive price.
+    const base = typeof basePrice === "number" && basePrice > 0 ? basePrice : null;
+    const orig =
+      typeof originalPriceCandidate === "number" && originalPriceCandidate > 0
+        ? originalPriceCandidate
+        : null;
+    price = base ?? orig ?? null;
     originalPrice = null;
     inPromotion = false;
   }
