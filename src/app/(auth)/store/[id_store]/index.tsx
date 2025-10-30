@@ -15,8 +15,46 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { DEFAULT_FILTERS, Store, StorePromotion } from "../mockStores";
 import createStyles from "./styled";
+// Local defaults replacing removed mockStores.ts
+const DEFAULT_FILTERS = {
+  state: "RS",
+  city: "Ijui",
+  radiusKm: 5,
+} as const;
+// Removed dependency on mockStores.ts; define lightweight local types for this screen
+type StoreInfoBlock = { label: string; value: string };
+type StorePromotion = {
+  id: string;
+  name: string;
+  price: string;
+  originalPrice?: string;
+  unit: string;
+  image: string;
+  priceValue?: number | null;
+  originalPriceValue?: number | null;
+  discountValue?: number | null;
+};
+type Store = {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  distance?: string;
+  deliveryTime?: string;
+  rating?: number;
+  isOpen?: boolean;
+  promotion?: string;
+  brandColor?: string;
+  city?: string;
+  state?: string;
+  bannerImage?: string;
+  logo?: string;
+  about?: string;
+  info: StoreInfoBlock[];
+  workingHours: StoreInfoBlock[];
+  promotions: StorePromotion[];
+};
 
 
 const SCROLL_STEP = 220;
@@ -483,8 +521,8 @@ const mapScheduleResponseToWorkingHours = (raw: unknown): Store["workingHours"] 
 };
 
 export default function StoreProfile() {
-  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const storeId = useMemo(() => (Array.isArray(id) ? id[0] : id), [id]);
+  const { id_store } = useLocalSearchParams<{ id_store?: string | string[] }>();
+  const storeId = useMemo(() => (Array.isArray(id_store) ? id_store[0] : id_store), [id_store]);
 
   const {
     getStoreById,

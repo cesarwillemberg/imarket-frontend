@@ -4,7 +4,7 @@ import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -357,6 +357,7 @@ export default function ProductDetails() {
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -637,10 +638,29 @@ export default function ProductDetails() {
           )}
 
           <View style={styles.metaInfo}>
-            <Text style={styles.metaInfoText}>
-              <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
-              {product.storeName ?? "Nao informado"}
-            </Text>
+            {product.storeId ? (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/(auth)/store/[id_store]",
+                    params: { id_store: String(product.storeId ?? "") },
+                  })
+                }
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para perfil da loja ${product.storeName ?? ""}`}
+              >
+                <Text style={[styles.metaInfoText, { textDecorationLine: "underline" }]}>
+                  <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
+                  {product.storeName ?? "Nao informado"}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.metaInfoText}>
+                <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
+                {product.storeName ?? "Nao informado"}
+              </Text>
+            )}
             {product.code ? (
               <Text style={styles.metaInfoText}>Cod: {product.code}</Text>
             ) : null}

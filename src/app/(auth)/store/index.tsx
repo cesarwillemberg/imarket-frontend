@@ -25,13 +25,47 @@ import {
   TouchableWithoutFeedback,
   View,
 } from "react-native";
-import {
-  DEFAULT_FILTERS,
-  type Store,
-  type StoreInfoBlock,
-  type StorePromotion,
-} from "./mockStores";
 import createStyles from "./styled";
+// Removed dependency on mockStores.ts; define local defaults and lightweight types
+const DEFAULT_FILTERS = {
+  state: "RS",
+  city: "Ijui",
+  radiusKm: 5,
+} as const;
+
+type StoreInfoBlock = { label: string; value: string };
+type StorePromotion = {
+  id: string;
+  name: string;
+  price: string;
+  originalPrice?: string;
+  unit: string;
+  image: string;
+  priceValue?: number | null;
+  originalPriceValue?: number | null;
+  discountValue?: number | null;
+};
+// Minimal Store shape used throughout this screen
+type Store = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  distance: string;
+  deliveryTime: string;
+  rating: number;
+  isOpen: boolean;
+  promotion?: string;
+  brandColor: string;
+  city?: string;
+  state?: string;
+  bannerImage?: string;
+  logo?: string;
+  about?: string;
+  info?: StoreInfoBlock[];
+  workingHours?: StoreInfoBlock[];
+  promotions?: StorePromotion[];
+};
 
 type Coordinates = { latitude: number; longitude: number };
 
@@ -906,7 +940,10 @@ export default function StoreScreen() {
   };
 
   const handleStorePress = (store: Store) => {
-    router.push(`/(auth)/store/${store.id}`);
+    router.push({
+      pathname: "/(auth)/store/[id_store]",
+      params: { id_store: store.id },
+    });
   };
 
   const toggleFavorite = (storeId: string) => {
