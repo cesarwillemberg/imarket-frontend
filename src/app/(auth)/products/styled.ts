@@ -142,6 +142,11 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       fontWeight: "600",
     },
+    cardCategory: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
     cardStore: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,

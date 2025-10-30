@@ -5,8 +5,7 @@ import SearchInputBar from "@/src/components/common/SearchBar";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { Picker } from "@react-native-picker/picker";
-import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
+import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync, reverseGeocodeAsync } from "expo-location";
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -217,7 +216,8 @@ const createDefaultFilters = (): Filters => ({
   categories: [],
   minPrice: null,
   maxPrice: null,
-  state: null,
+  // Default to Rio Grande do Sul and keep it locked in the UI
+  state: "RS",
   city: null,
   radiusKm: null,
 });
@@ -331,9 +331,52 @@ const normalizeStateKey = (value: string | null | undefined) => {
   return BRAZIL_STATE_ALIASES[normalized] ?? normalized;
 };
 
-// IBGE States API type and cache
-type IbgeState = { id: number; sigla: string; nome: string };
-let IBGE_STATES_CACHE: IbgeState[] | null = null;
+// Map a geocoded city name to one of our allowed Ijuí region cities
+const matchCityToIjuiRegion = (name: string | null | undefined): string | null => {
+  if (!name) return null;
+  const n = normalizeForComparison(name);
+  let best: string | null = null;
+  for (const city of IJUI_REGION_CITIES) {
+    const c = normalizeForComparison(city);
+    if (n === c || n.includes(c) || c.includes(n)) {
+      best = city;
+      break;
+    }
+  }
+  return best;
+};
+
+// Static state list (locked to RS)
+type SimpleState = { id: number; sigla: string; nome: string };
+const AVAILABLE_STATES: SimpleState[] = [
+  { id: 43, sigla: "RS", nome: "Rio Grande do Sul" },
+];
+
+// Static city options for Ijuí region
+const IJUI_REGION_CITIES = [
+  "Ajuricaba",
+  "Alegria",
+  "Augusto Pestana",
+  "Boa Vista do Cadeado",
+  "Boa Vista do Incra",
+  "Bozano",
+  "Chiapetta",
+  "Catuípe",
+  "Condor",
+  "Coronel Barros",
+  "Coronel Bicaco",
+  "Ijuí",
+  "Inhacorá",
+  "Nova Ramada",
+  "Panambi",
+  "Pejuçara",
+  "Santo Augusto",
+  "São Martinho",
+  "São Valério do Sul",
+  "Sede Nova",
+  "Tenente Portela",
+  "Crissiumal",
+] as const;
 
 const mapProduct = (raw: RawProduct): ProductListItem | null => {
   const identifier =
@@ -534,31 +577,45 @@ export default function Products() {
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
   // Loja - drafts
-  const [draftState, setDraftState] = useState("");
+  const [draftState, setDraftState] = useState("RS");
   const [draftCity, setDraftCity] = useState("");
   const [draftRadiusKm, setDraftRadiusKm] = useState<number>(5);
   const [draftRadiusEnabled, setDraftRadiusEnabled] = useState<boolean>(false);
-  // IBGE States
-  const [ibgeStates, setIbgeStates] = useState<IbgeState[]>([]);
-  const [statesLoading, setStatesLoading] = useState<boolean>(false);
+  // No dynamic states loading; locked to RS
 
   const storeCache = useMemo(() => new Map<string, string | null>(), []);
   const [storeLocationMeta, setStoreLocationMeta] = useState<Record<string, { city: string | null; state: string | null }>>({});
   const [storeDistances, setStoreDistances] = useState<Record<string, number>>({});
   const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [initializedCityFromLocation, setInitializedCityFromLocation] = useState<boolean>(false);
   // no-op ref kept out
 
-  const hasActiveFilters = useMemo(
-    () =>
-      filters.onlyPromotion ||
-      filters.categories.length > 0 ||
-      filters.minPrice !== null ||
-      filters.maxPrice !== null ||
-      (filters.state ?? null) !== null ||
-      (filters.city ?? null) !== null ||
-      filters.radiusKm !== null,
-    [filters]
+  // Custom selector state (replaces Picker)
+  const [isCitySelectorVisible, setIsCitySelectorVisible] = useState(false);
+  const [cityQuery, setCityQuery] = useState("");
+  const filteredCities = useMemo(() => {
+    const q = normalizeForComparison(cityQuery);
+    const list = IJUI_REGION_CITIES as readonly string[];
+    if (!q) return list;
+    return list.filter((c) => normalizeForComparison(c).includes(q));
+  }, [cityQuery]);
+
+  // Ensure current city is valid against list
+  const safeDraftCity = useMemo(
+    () => (IJUI_REGION_CITIES as readonly string[]).includes(draftCity) ? draftCity : "",
+    [draftCity]
   );
+
+  // Consider as "active" only user-controlled filters.
+  // State is locked to RS by default, so it should NOT count as an active filter.
+  const hasActiveFilters = useMemo(() => {
+    const hasPromotion = !!filters.onlyPromotion;
+    const hasCategories = filters.categories.length > 0;
+    const hasPrice = filters.minPrice !== null || filters.maxPrice !== null;
+    const hasCity = typeof filters.city === "string" && filters.city.trim().length > 0;
+    const hasRadius = filters.radiusKm !== null;
+    return hasPromotion || hasCategories || hasPrice || hasCity || hasRadius;
+  }, [filters]);
 
   const hasVisibleFilters = hasActiveFilters;
 
@@ -584,7 +641,7 @@ export default function Products() {
     setDraftCategories(filters.categories);
     setDraftMinPrice(formatCurrencyFromNumber(filters.minPrice));
     setDraftMaxPrice(formatCurrencyFromNumber(filters.maxPrice));
-    setDraftState(filters.state ?? "");
+    setDraftState(filters.state ?? "RS");
     setDraftCity(filters.city ?? "");
     setDraftRadiusKm(filters.radiusKm ?? 5);
     setDraftRadiusEnabled(filters.radiusKm !== null);
@@ -630,44 +687,13 @@ export default function Products() {
     setDraftCategories([]);
     setDraftMinPrice("");
     setDraftMaxPrice("");
-    setDraftState("");
+    setDraftState("RS");
     setDraftCity("");
     setDraftRadiusKm(5);
     setDraftRadiusEnabled(false);
   }, []);
   
-  // Fetch states from IBGE API only when modal opens and data not loaded yet
-  useEffect(() => {
-    if (!isFilterModalVisible) return;
-    if (ibgeStates.length > 0) return; // Already loaded
-    if (statesLoading) return; // Already loading
-    
-    let isMounted = true;
-    (async () => {
-      try {
-        setStatesLoading(true);
-        if (IBGE_STATES_CACHE) {
-          setIbgeStates(IBGE_STATES_CACHE);
-        } else {
-          const res = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados");
-          const data: IbgeState[] = await res.json();
-          if (!isMounted) return;
-          const ordered = (Array.isArray(data) ? data : [])
-            .filter((s): s is IbgeState => !!s && typeof s.id === "number" && typeof s.sigla === "string")
-            .sort((a, b) => (a.sigla || "").localeCompare(b.sigla || ""));
-          IBGE_STATES_CACHE = ordered;
-          setIbgeStates(ordered);
-        }
-      } catch {
-        setIbgeStates([]);
-      } finally {
-        if (isMounted) setStatesLoading(false);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [isFilterModalVisible, ibgeStates.length, statesLoading]);
+  // No states API fetching; state is locked to RS.
 
   const handleRemoveCategoryFilter = useCallback((category: FilterCategory) => {
     setFilters((current) => ({
@@ -791,6 +817,36 @@ export default function Products() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Once we have the user's coordinates, try to select the city filter by default
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!userLocation) return;
+      if (initializedCityFromLocation) return;
+      if (filters.city) return;
+      try {
+        const results = await reverseGeocodeAsync({
+          latitude: userLocation.latitude,
+          longitude: userLocation.longitude,
+        });
+        const first = Array.isArray(results) ? results[0] : undefined;
+        const cityCandidate =
+          (first as any)?.city || (first as any)?.subregion || (first as any)?.district;
+        const matched = matchCityToIjuiRegion(typeof cityCandidate === "string" ? cityCandidate : "");
+        if (!cancelled && matched) {
+          setFilters((curr) => (curr.city ? curr : { ...curr, city: matched }));
+          setDraftCity((curr) => (curr || matched));
+          setInitializedCityFromLocation(true);
+        } else if (!cancelled) {
+          setInitializedCityFromLocation(true);
+        }
+      } catch {
+        if (!cancelled) setInitializedCityFromLocation(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userLocation, initializedCityFromLocation, filters.city]);
 
   const loadProducts = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -1197,6 +1253,12 @@ export default function Products() {
               </Text>
             </View>
 
+            {item.category ? (
+              <Text style={styles.cardCategory} numberOfLines={1}>
+                Categoria: {item.category}
+              </Text>
+            ) : null}
+
             <Text style={styles.cardStore}>
               Vendido por: {item.storeName ?? "Nao informado"}
             </Text>
@@ -1308,7 +1370,7 @@ export default function Products() {
 
                 <View style={{ gap: theme.spacing.sm }}>
                   <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
-                    {/* Estado */}
+                    {/* Estado (fixo RS) */}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.priceInputLabel}>Estado</Text>
                       <View
@@ -1319,40 +1381,40 @@ export default function Products() {
                           borderColor: theme.colors.primary,
                         }}
                       >
-                        <Picker
-                          selectedValue={draftState}
-                          onValueChange={(value) => setDraftState(String(value))}
-                          enabled={!statesLoading}
-                          dropdownIconColor={theme.colors.primary}
-                          style={{ color: theme.colors.text }}
-                          {...(Platform.OS === "android" ? { mode: "dropdown" as const } : {})}
-                        >
-                          <Picker.Item
-                            label={statesLoading ? "Carregando..." : "Selecione o estado"}
-                            value=""
-                            color={theme.colors.disabled}
-                          />
-                          {ibgeStates.map((state) => (
-                            <Picker.Item
-                              key={state.id}
-                              label={`${state.sigla} - ${state.nome}`}
-                              value={state.sigla}
-                            />
-                          ))}
-                        </Picker>
+                        <View style={{ paddingVertical: 8, paddingHorizontal: 12, opacity: 0.7 }}>
+                          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                            <Text style={{ color: theme.colors.text }}>{`${AVAILABLE_STATES[0].sigla} - ${AVAILABLE_STATES[0].nome}`}</Text>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                              <Icon type="MaterialCommunityIcons" name="lock-outline" size={16} color={theme.colors.primary} />
+                              <Text style={{ color: theme.colors.primary, fontSize: 12 }}>fixo</Text>
+                            </View>
+                          </View>
+                        </View>
                       </View>
                     </View>
 
-                    {/* Cidade */}
+                    {/* Cidade (seletor região de Ijuí) */}
                     <View style={{ flex: 1 }}>
                       <Text style={styles.priceInputLabel}>Cidade</Text>
-                      <TextInput
-                        style={styles.priceInput}
-                        placeholder="Ex: Porto Alegre"
-                        placeholderTextColor={theme.colors.disabled}
-                        value={draftCity}
-                        onChangeText={setDraftCity}
-                      />
+                      <View
+                        style={{
+                          backgroundColor: theme.colors.secondary,
+                          borderRadius: theme.radius.lg,
+                          borderWidth: 1,
+                          borderColor: theme.colors.primary,
+                        }}
+                      >
+                        <TouchableOpacity
+                          onPress={() => setIsCitySelectorVisible(true)}
+                          activeOpacity={0.7}
+                          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 8, paddingHorizontal: 12 }}
+                        >
+                          <Text style={{ color: safeDraftCity ? theme.colors.text : theme.colors.disabled }}>
+                            {safeDraftCity || "Selecione a cidade"}
+                          </Text>
+                          <Icon type="MaterialCommunityIcons" name="chevron-down" size={18} color={theme.colors.primary} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
                   </View>
 
@@ -1523,6 +1585,84 @@ export default function Products() {
                 </TouchableOpacity>
               </View>
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      {/* City selector modal (custom dropdown replacement) */}
+      <Modal
+        visible={isCitySelectorVisible}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setIsCitySelectorVisible(false)}
+      >
+        <View style={styles.filterModalOverlay}>
+          <Pressable style={styles.filterModalBackdrop} onPress={() => setIsCitySelectorVisible(false)} />
+          <View style={[styles.filterModalCard, { maxHeight: 420 }]}>
+            <View style={{ padding: theme.spacing.sm }}>
+              <Text style={styles.filterSectionTitle}>Selecionar cidade</Text>
+              <View
+                style={{
+                  backgroundColor: theme.colors.secondary,
+                  borderRadius: theme.radius.lg,
+                  borderWidth: 1,
+                  borderColor: theme.colors.primary,
+                  marginTop: theme.spacing.xs,
+                  paddingHorizontal: theme.spacing.sm,
+                  paddingVertical: 6,
+                }}
+              >
+                <TextInput
+                  value={cityQuery}
+                  onChangeText={setCityQuery}
+                  placeholder="Buscar cidade..."
+                  placeholderTextColor={theme.colors.disabled}
+                  style={{ color: theme.colors.text }}
+                />
+              </View>
+
+              <ScrollView
+                style={{ marginTop: theme.spacing.sm }}
+                contentContainerStyle={{ paddingBottom: theme.spacing.lg }}
+                showsVerticalScrollIndicator={false}
+              >
+                {(filteredCities.length ? filteredCities : (IJUI_REGION_CITIES as readonly string[])).map((city) => (
+                  <TouchableOpacity
+                    key={city}
+                    onPress={() => {
+                      setDraftCity(city);
+                      setIsCitySelectorVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                    style={{
+                      paddingVertical: 10,
+                      paddingHorizontal: 8,
+                      borderBottomWidth: 1,
+                      borderBottomColor: theme.colors.secondary,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <Text style={{ color: theme.colors.text }}>{city}</Text>
+                    {safeDraftCity === city ? (
+                      <Icon type="MaterialCommunityIcons" name="check" size={18} color={theme.colors.primary} />
+                    ) : null}
+                  </TouchableOpacity>
+                ))}
+
+                {filteredCities.length === 0 ? (
+                  <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                    <Text style={{ color: theme.colors.disabled }}>Nenhuma cidade encontrada</Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: theme.spacing.sm }}>
+                <TouchableOpacity onPress={() => setIsCitySelectorVisible(false)} activeOpacity={0.7}>
+                  <Text style={{ color: theme.colors.primary }}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
