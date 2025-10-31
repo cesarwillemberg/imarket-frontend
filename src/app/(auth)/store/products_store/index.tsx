@@ -45,16 +45,24 @@ type Product = {
 };
 
 const parseCurrencyValue = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
+  const ensurePositive = (numeric: number | null): number | null => {
+    if (typeof numeric !== "number") return null;
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  };
+
+  if (typeof value === "number") {
+    return ensurePositive(value);
   }
+
   if (typeof value === "string") {
     const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
-    const parsed = Number(normalized);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
+    if (!normalized || normalized === "-" || normalized === ".") {
+      return null;
     }
+    const parsed = Number(normalized);
+    return ensurePositive(Number.isNaN(parsed) ? null : parsed);
   }
+
   return null;
 };
 
@@ -81,6 +89,17 @@ const parseBooleanValue = (value: unknown): boolean => {
   return false;
 };
 
+const PROMOTION_FLAG_KEYS = [
+  "in_promotion",
+  "inPromotion",
+  "has_promotion",
+  "hasPromotion",
+  "is_promotion",
+  "isPromotion",
+  "promotion_active",
+  "promotionActive",
+] as const;
+
 const mapRawProduct = (rawProduct: RawProduct): Product | null => {
   const identifier = rawProduct.id ?? pickFirstValue(rawProduct, ["uuid", "product_id"]);
   if (!identifier) {
@@ -106,43 +125,101 @@ const mapRawProduct = (rawProduct: RawProduct): Product | null => {
   ]);
 
   const currentPriceRaw = pickFirstValue(rawProduct, [
-    "sale_price",
     "promotional_price",
     "promo_price",
+    "price_promotion",
+    "promotion_price",
+    "sale_price",
+    "discount_price",
     "current_price",
     "price",
   ]);
 
   const basePriceRaw = pickFirstValue(rawProduct, [
-    "regular_price",
     "original_price",
-    "list_price",
     "price_from",
     "price_before",
+    "price_without_discount",
+    "regular_price",
+    "list_price",
+    "base_price",
+    "compare_at_price",
+    "unit_price",
+    "price",
   ]);
 
-  const currentPrice = parseCurrencyValue(currentPriceRaw ?? basePriceRaw);
-  const basePrice = parseCurrencyValue(basePriceRaw);
-  const promotionFlagRaw = pickFirstValue(rawProduct, [
-    "in_promotion",
-    "inPromotion",
-    "has_promotion",
-    "hasPromotion",
-    "is_promotion",
-    "isPromotion",
+  const promotionalPriceRaw = pickFirstValue(rawProduct, [
+    "promotional_price",
+    "promo_price",
+    "price_promotion",
+    "promotion_price",
+    "sale_price",
+    "discount_price",
+    "current_price",
+    "price",
   ]);
-  const explicitPromotion = parseBooleanValue(promotionFlagRaw);
-  const derivedPromotion =
-    basePrice !== null && currentPrice !== null && basePrice > currentPrice;
-  const inPromotion = explicitPromotion || derivedPromotion;
+
+  const originalPriceRaw = pickFirstValue(rawProduct, [
+    "original_price",
+    "price_from",
+    "price_before",
+    "price_without_discount",
+    "regular_price",
+    "list_price",
+    "base_price",
+    "compare_at_price",
+    "unit_price",
+  ]);
+
+  const basePrice = parseCurrencyValue(basePriceRaw);
+  const promotionalPrice = parseCurrencyValue(currentPriceRaw ?? promotionalPriceRaw);
+  const originalPriceCandidate = parseCurrencyValue(originalPriceRaw);
+  const explicitPromotion = parseBooleanValue(
+    pickFirstValue(rawProduct, Array.from(PROMOTION_FLAG_KEYS)) ?? false
+  );
+
+  let price: number | null = promotionalPrice ?? basePrice ?? null;
+  let originalPrice: number | null = null;
+  let inPromotion = explicitPromotion;
+
+  if (explicitPromotion) {
+    const referencePrice = originalPriceCandidate ?? basePrice ?? promotionalPrice ?? price;
+
+    if (promotionalPrice !== null) {
+      price = promotionalPrice;
+      if (referencePrice !== null && promotionalPrice < referencePrice) {
+        originalPrice = referencePrice;
+      }
+    } else if (
+      originalPriceCandidate !== null &&
+      basePrice !== null &&
+      basePrice < originalPriceCandidate
+    ) {
+      price = basePrice;
+      originalPrice = originalPriceCandidate;
+    } else if (
+      referencePrice !== null &&
+      price !== null &&
+      price < referencePrice
+    ) {
+      originalPrice = referencePrice;
+    }
+  } else {
+    // Ensure we still have a price fallback even when only the original price is provided.
+    if (price === null) {
+      price = originalPriceCandidate ?? basePrice ?? null;
+    }
+    originalPrice = null;
+    inPromotion = false;
+  }
 
   return {
     id: String(identifier),
     name: typeof nameRaw === "string" && nameRaw.trim().length ? nameRaw : "Produto",
     description: typeof descriptionRaw === "string" ? descriptionRaw : null,
     imageUrl: typeof imageRaw === "string" ? imageRaw : null,
-    price: currentPrice,
-    originalPrice: basePrice,
+    price,
+    originalPrice,
     unit: typeof unitRaw === "string" ? unitRaw : null,
     code: typeof codeRaw === "string" ? codeRaw : typeof codeRaw === "number" ? String(codeRaw) : null,
     category: typeof categoryRaw === "string" ? categoryRaw : null,
