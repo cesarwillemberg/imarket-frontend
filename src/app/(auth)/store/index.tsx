@@ -1,7 +1,6 @@
 import { Button } from "@/src/components/common/Button";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
-import { Input } from "@/src/components/common/Input";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
 import { useSession } from "@/src/providers/SessionContext/Index";
@@ -20,7 +19,11 @@ import {
   Image,
   ListRenderItemInfo,
   Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
@@ -162,6 +165,37 @@ const normalizeStateKey = (value: string | null | undefined) => {
   const normalized = normalizeForComparison(value).replace(/\s+/g, "");
   return BRAZIL_STATE_ALIASES[normalized] ?? normalized;
 };
+
+type SimpleState = { id: number; sigla: string; nome: string };
+const AVAILABLE_STATES: SimpleState[] = [
+  { id: 43, sigla: "RS", nome: "Rio Grande do Sul" },
+];
+const LOCKED_STATE = AVAILABLE_STATES[0];
+
+const IJUI_REGION_CITIES = [
+  "Ajuricaba",
+  "Alegria",
+  "Augusto Pestana",
+  "Boa Vista do Cadeado",
+  "Boa Vista do Incra",
+  "Bozano",
+  "Chiapetta",
+  "Catuípe",
+  "Condor",
+  "Coronel Barros",
+  "Coronel Bicaco",
+  "Ijuí",
+  "Inhacorá",
+  "Nova Ramada",
+  "Panambi",
+  "Pejuçara",
+  "Santo Augusto",
+  "São Martinho",
+  "São Valério do Sul",
+  "Sede Nova",
+  "Tenente Portela",
+  "Crissiumal",
+] as const;
 
 const FALLBACK_BRAND_COLORS = [
   "#FEE9EA",
@@ -1389,13 +1423,6 @@ type FilterModalProps = {
   styles: ReturnType<typeof createStyles>;
 };
 
-const STATE_OPTIONS = ["RS", "SC", "PR"];
-const CITY_OPTIONS: Record<string, string[]> = {
-  RS: ["Ijui", "Santa Maria", "Porto Alegre"],
-  SC: ["Florianopolis", "Joinville", "Blumenau"],
-  PR: ["Curitiba", "Londrina", "Maringa"],
-};
-
 const FilterModal = ({
   visible,
   filters,
@@ -1404,175 +1431,388 @@ const FilterModal = ({
   theme,
   styles,
 }: FilterModalProps) => {
-  const [stateValue, setStateValue] = useState(filters.state ?? "");
   const [cityValue, setCityValue] = useState(filters.city ?? "");
   const [radiusValue, setRadiusValue] = useState(filters.radiusKm ?? 5);
   const [radiusEnabled, setRadiusEnabled] = useState(filters.radiusKm !== null);
+  const [isCitySelectorVisible, setIsCitySelectorVisible] = useState(false);
+  const [citySearch, setCitySearch] = useState("");
 
   useEffect(() => {
-    setStateValue(filters.state ?? "");
     setCityValue(filters.city ?? "");
     setRadiusValue(filters.radiusKm ?? 5);
     setRadiusEnabled(filters.radiusKm !== null);
   }, [filters]);
 
-  const availableCities = stateValue
-    ? CITY_OPTIONS[stateValue] ?? []
-    : [];
-
   useEffect(() => {
-    if (stateValue && availableCities.length > 0 && !availableCities.includes(cityValue)) {
-      setCityValue("");
+    if (!visible) {
+      setIsCitySelectorVisible(false);
+      setCitySearch("");
     }
-  }, [availableCities, cityValue, stateValue]);
+  }, [visible]);
+
+  const filteredCityOptions = useMemo(() => {
+    if (!citySearch.trim()) {
+      return IJUI_REGION_CITIES;
+    }
+    const query = normalizeForComparison(citySearch);
+    return IJUI_REGION_CITIES.filter((option) =>
+      normalizeForComparison(option).includes(query)
+    );
+  }, [citySearch]);
 
   const handleApply = () => {
     onApply({
-      state: stateValue ? stateValue : null,
+      state: LOCKED_STATE.sigla,
       city: cityValue ? cityValue : null,
       radiusKm: radiusEnabled ? radiusValue ?? 5 : null,
     });
   };
 
   return (
-    <Modal
-      transparent
-      animationType="fade"
-      visible={visible}
-      onRequestClose={onCancel}
-    >
-      <View style={styles.filterModalContainer}>
-        <TouchableWithoutFeedback onPress={onCancel}>
-          <View style={styles.filterModalOverlay} />
-        </TouchableWithoutFeedback>
-        <View style={styles.filterModalCard}>
-        <View style={styles.filterModalHandle} />
-        <Text style={styles.filterModalTitle}>Filtros</Text>
+    <>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={visible}
+        onRequestClose={onCancel}
+      >
+        <View style={styles.filterModalContainer}>
+          <TouchableWithoutFeedback onPress={onCancel}>
+            <View style={styles.filterModalOverlay} />
+          </TouchableWithoutFeedback>
+          <View style={styles.filterModalCard}>
+            <View style={styles.filterModalHandle} />
+            <Text style={styles.filterModalTitle}>Filtros</Text>
 
-        <View style={styles.filterFieldGroup}>
-          <Text style={styles.filterLabel}>Estado</Text>
-          <Input
-            value={stateValue}
-            onChangeText={(text) => setStateValue(text.toUpperCase())}
-            autoCapitalize="characters"
-            maxLength={2}
-            placeholder="Estado"
-            style={styles.filterFieldInput}
-          />
-          <View style={styles.filterOptionRow}>
-            {STATE_OPTIONS.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={[
-                  styles.filterOptionBadge,
-                  stateValue === option && styles.filterOptionBadgeActive,
-                ]}
-                onPress={() => setStateValue(option)}
-              >
-                <Text
-                  style={[
-                    styles.filterOptionText,
-                    stateValue === option && styles.filterOptionTextActive,
-                  ]}
-                >
-                  {option}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.filterFieldGroup}>
-          <Text style={styles.filterLabel}>Cidade</Text>
-          <Input
-            value={cityValue}
-            onChangeText={setCityValue}
-            placeholder="Cidade"
-            style={styles.filterFieldInput}
-            autoCapitalize="words"
-          />
-          {availableCities.length > 0 ? (
-            <View style={styles.filterOptionRow}>
-              {availableCities.map((option) => (
-                <TouchableOpacity
-                  key={option}
-                  style={[
-                    styles.filterOptionBadge,
-                    cityValue === option && styles.filterOptionBadgeActive,
-                  ]}
-                  onPress={() => setCityValue(option)}
-                >
-                  <Text
-                    style={[
-                      styles.filterOptionText,
-                      cityValue === option && styles.filterOptionTextActive,
-                    ]}
+            <View style={styles.filterFieldGroup}>
+              <View style={{ gap: theme.spacing.sm }}>
+                <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.filterLabel}>Estado</Text>
+                  <View
+                    style={{
+                      backgroundColor: theme.colors.secondary,
+                      borderRadius: theme.radius.lg,
+                      borderWidth: 1,
+                      borderColor: theme.colors.primary,
+                    }}
                   >
-                    {option}
+                    <View
+                      style={{
+                        paddingVertical: 8,
+                        paddingHorizontal: 12,
+                        opacity: 0.7,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <Text style={{ color: theme.colors.text }}>
+                          {`${LOCKED_STATE.sigla} - ${LOCKED_STATE.nome}`}
+                        </Text>
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Icon
+                            type="MaterialCommunityIcons"
+                            name="lock-outline"
+                            size={16}
+                            color={theme.colors.primary}
+                          />
+                          <Text
+                            style={{
+                              color: theme.colors.primary,
+                              fontSize: 12,
+                            }}
+                          >
+                            fixo
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.filterLabel}>Cidade</Text>
+                    <View
+                      style={{
+                        backgroundColor: theme.colors.secondary,
+                        borderRadius: theme.radius.lg,
+                        borderWidth: 1,
+                        borderColor: theme.colors.primary,
+                      }}
+                    >
+                      <TouchableOpacity
+                        onPress={() => setIsCitySelectorVisible(true)}
+                        activeOpacity={0.7}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          paddingVertical: 8,
+                          paddingHorizontal: 12,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: cityValue ? theme.colors.text : theme.colors.disabled,
+                          }}
+                        >
+                          {cityValue || "Selecione a cidade"}
+                        </Text>
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name="chevron-down"
+                          size={18}
+                          color={theme.colors.primary}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.filterFieldGroup}>
+              <View style={styles.radiusHeader}>
+                <Text style={styles.filterLabel}>Em um raio de distancia:</Text>
+                <TouchableOpacity
+                  style={styles.radiusToggle}
+                  onPress={() => setRadiusEnabled((current) => !current)}
+                  activeOpacity={0.7}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name={radiusEnabled ? "close-circle-outline" : "check-circle"}
+                    size={18}
+                    color={theme.colors.primary}
+                  />
+                  <Text style={styles.radiusToggleText}>
+                    {radiusEnabled ? "Sem limite" : "Com limite"}
                   </Text>
                 </TouchableOpacity>
-              ))}
+              </View>
+              <DistanceSlider
+                value={radiusValue ?? 5}
+                onChange={(value) => {
+                  setRadiusEnabled(true);
+                  setRadiusValue(value);
+                }}
+                min={1}
+                max={20}
+                theme={theme}
+                styles={styles}
+                disabled={!radiusEnabled}
+              />
+              <View style={styles.sliderValueRow}>
+                {radiusEnabled ? (
+                  <></>
+                ) : (
+                  <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
+                )}
+              </View>
             </View>
-          ) : null}
-        </View>
 
-        <View style={styles.filterFieldGroup}>
-          <View style={styles.radiusHeader}>
-            <Text style={styles.filterLabel}>Em um raio de distancia:</Text>
+            <Button
+              title="Aplicar Filtros"
+              onPress={handleApply}
+              style={styles.applyFilterButton}
+            />
+
             <TouchableOpacity
-              style={styles.radiusToggle}
-              onPress={() => setRadiusEnabled((current) => !current)}
+              style={styles.cancelFilterButton}
+              onPress={onCancel}
               activeOpacity={0.7}
             >
-              <Icon
-                type="MaterialCommunityIcons"
-                name={radiusEnabled ? "close-circle-outline" : "check-circle"}
-                size={18}
-                color={theme.colors.primary}
-              />
-              <Text style={styles.radiusToggleText}>
-                {radiusEnabled ? "Sem limite" : "Com limite"}
-              </Text>
+              <Text style={styles.cancelFilterButtonText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
-          <DistanceSlider
-            value={radiusValue ?? 5}
-            onChange={(value) => {
-              setRadiusEnabled(true);
-              setRadiusValue(value);
+        </View>
+      </Modal>
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isCitySelectorVisible}
+        onRequestClose={() => setIsCitySelectorVisible(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            justifyContent: "flex-end",
+            // padding: theme.spacing.lg,
+            backgroundColor: "rgba(0,0,0,0.35)",
+          }}
+        >
+          <Pressable
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
             }}
-            min={1}
-            max={20}
-            theme={theme}
-            styles={styles}
-            disabled={!radiusEnabled}
+            onPress={() => setIsCitySelectorVisible(false)}
           />
-          <View style={styles.sliderValueRow}>
-            {radiusEnabled ? (
-              <>
-              </>
-            ) : (
-              <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
-            )}
+          <View
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderRadius: theme.radius.lg,
+              paddingHorizontal: theme.spacing.lg,
+              paddingVertical: theme.spacing.md,
+              maxHeight: "70%",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: theme.fonts.regular,
+                fontSize: theme.fontSizes.md,
+                color: theme.colors.text,
+                fontWeight: "600",
+                textAlign: "center",
+                marginBottom: theme.spacing.sm,
+              }}
+            >
+              Selecionar cidade
+            </Text>
+
+            <View
+              style={{
+                backgroundColor: theme.colors.secondary,
+                borderRadius: theme.radius.lg,
+                borderWidth: theme.size.xs,
+                borderColor: theme.colors.primary,
+                paddingHorizontal: theme.spacing.md,
+                paddingVertical: theme.spacing.xs,
+                marginBottom: theme.spacing.sm,
+              }}
+            >
+              <TextInput
+                value={citySearch}
+                onChangeText={setCitySearch}
+                placeholder="Buscar cidade..."
+                placeholderTextColor={theme.colors.disabled}
+                style={{
+                  fontFamily: theme.fonts.regular,
+                  fontSize: theme.fontSizes.sm,
+                  color: theme.colors.text,
+                }}
+              />
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {filteredCityOptions.map((option) => {
+                const isSelected = option === cityValue;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    onPress={() => {
+                      setCityValue(option);
+                      setIsCitySelectorVisible(false);
+                    }}
+                    activeOpacity={0.7}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingVertical: theme.spacing.sm,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: theme.colors.secondary,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: theme.fonts.regular,
+                        fontSize: theme.fontSizes.sm,
+                        color: theme.colors.text,
+                      }}
+                    >
+                      {option}
+                    </Text>
+                    {isSelected ? (
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="check"
+                        size={18}
+                        color={theme.colors.primary}
+                      />
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })}
+
+              {filteredCityOptions.length === 0 ? (
+                <View
+                  style={{
+                    paddingVertical: theme.spacing.md,
+                    alignItems: "center",
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: theme.fonts.regular,
+                      fontSize: theme.fontSizes.sm,
+                      color: theme.colors.disabled,
+                    }}
+                  >
+                    Nenhuma cidade encontrada
+                  </Text>
+                </View>
+              ) : null}
+            </ScrollView>
+
+            <View
+              style={{
+                flexDirection: "row",
+                justifyContent: "space-between",
+                marginTop: theme.spacing.md,
+              }}
+            >
+              <TouchableOpacity
+                onPress={() => {
+                  setCityValue("");
+                  setIsCitySelectorVisible(false);
+                }}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.regular,
+                    fontSize: theme.fontSizes.sm,
+                    color: theme.colors.primary,
+                  }}
+                >
+                  Limpar cidade
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setIsCitySelectorVisible(false)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={{
+                    fontFamily: theme.fonts.regular,
+                    fontSize: theme.fontSizes.sm,
+                    color: theme.colors.primary,
+                  }}
+                >
+                  Fechar
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
-
-        <Button
-          title="Aplicar Filtros"
-          onPress={handleApply}
-          style={styles.applyFilterButton}
-        />
-
-        <TouchableOpacity
-          style={styles.cancelFilterButton}
-          onPress={onCancel}
-          activeOpacity={0.7}
-        >
-          <Text style={styles.cancelFilterButtonText}>Cancelar</Text>
-        </TouchableOpacity>
-      </View>
-      </View>
-    </Modal>
+      </Modal>
+    </>
   );
 };
 

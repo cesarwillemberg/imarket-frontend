@@ -1650,44 +1650,63 @@ export default function Products() {
                 />
               </View>
 
-              <ScrollView
-                style={{ marginTop: theme.spacing.sm }}
-                contentContainerStyle={{ paddingBottom: theme.spacing.lg }}
-                showsVerticalScrollIndicator={false}
+              <View style={{ marginTop: theme.spacing.sm, maxHeight: 260 }}>
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: theme.spacing.md }}
+                >
+                  {(filteredCities.length ? filteredCities : (IJUI_REGION_CITIES as readonly string[])).map((city) => (
+                    <TouchableOpacity
+                      key={city}
+                      onPress={() => {
+                        setDraftCity(city);
+                        setIsCitySelectorVisible(false);
+                      }}
+                      activeOpacity={0.7}
+                      style={{
+                        paddingVertical: 10,
+                        paddingHorizontal: 8,
+                        borderBottomWidth: 1,
+                        borderBottomColor: theme.colors.secondary,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <Text style={{ color: theme.colors.text }}>{city}</Text>
+                      {safeDraftCity === city ? (
+                        <Icon type="MaterialCommunityIcons" name="check" size={18} color={theme.colors.primary} />
+                      ) : null}
+                    </TouchableOpacity>
+                  ))}
+
+                  {filteredCities.length === 0 ? (
+                    <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                      <Text style={{ color: theme.colors.disabled }}>Nenhuma cidade encontrada</Text>
+                    </View>
+                  ) : null}
+                </ScrollView>
+              </View>
+
+              <View
+                style={{
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginTop: theme.spacing.sm,
+                }}
               >
-                {(filteredCities.length ? filteredCities : (IJUI_REGION_CITIES as readonly string[])).map((city) => (
-                  <TouchableOpacity
-                    key={city}
-                    onPress={() => {
-                      setDraftCity(city);
-                      setIsCitySelectorVisible(false);
-                    }}
-                    activeOpacity={0.7}
-                    style={{
-                      paddingVertical: 10,
-                      paddingHorizontal: 8,
-                      borderBottomWidth: 1,
-                      borderBottomColor: theme.colors.secondary,
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                    }}
-                  >
-                    <Text style={{ color: theme.colors.text }}>{city}</Text>
-                    {safeDraftCity === city ? (
-                      <Icon type="MaterialCommunityIcons" name="check" size={18} color={theme.colors.primary} />
-                    ) : null}
-                  </TouchableOpacity>
-                ))}
+                <TouchableOpacity
+                  onPress={() => {
+                    setDraftCity("");
+                    setCityQuery("");
+                    setIsCitySelectorVisible(false);
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ color: theme.colors.primary }}>Limpar cidade</Text>
+                </TouchableOpacity>
 
-                {filteredCities.length === 0 ? (
-                  <View style={{ paddingVertical: 16, alignItems: "center" }}>
-                    <Text style={{ color: theme.colors.disabled }}>Nenhuma cidade encontrada</Text>
-                  </View>
-                ) : null}
-              </ScrollView>
-
-              <View style={{ flexDirection: "row", justifyContent: "flex-end", marginTop: theme.spacing.sm }}>
                 <TouchableOpacity onPress={() => setIsCitySelectorVisible(false)} activeOpacity={0.7}>
                   <Text style={{ color: theme.colors.primary }}>Fechar</Text>
                 </TouchableOpacity>
