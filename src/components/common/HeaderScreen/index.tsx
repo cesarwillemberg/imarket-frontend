@@ -7,9 +7,10 @@ import createStyles from "./styled";
 interface Props {
     title?: string;
     showButtonBack?: boolean;
+    styleTitle?: object;
 }
 
-const HeaderScreen: FC<Props> = ({ title, showButtonBack }) => {
+const HeaderScreen: FC<Props> = ({ title, showButtonBack, styleTitle }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
     return (
@@ -23,7 +24,7 @@ const HeaderScreen: FC<Props> = ({ title, showButtonBack }) => {
                     <BackButton />
                 </View>
                 <View style={styles.wrapper_title}>
-                    <Text style={styles.title}>
+                    <Text style={[styles.title, styleTitle]}>
                         {title}
                     </Text>
                 </View>

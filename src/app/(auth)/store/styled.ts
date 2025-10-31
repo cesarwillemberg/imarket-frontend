@@ -11,6 +11,11 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: theme.spacing.lg,
       paddingTop: theme.spacing.lg,
     },
+    listHeader: {
+      width: "100%",
+      gap: theme.spacing.md,
+      paddingBottom: theme.spacing.md,
+    },
     searchRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -39,8 +44,20 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       marginRight: theme.spacing.sm,
     },
+    filterShortcutActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    filtersSection: {
+      width: "100%",
+      gap: theme.spacing.sm,
+    },
+    filterActionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+    },
     filterChipsWrapper: {
-      flex: 1,
+      width: "100%",
       flexDirection: "row",
       alignItems: "center",
       flexWrap: "wrap",
@@ -65,6 +82,22 @@ const createStyles = (theme: Theme) =>
     filterChipRemove: {
       marginLeft: theme.spacing.xs,
     },
+    clearFiltersButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: theme.size.xs,
+      borderRadius: theme.radius.full,
+      paddingVertical: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+    },
+    clearFiltersText: {
+      marginLeft: theme.spacing.xs,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+    },
     filterChipGhost: {
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
@@ -83,7 +116,7 @@ const createStyles = (theme: Theme) =>
     },
     listContentEmpty: {
       flexGrow: 1,
-      justifyContent: "center",
+      justifyContent: "flex-start",
     },
     storeCard: {
       flexDirection: "row",
@@ -278,6 +311,7 @@ const createStyles = (theme: Theme) =>
     },
     emptyState: {
       alignItems: "center",
+      marginTop: theme.spacing.lg,
     },
     emptyStateIcon: {
       marginBottom: theme.spacing.sm,

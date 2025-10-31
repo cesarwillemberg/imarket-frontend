@@ -15,8 +15,46 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { DEFAULT_FILTERS, Store, StorePromotion } from "../mockStores";
 import createStyles from "./styled";
+// Local defaults replacing removed mockStores.ts
+const DEFAULT_FILTERS = {
+  state: "RS",
+  city: "Ijui",
+  radiusKm: 5,
+} as const;
+// Removed dependency on mockStores.ts; define lightweight local types for this screen
+type StoreInfoBlock = { label: string; value: string };
+type StorePromotion = {
+  id: string;
+  name: string;
+  price: string;
+  originalPrice?: string;
+  unit: string;
+  image: string;
+  priceValue?: number | null;
+  originalPriceValue?: number | null;
+  discountValue?: number | null;
+};
+type Store = {
+  id: string;
+  name: string;
+  description: string;
+  category?: string;
+  distance?: string;
+  deliveryTime?: string;
+  rating?: number;
+  isOpen?: boolean;
+  promotion?: string;
+  brandColor?: string;
+  city?: string;
+  state?: string;
+  bannerImage?: string;
+  logo?: string;
+  about?: string;
+  info: StoreInfoBlock[];
+  workingHours: StoreInfoBlock[];
+  promotions: StorePromotion[];
+};
 
 
 const SCROLL_STEP = 220;
@@ -172,7 +210,7 @@ const mapPromotionResponse = (raw: PromotionResponse): StorePromotion | null => 
   return {
     id: String(identifier),
     name:
-      typeof nameRaw === "string" && nameRaw.trim().length ? nameRaw : "Produto em promocao",
+      typeof nameRaw === "string" && nameRaw.trim().length ? nameRaw : "Produto em promoção",
     price: formattedPrice,
     originalPrice: formattedOriginal,
     unit: resolvedUnit,
@@ -269,7 +307,7 @@ const mapStoreResponseToStore = (data: StoreResponse | null): Store | undefined 
     data.logo ?? (data as any).logo_url ?? (data as any).profile_picture_url ?? "";
 
   const aboutText =
-    data.about ?? (data as any).long_description ?? data.description ?? "Informacoes nao disponiveis.";
+    data.about ?? (data as any).long_description ?? data.description ?? "Informações não disponíveis.";
 
   return {
     id: data.id,
@@ -483,8 +521,8 @@ const mapScheduleResponseToWorkingHours = (raw: unknown): Store["workingHours"] 
 };
 
 export default function StoreProfile() {
-  const { id } = useLocalSearchParams<{ id?: string | string[] }>();
-  const storeId = useMemo(() => (Array.isArray(id) ? id[0] : id), [id]);
+  const { id_store } = useLocalSearchParams<{ id_store?: string | string[] }>();
+  const storeId = useMemo(() => (Array.isArray(id_store) ? id_store[0] : id_store), [id_store]);
 
   const {
     getStoreById,
@@ -576,7 +614,7 @@ export default function StoreProfile() {
             try {
               const { data: images, error: imageError } = await getImageProduct(promo.id);
               if (imageError) {
-                console.error("StoreProfile: erro ao buscar imagem da promocao:", imageError);
+                console.error("StoreProfile: erro ao buscar imagem da promoção:", imageError);
                 return promo;
               }
 
@@ -588,7 +626,7 @@ export default function StoreProfile() {
               return promo;
             } catch (imageFetchError) {
               console.error(
-                "StoreProfile: erro inesperado ao buscar imagem da promocao:",
+                "StoreProfile: erro inesperado ao buscar imagem da promoção:",
                 imageFetchError
               );
               return promo;
@@ -656,7 +694,7 @@ export default function StoreProfile() {
 
         if (error) {
           console.error("StoreProfile: erro ao buscar loja:", error);
-          setStoreLoadError("Nao foi possivel carregar as informacoes da loja.");
+          setStoreLoadError("Nao foi possivel carregar as informações da loja.");
           setStore(undefined);
           return;
         }
@@ -674,7 +712,7 @@ export default function StoreProfile() {
       } catch (error) {
         if (!cancelled) {
           console.error("StoreProfile: erro inesperado ao buscar loja:", error);
-          setStoreLoadError("Nao foi possivel carregar as informacoes da loja.");
+          setStoreLoadError("Nao foi possivel carregar as informações da loja.");
           setStore(undefined);
         }
       } finally {
@@ -991,7 +1029,7 @@ export default function StoreProfile() {
         <View style={styles.notFoundContainer}>
           <ActivityIndicator color={theme.colors.primary} size="large" />
           <Text style={[styles.notFoundText, { marginTop: theme.spacing.md }]}>
-            Carregando informacoes da loja...
+            Carregando informações da loja...
           </Text>
         </View>
       </ScreenContainer>
@@ -1005,7 +1043,7 @@ export default function StoreProfile() {
         <HeaderScreen title="Loja nao encontrada" showButtonBack />
         <View style={styles.notFoundContainer}>
           <Text style={styles.notFoundText}>
-            {storeLoadError ?? "Nao encontramos informacoes para esta loja."}
+            {storeLoadError ?? "Nao encontramos informações para esta loja."}
           </Text>
           <TouchableOpacity
             style={styles.notFoundButton}
@@ -1126,12 +1164,12 @@ export default function StoreProfile() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Informacoes</Text>
+          <Text style={styles.sectionTitle}>Informações</Text>
           <View style={styles.infoRow}>
             <View style={styles.infoColumn}>
               {storeAddressText ? (
                 <View style={styles.infoItem}>
-                  <Text style={styles.infoLabel}>Endereco:</Text>
+                  <Text style={styles.infoLabel}>Endereço:</Text>
                   <Text style={styles.infoValue}>{storeAddressText}</Text>
                 </View>
               ) : null}
@@ -1144,7 +1182,7 @@ export default function StoreProfile() {
             </View>
             <View style={styles.infoColumn}>
               {workingHoursToDisplay.length ? (
-                <Text style={styles.infoScheduleHeading}>Horario de Atendimento:</Text>
+                <Text style={styles.infoScheduleHeading}>Horário de Atendimento:</Text>
               ) : null}
               {workingHoursToDisplay.map((item) => (
                 <View style={styles.infoItem} key={item.label}>
@@ -1158,7 +1196,7 @@ export default function StoreProfile() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Produtos em Promocao</Text>
+            <Text style={styles.sectionTitle}>Produtos em Promoção</Text>
             <TouchableOpacity
               onPress={() =>
                 router.push({
@@ -1289,7 +1327,7 @@ export default function StoreProfile() {
           {!isLoadingPromotions && !promotionsError && !hasPromotions ? (
             <View style={styles.promoFeedbackContainer}>
               <Text style={styles.promoFeedbackText}>
-                Esta loja ainda nao possui itens em promocao.
+                Esta loja ainda nao possui itens em promoção.
               </Text>
             </View>
           ) : null}
@@ -1306,7 +1344,7 @@ export default function StoreProfile() {
           style={styles.footerLinkWrapper}
         >
           <Text style={styles.footerLink}>
-            Ver todos produtos de {store.name}
+            Ver catálogo de produtos de {store.name}
           </Text>
         </TouchableOpacity>
       </ScrollView>

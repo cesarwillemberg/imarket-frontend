@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   ListRenderItemInfo,
@@ -44,16 +45,24 @@ type Product = {
 };
 
 const parseCurrencyValue = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
+  const ensurePositive = (numeric: number | null): number | null => {
+    if (typeof numeric !== "number") return null;
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  };
+
+  if (typeof value === "number") {
+    return ensurePositive(value);
   }
+
   if (typeof value === "string") {
     const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
-    const parsed = Number(normalized);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
+    if (!normalized || normalized === "-" || normalized === ".") {
+      return null;
     }
+    const parsed = Number(normalized);
+    return ensurePositive(Number.isNaN(parsed) ? null : parsed);
   }
+
   return null;
 };
 
@@ -80,6 +89,17 @@ const parseBooleanValue = (value: unknown): boolean => {
   return false;
 };
 
+const PROMOTION_FLAG_KEYS = [
+  "in_promotion",
+  "inPromotion",
+  "has_promotion",
+  "hasPromotion",
+  "is_promotion",
+  "isPromotion",
+  "promotion_active",
+  "promotionActive",
+] as const;
+
 const mapRawProduct = (rawProduct: RawProduct): Product | null => {
   const identifier = rawProduct.id ?? pickFirstValue(rawProduct, ["uuid", "product_id"]);
   if (!identifier) {
@@ -105,43 +125,101 @@ const mapRawProduct = (rawProduct: RawProduct): Product | null => {
   ]);
 
   const currentPriceRaw = pickFirstValue(rawProduct, [
-    "sale_price",
     "promotional_price",
     "promo_price",
+    "price_promotion",
+    "promotion_price",
+    "sale_price",
+    "discount_price",
     "current_price",
     "price",
   ]);
 
   const basePriceRaw = pickFirstValue(rawProduct, [
-    "regular_price",
     "original_price",
-    "list_price",
     "price_from",
     "price_before",
+    "price_without_discount",
+    "regular_price",
+    "list_price",
+    "base_price",
+    "compare_at_price",
+    "unit_price",
+    "price",
   ]);
 
-  const currentPrice = parseCurrencyValue(currentPriceRaw ?? basePriceRaw);
-  const basePrice = parseCurrencyValue(basePriceRaw);
-  const promotionFlagRaw = pickFirstValue(rawProduct, [
-    "in_promotion",
-    "inPromotion",
-    "has_promotion",
-    "hasPromotion",
-    "is_promotion",
-    "isPromotion",
+  const promotionalPriceRaw = pickFirstValue(rawProduct, [
+    "promotional_price",
+    "promo_price",
+    "price_promotion",
+    "promotion_price",
+    "sale_price",
+    "discount_price",
+    "current_price",
+    "price",
   ]);
-  const explicitPromotion = parseBooleanValue(promotionFlagRaw);
-  const derivedPromotion =
-    basePrice !== null && currentPrice !== null && basePrice > currentPrice;
-  const inPromotion = explicitPromotion || derivedPromotion;
+
+  const originalPriceRaw = pickFirstValue(rawProduct, [
+    "original_price",
+    "price_from",
+    "price_before",
+    "price_without_discount",
+    "regular_price",
+    "list_price",
+    "base_price",
+    "compare_at_price",
+    "unit_price",
+  ]);
+
+  const basePrice = parseCurrencyValue(basePriceRaw);
+  const promotionalPrice = parseCurrencyValue(currentPriceRaw ?? promotionalPriceRaw);
+  const originalPriceCandidate = parseCurrencyValue(originalPriceRaw);
+  const explicitPromotion = parseBooleanValue(
+    pickFirstValue(rawProduct, Array.from(PROMOTION_FLAG_KEYS)) ?? false
+  );
+
+  let price: number | null = promotionalPrice ?? basePrice ?? null;
+  let originalPrice: number | null = null;
+  let inPromotion = explicitPromotion;
+
+  if (explicitPromotion) {
+    const referencePrice = originalPriceCandidate ?? basePrice ?? promotionalPrice ?? price;
+
+    if (promotionalPrice !== null) {
+      price = promotionalPrice;
+      if (referencePrice !== null && promotionalPrice < referencePrice) {
+        originalPrice = referencePrice;
+      }
+    } else if (
+      originalPriceCandidate !== null &&
+      basePrice !== null &&
+      basePrice < originalPriceCandidate
+    ) {
+      price = basePrice;
+      originalPrice = originalPriceCandidate;
+    } else if (
+      referencePrice !== null &&
+      price !== null &&
+      price < referencePrice
+    ) {
+      originalPrice = referencePrice;
+    }
+  } else {
+    // Ensure we still have a price fallback even when only the original price is provided.
+    if (price === null) {
+      price = originalPriceCandidate ?? basePrice ?? null;
+    }
+    originalPrice = null;
+    inPromotion = false;
+  }
 
   return {
     id: String(identifier),
     name: typeof nameRaw === "string" && nameRaw.trim().length ? nameRaw : "Produto",
     description: typeof descriptionRaw === "string" ? descriptionRaw : null,
     imageUrl: typeof imageRaw === "string" ? imageRaw : null,
-    price: currentPrice,
-    originalPrice: basePrice,
+    price,
+    originalPrice,
     unit: typeof unitRaw === "string" ? unitRaw : null,
     code: typeof codeRaw === "string" ? codeRaw : typeof codeRaw === "number" ? String(codeRaw) : null,
     category: typeof categoryRaw === "string" ? categoryRaw : null,
@@ -414,16 +492,19 @@ export default function StoreProductsScreen() {
 
   const priceRangeLabel = useMemo(() => {
     if (filters.minPrice !== null && filters.maxPrice !== null) {
-      return `${currencyFormatter.format(filters.minPrice)} - ${currencyFormatter.format(filters.maxPrice)}`;
+      return `De: ${currencyFormatter.format(filters.minPrice)} Até ${currencyFormatter.format(
+        filters.maxPrice
+      )}`;
     }
     if (filters.minPrice !== null) {
       return `A partir de ${currencyFormatter.format(filters.minPrice)}`;
     }
     if (filters.maxPrice !== null) {
-      return `Ate ${currencyFormatter.format(filters.maxPrice)}`;
+      return `Até ${currencyFormatter.format(filters.maxPrice)}`;
     }
     return "";
-  }, [filters.maxPrice, filters.minPrice]);
+}, [filters.maxPrice, filters.minPrice]);
+
   const handleFilterButtonPress = () => {
     setDraftOnlyPromotion(filters.onlyPromotion);
     setDraftCategories([...filters.categories]);
@@ -448,9 +529,11 @@ export default function StoreProductsScreen() {
       nextMaxPrice !== null &&
       nextMinPrice > nextMaxPrice
     ) {
-      const temp = nextMinPrice;
-      nextMinPrice = nextMaxPrice;
-      nextMaxPrice = temp;
+      Alert.alert(
+        "Filtro invalido",
+        "O valor minimo nao pode ser maior que o valor maximo."
+      );
+      return;
     }
 
     setFilters({
@@ -559,11 +642,11 @@ export default function StoreProductsScreen() {
               {item.unit ? <Text style={styles.productUnit}> {item.unit}</Text> : null}
             </Text>
           ) : (
-            <Text style={styles.productPriceUnavailable}>Preco nao informado</Text>
+            <Text style={styles.productPriceUnavailable}>Preço não informado</Text>
           )}
 
           {item.code ? (
-            <Text style={styles.productCode}>Cod: {item.code}</Text>
+            <Text style={styles.productCode}>Cód: {item.code}</Text>
           ) : null}
         </View>
       </TouchableOpacity>
@@ -618,142 +701,156 @@ export default function StoreProductsScreen() {
     );
   };
 
+  const renderListHeader = useCallback(() => (
+    <View style={styles.listHeader}>
+      <View style={styles.searchSection}>
+        <SearchBar
+          value={searchTerm}
+          onChangeText={setSearchTerm}
+          placeholder="Pesquisar..."
+          containerStyle={styles.searchBar}
+        />
+      </View>
+
+      <View style={styles.filtersSection}>
+        <View style={styles.filterActionsRow}>
+          <TouchableOpacity
+            style={styles.filterButton}
+            activeOpacity={0.7}
+            onPress={handleFilterButtonPress}
+          >
+            <Icon
+              type="feather"
+              name="sliders"
+              size={20}
+              color={theme.colors.primary}
+            />
+          </TouchableOpacity>
+
+          {hasActiveFilters ? (
+            <View style={styles.clearFiltersWrapper}>
+              <TouchableOpacity
+                onPress={handleClearFilters}
+                style={styles.clearFiltersButton}
+                activeOpacity={0.7}
+              >
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="broom"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
+        </View>
+
+        {hasActiveFilters ? (
+          <View style={styles.filterChipsWrapper}>
+            {filters.onlyPromotion ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>Em Promoção</Text>
+                <TouchableOpacity
+                  onPress={handleRemovePromotionFilter}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
+            {filters.categories.map((category) => (
+              <View key={category} style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{category}</Text>
+                <TouchableOpacity
+                  onPress={() => handleRemoveCategoryFilter(category)}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ))}
+
+            {priceRangeLabel ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>{priceRangeLabel}</Text>
+                <TouchableOpacity
+                  onPress={handleRemovePriceFilter}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
+      {isLoading ? (
+        <View style={styles.loadingWrapper}>
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        </View>
+      ) : null}
+    </View>
+  ), [
+    filters.categories,
+    filters.onlyPromotion,
+    hasActiveFilters,
+    handleClearFilters,
+    handleFilterButtonPress,
+    handleRemoveCategoryFilter,
+    handleRemovePriceFilter,
+    handleRemovePromotionFilter,
+    isLoading,
+    priceRangeLabel,
+    searchTerm,
+    styles,
+    theme.colors.onPrimary,
+    theme.colors.primary,
+  ]);
+
   const resolvedTitle =
     storeName && typeof storeName === "string" && storeName.trim().length
-      ? `Produtos de ${storeName}`
+      ? `Catálogo de Produtos de ${storeName}`
       : "Produtos da loja";
-
-  const activeFiltersCount = useMemo(() => {
-    let count = 0;
-
-    if (filters.onlyPromotion) count += 1;
-
-    count += filters.categories.length;
-
-    if (filters.minPrice !== null || filters.maxPrice !== null) {
-      count += 1; // trata o intervalo de preço como um filtro
-    }
-
-    return count;
-  }, [filters]);
-
 
   return (
     <>
       <ScreenContainer style={styles.container}>
-        <HeaderScreen title={resolvedTitle} showButtonBack />
+        <HeaderScreen title={resolvedTitle} showButtonBack styleTitle={{ textAlign: "center" }} />
         <View style={styles.content}>
-          <View style={styles.searchSection}>
-            <SearchBar
-              value={searchTerm}
-              onChangeText={setSearchTerm}
-              placeholder="Buscar por nome ou codigo..."
-              containerStyle={styles.searchBar}
-            />
-          </View>
-          <View style={styles.filtersSection}>
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                hasActiveFilters && styles.filterButtonActive,
-              ]}
-              activeOpacity={0.7}
-              onPress={handleFilterButtonPress}
-            >
-              <Icon
-                type="feather"
-                name="sliders"
-                size={20}
-                color={hasActiveFilters ? theme.colors.onPrimary : theme.colors.primary}
-              />
-            </TouchableOpacity>
-            {
-              hasActiveFilters ? (
-                <TouchableOpacity
-                  onPress={handleClearFilters}
-                  style={styles.clearFiltersButton}
-                  activeOpacity={0.7}
-                >
-                  <Icon
-                    type="MaterialCommunityIcons"
-                    name="broom"
-                    size={16}
-                    color={theme.colors.primary}
-                  />
-                  <Text style={styles.clearFiltersText}>Limpar filtros</Text>
-                </TouchableOpacity>
-              ) : (null)
-            }
-
-          </View>
-          {hasActiveFilters ? (
-            <View style={styles.activeFiltersContainer}>
-              {filters.onlyPromotion ? (
-                <TouchableOpacity
-                  style={styles.filterChip}
-                  onPress={handleRemovePromotionFilter}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.filterChipText}>Em Promoção</Text>
-                  <Icon
-                    type="MaterialCommunityIcons"
-                    name="close-circle"
-                    size={16}
-                    color={theme.colors.onPrimary}
-                  />
-                </TouchableOpacity>
-              ) : null}
-
-              {filters.categories.map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={styles.filterChip}
-                  onPress={() => handleRemoveCategoryFilter(category)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.filterChipText}>{category}</Text>
-                  <Icon
-                    type="MaterialCommunityIcons"
-                    name="close-circle"
-                    size={16}
-                    color={theme.colors.onPrimary}
-                  />
-                </TouchableOpacity>
-              ))}
-
-              {priceRangeLabel ? (
-                <TouchableOpacity
-                  style={styles.filterChip}
-                  onPress={handleRemovePriceFilter}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.filterChipText}>{priceRangeLabel}</Text>
-                  <Icon
-                    type="MaterialCommunityIcons"
-                    name="close-circle"
-                    size={16}
-                    color={theme.colors.onPrimary}
-                  />
-                </TouchableOpacity>
-              ) : null}
-            </View>
-          ) : null}
-
-
-          {isLoading ? (
-            <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            </View>
-          ) : null}
-
           <FlatList
             data={filteredProducts}
             keyExtractor={(item) => item.id}
             renderItem={renderProduct}
             style={styles.productsList}
             contentContainerStyle={styles.listContent}
+            ListHeaderComponent={renderListHeader}
             ListEmptyComponent={listEmptyComponent}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           />
         </View>
       </ScreenContainer>
@@ -870,7 +967,7 @@ export default function StoreProductsScreen() {
                   <View
                     style={[styles.priceInputWrapper, styles.priceInputWrapperLast]}
                   >
-                    <Text style={styles.priceInputLabel}>Ate:</Text>
+                    <Text style={styles.priceInputLabel}>Até:</Text>
                     <TextInput
                       value={draftMaxPrice}
                       onChangeText={handleDraftMaxPriceChange}
@@ -913,3 +1010,6 @@ export default function StoreProductsScreen() {
     </>
   );
 }
+
+
+

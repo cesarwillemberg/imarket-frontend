@@ -21,31 +21,26 @@ const createStyles = (theme: Theme) =>
     searchSection: {
       flexDirection: "row",
       alignItems: "center",
-      marginBottom: 0,
     },
     searchBar: {
       flex: 1,
     },
     filtersSection: {
-      marginBottom: theme.spacing.sm,
-      flexDirection: "column",
-      alignItems: "stretch",
       width: "100%",
+      gap: theme.spacing.sm,
     },
     filterActionsRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.sm,
-      marginBottom: theme.spacing.sm,
     },
     filterButton: {
       width: 38,
       height: 38,
+      borderRadius: theme.radius.full,
       alignItems: "center",
       justifyContent: "center",
       borderWidth: theme.size.xs,
-      marginRight: theme.spacing.ms,
-      borderRadius: theme.radius.full,
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surface,
     },
@@ -65,137 +60,147 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.surface,
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
     },
     filterChipText: {
+      marginHorizontal: theme.spacing.xs,
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
-      marginHorizontal: theme.spacing.xs,
     },
     filterChipRemove: {
       marginLeft: theme.spacing.xs,
-    },
-    clearFiltersWrapper: {
-      marginLeft: theme.spacing.sx,
     },
     clearFiltersButton: {
       flexDirection: "row",
       alignItems: "center",
       borderWidth: theme.size.xs,
-      marginRight: theme.spacing.sx,
       borderRadius: theme.radius.full,
       paddingVertical: theme.spacing.xs,
-      borderColor: theme.colors.primary,
       paddingHorizontal: theme.spacing.sm,
+      borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surface,
     },
     clearFiltersText: {
+      marginLeft: theme.spacing.xs,
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.primary,
-      marginLeft: theme.spacing.xs,
-    },
-    loadingWrapper: {
-      paddingVertical: theme.spacing.lg,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    productsList: {
-      flex: 1,
     },
     listContent: {
-      paddingBottom: theme.spacing.xl,
+      paddingBottom: theme.spacing.xxl,
     },
-    productCard: {
+    listSeparator: {
+      height: theme.spacing.md,
+    },
+    card: {
       flexDirection: "row",
       alignItems: "flex-start",
-      backgroundColor: theme.colors.surface,
-      borderRadius: theme.radius.lg,
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
       padding: theme.spacing.md,
-      marginBottom: theme.spacing.md,
+      gap: theme.spacing.md,
     },
-    productImageWrapper: {
-      width: 78,
-      height: 78,
-      borderRadius: theme.radius.md,
-      backgroundColor: theme.colors.secondary,
+    cardImageWrapper: {
+      width: 88,
+      height: 88,
+      borderRadius: theme.radius.lg,
+      overflow: "hidden",
+      // borderWidth: theme.size.xs,
+      // borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
       alignItems: "center",
       justifyContent: "center",
-      overflow: "hidden",
     },
-    productImage: {
+    cardImage: {
       width: "100%",
       height: "100%",
     },
-    productFallbackImage: {
+    cardImageFallback: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
     },
-    productInfo: {
-      marginLeft: theme.spacing.md,
+    cardContent: {
       flex: 1,
+      gap: theme.spacing.sx,
     },
-    productName: {
+    cardHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: theme.spacing.sm,
+    },
+    cardTitle: {
+      flex: 1,
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
-      marginBottom: theme.spacing.xs,
+      fontWeight: "600",
     },
-    productOriginalPrice: {
+    cardCategory: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    cardStore: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+    },
+    cardOriginalPrice: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
       textDecorationLine: "line-through",
     },
-    productPrice: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.gl,
-      color: theme.colors.primary,
-      fontWeight: "700",
-      marginTop: theme.spacing.xs,
-    },
-    productPriceUnavailable: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.disabled,
-      marginTop: theme.spacing.xs,
-    },
-    productUnit: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
-    },
-    productCode: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.xs,
-      color: theme.colors.disabled,
-      marginTop: theme.spacing.xs,
-    },
-    emptyState: {
-      paddingVertical: theme.spacing.xl,
-      alignItems: "center",
-      justifyContent: "center",
-    },
-    emptyStateText: {
+    cardPrice: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
+      color: theme.colors.primary,
+      fontWeight: "700",
+    },
+    cardUnit: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    cardUnavailable: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+    },
+    cardCode: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+    },
+    feedbackWrapper: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spacing.lg,
+      gap: theme.spacing.md,
+      paddingVertical: theme.spacing.lg,
+    },
+    feedbackText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
       textAlign: "center",
-      marginBottom: theme.spacing.md,
     },
     retryButton: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.full,
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surface,
+      marginTop: theme.spacing.xs,
     },
     retryButtonText: {
       fontFamily: theme.fonts.regular,
@@ -207,7 +212,6 @@ const createStyles = (theme: Theme) =>
       backgroundColor: "rgba(0, 0, 0, 0.4)",
       justifyContent: "flex-end",
       alignItems: "center",
-      // paddingHorizontal: theme.spacing.lg,
     },
     filterModalBackdrop: {
       ...StyleSheet.absoluteFillObject,
@@ -225,13 +229,14 @@ const createStyles = (theme: Theme) =>
     },
     filterModalTitle: {
       fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.lg,
+      fontSize: theme.fontSizes.gl,
       color: theme.colors.text,
       fontWeight: "600",
       textAlign: "center",
+      marginBottom: theme.spacing.md,
     },
     filterCheckboxRow: {
-      marginTop: theme.spacing.md,
+      // marginTop: theme.spacing.md,
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.colors.surface,
@@ -262,27 +267,27 @@ const createStyles = (theme: Theme) =>
     filterCheckboxLabel: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
-      color: theme.colors.primary,
-      fontWeight: "600",
+      color: theme.colors.text,
     },
     filterCheckboxLabelActive: {
       color: theme.colors.onPrimary,
+      fontWeight: "600",
     },
     filterSection: {
-      marginTop: theme.spacing.md,
-      marginBottom: theme.spacing.md,
+      marginVertical: theme.spacing.lg,
     },
     filterSectionTitle: {
-      fontWeight: "600",
-      marginBottom: theme.spacing.sm,
-      color: theme.colors.text,
-      fontSize: theme.fontSizes.md,
       fontFamily: theme.fonts.regular,
-      textDecorationLine: "underline",
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+      fontWeight: "bold",
+      marginBottom: theme.spacing.sm,
+      textDecorationLine: "underline"
     },
     categoriesGrid: {
       flexDirection: "row",
       flexWrap: "wrap",
+      gap: theme.spacing.sm,
     },
     categoryPill: {
       flexDirection: "row",
@@ -290,15 +295,13 @@ const createStyles = (theme: Theme) =>
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.surface,
       borderWidth: theme.size.xs,
-      borderColor: theme.colors.disabled,
-      marginRight: theme.spacing.sm,
-      marginBottom: theme.spacing.sm,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
     },
     categoryPillSelected: {
-      borderColor: theme.colors.primary,
       backgroundColor: theme.colors.primary,
+      borderColor: theme.colors.primary,
     },
     categoryCheckbox: {
       width: 18,
@@ -308,8 +311,8 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.colors.primary,
       alignItems: "center",
       justifyContent: "center",
-      backgroundColor: theme.colors.surface,
       marginRight: theme.spacing.xs,
+      backgroundColor: theme.colors.surface,
     },
     categoryCheckboxSelected: {
       backgroundColor: theme.colors.primary,
@@ -327,6 +330,7 @@ const createStyles = (theme: Theme) =>
     priceInputsRow: {
       flexDirection: "row",
       justifyContent: "space-between",
+      gap: theme.spacing.sm,
     },
     priceInputWrapper: {
       flex: 1,
@@ -338,26 +342,25 @@ const createStyles = (theme: Theme) =>
       borderColor: theme.colors.primary,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xs,
-      marginRight: theme.spacing.sm,
     },
     priceInputWrapperLast: {
       marginRight: 0,
-      flexDirection: "row",
     },
     priceInputLabel: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
-      marginBottom: theme.spacing.xs,
+      marginRight: theme.spacing.xs,
     },
     priceInput: {
+      flex: 1,
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
     },
     filterActions: {
       marginTop: theme.spacing.lg,
-      marginBottom: theme.spacing.sm,
+      gap: theme.spacing.sm,
     },
     applyFiltersButton: {
       flexDirection: "row",
@@ -365,9 +368,8 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.full,
-      paddingVertical: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
       paddingHorizontal: theme.spacing.md,
-      marginBottom: theme.spacing.sm,
     },
     applyFiltersText: {
       marginLeft: theme.spacing.xs,
@@ -379,7 +381,7 @@ const createStyles = (theme: Theme) =>
     cancelFiltersButton: {
       alignItems: "center",
       justifyContent: "center",
-      paddingVertical: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.full,
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
@@ -391,6 +393,53 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.primary,
       fontWeight: "600",
     },
+    // Distance slider fallback (mirrors store styles)
+    sliderFallback: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginTop: theme.spacing.sm,
+      borderRadius: theme.radius.full,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+    },
+    sliderDisabled: {
+      opacity: 0.5,
+    },
+    sliderFallbackButton: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.full,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.primary,
+    },
+    sliderFallbackButtonDisabled: {
+      backgroundColor: theme.colors.disabled,
+    },
+    sliderFallbackButtonText: {
+      color: theme.colors.onPrimary,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+    },
+    sliderFallbackValue: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+    },
+    sliderValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginTop: theme.spacing.sm,
+    },
+    sliderValueUnlimited: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+    },
   });
 
 export default createStyles;
+

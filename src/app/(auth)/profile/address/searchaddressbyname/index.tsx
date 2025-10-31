@@ -290,7 +290,7 @@ export default function SearchAddressByName() {
                   <TextInput
                     value={query}
                     onChangeText={setQuery}
-                    placeholder="Search..."
+                    placeholder="Pesquisar..."
                     placeholderTextColor={theme.colors.disabled}
                     style={styles.searchInput}
                     autoCapitalize="none"
