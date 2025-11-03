@@ -33,7 +33,7 @@ const cartService = {
     try {
       const { data, error } = await supabase
         .from("cart")
-        .insert([{ profile_id: userId, is_active: true }])
+        .insert([{ user_id: userId, is_active: true }])
         .select("*")
         .single();
 
@@ -63,7 +63,27 @@ const cartService = {
     return cartService.createCartByUserId(userId);
   },
 
-  addItemToCart: async (inputProduct: {
+  getCartItemsByCartId: async (cartId: string, userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("cart_item")
+        .select("*")
+        .eq("cart_id", cartId)
+        // .eq("user_id", userId);
+
+      if (error) {
+        console.error("cartService: erro ao buscar itens do carrinho:", error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error("cartService: erro ao buscar itens do carrinho:", error);
+      return { data: null, error };
+    }
+  },
+
+  addItemToCart: async (input: {
     userId: string;
     cart_id: string;
     store_id: string;
@@ -76,9 +96,9 @@ const cartService = {
       const { data: existingItem, error: existingError } = await supabase
         .from("cart_item")
         .select("quantity")
-        .eq("cart_id", inputProduct.cart_id)
-        .eq("produto_id", inputProduct.produto_id)
-        // .eq("profile_id", inputProduct.userId)
+        .eq("cart_id", input.cart_id)
+        .eq("produto_id", input.produto_id)
+        .eq("user_id", input.userId)
         .maybeSingle();
 
       if (existingError) {
@@ -92,17 +112,17 @@ const cartService = {
             ? existingItem.quantity
             : Number(existingItem.quantity ?? 0);
 
-        const newQuantity = previousQuantity + inputProduct.quantity;
+        const newQuantity = previousQuantity + input.quantity;
 
         const { data, error } = await supabase
           .from("cart_item")
           .update({
             quantity: newQuantity,
-            unit_price: inputProduct.unit_price,
+            unit_price: input.unit_price,
           })
-          .eq("cart_id", inputProduct.cart_id)
-          .eq("produto_id", inputProduct.produto_id)
-          // .eq("profile_id", inputProduct.userId)
+          .eq("cart_id", input.cart_id)
+          .eq("produto_id", input.produto_id)
+          .eq("user_id", input.userId)
           .select("*")
           .single();
 
@@ -118,12 +138,12 @@ const cartService = {
         .from("cart_item")
         .insert([
           {
-            // profile_id: inputProduct.userId,
-            cart_id: inputProduct.cart_id,
-            store_id: inputProduct.store_id,
-            produto_id: inputProduct.produto_id,
-            quantity: inputProduct.quantity,
-            unit_price: inputProduct.unit_price,
+            user_id: input.userId,
+            cart_id: input.cart_id,
+            store_id: input.store_id,
+            produto_id: input.produto_id,
+            quantity: input.quantity,
+            unit_price: input.unit_price,
           },
         ])
         .select("*")
@@ -141,13 +161,48 @@ const cartService = {
     }
   },
 
-  removeItemFromCart: async (userId: string, productId: string) => {
+  updateItemQuantity: async (input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+    quantity: number;
+  }) => {
+    try {
+      const { data, error } = await supabase
+        .from("cart_item")
+        .update({
+          quantity: input.quantity,
+        })
+        .eq("cart_id", input.cart_id)
+        .eq("produto_id", input.produto_id)
+        .eq("user_id", input.userId)
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("cartService: erro ao atualizar quantidade do item:", error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error("cartService: erro ao atualizar quantidade do item:", error);
+      return { data: null, error };
+    }
+  },
+
+  removeItemFromCart: async (input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+  }) => {
     try {
       const { data, error } = await supabase
         .from("cart_item")
         .delete()
-        // .eq("profile_id", userId)
-        .eq("produto_id", productId);
+        .eq("cart_id", input.cart_id)
+        .eq("produto_id", input.produto_id)
+        .eq("user_id", input.userId);
 
       if (error) {
         console.error("cartService: erro ao remover item do carrinho:", error);
@@ -160,6 +215,33 @@ const cartService = {
       return { data: null, error };
     }
   },
+
+  changeProductQuantityInCart: async (input: {
+    productId: string;
+    cartId: string;
+    quantity: number;
+  }) => {
+    try {
+      const { data, error } = await supabase
+        .from("cart_item")
+        .update({ quantity: input.quantity })
+        .eq("cart_id", input.cartId)
+        .eq("produto_id", input.productId)
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("cartService: erro ao alterar quantidade do item:", error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error("cartService: erro ao alterar quantidade do item:", error);
+      return { data: null, error };
+    }
+  }
+
 };
 
 export default cartService;

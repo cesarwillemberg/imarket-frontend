@@ -107,6 +107,7 @@ interface SessionContextProps {
   getCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
   createCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
   getOrCreateActiveCart: (userId: string) => Promise<{ data: any; error: any }>;
+  getCartItemsByCartId: (cartId: string, userId: string) => Promise<{ data: any; error: any }>;
   addItemToCart: (inputProduct: {
     userId: string;
     cart_id: string;
@@ -116,7 +117,22 @@ interface SessionContextProps {
     unit_price: number;
     total_price?: number;
   }) => Promise<{ data: any; error: any }>;
-  removeItemFromCart: (userId: string, productId: string) => Promise<{ data: any; error: any }>;
+  updateCartItemQuantity: (input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+    quantity: number;
+  }) => Promise<{ data: any; error: any }>;
+  removeItemFromCart: (input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+  }) => Promise<{ data: any; error: any }>;
+  changeProductQuantityInCart: (input: {
+    productId: string;
+    cartId: string;
+    quantity: number;
+  }) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -246,6 +262,9 @@ const SessionContext = createContext<SessionContextProps>({
   getOrCreateActiveCart: async (_userId: string) => {
     throw new Error("getOrCreateActiveCart not implemented.");
   },
+  getCartItemsByCartId: async (_cartId: string, _userId: string) => {
+    throw new Error("getCartItemsByCartId not implemented.");
+  },
   addItemToCart: (inputProduct: {
     userId: string;
     cart_id: string;
@@ -257,8 +276,27 @@ const SessionContext = createContext<SessionContextProps>({
   }) => {
     throw new Error("addItemToCart not implemented.");
   },
-  removeItemFromCart: async (_userId: string, _productId: string) => {
+  updateCartItemQuantity: async (_input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+    quantity: number;
+  }) => {
+    throw new Error("updateCartItemQuantity not implemented.");
+  },
+  removeItemFromCart: async (_input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+  }) => {
     throw new Error("removeItemFromCart not implemented.");
+  },
+  changeProductQuantityInCart: async (_input: {
+    productId: string;
+    cartId: string;
+    quantity: number;
+  }) => {
+    throw new Error("changeProductQuantityInCart not implemented.");
   }
 });
 
@@ -621,6 +659,16 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const getCartItemsByCartId = async (cartId: string, userId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.getCartItemsByCartId(cartId, userId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar itens do carrinho:", error);
+      return { data: null, error };
+    }
+  }
+
   const addItemToCart = async (inputProduct: {
     userId: string;
     cart_id: string;
@@ -639,15 +687,48 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
-  const removeItemFromCart = async (userId: string, productId: string): Promise<{ data: any; error: any }> => {
+  const updateCartItemQuantity = async (input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+    quantity: number;
+  }): Promise<{ data: any; error: any }> => {
     try {
-      const { data, error } = await cartService.removeItemFromCart(userId, productId);
+      const { data, error } = await cartService.updateItemQuantity(input);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao atualizar quantidade do item do carrinho:", error);
+      return { data: null, error };
+    }
+  };
+
+  const removeItemFromCart = async (input: {
+    userId: string;
+    cart_id: string;
+    produto_id: string;
+  }): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.removeItemFromCart(input);
       return { data, error };
     } catch (error) {
       console.error("SessionContext: Erro ao remover item do carrinho:", error);
       return { data: null, error };
     }
   };
+
+  const changeProductQuantityInCart = async (input: {
+    productId: string;
+    cartId: string;
+    quantity: number;
+  }): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.changeProductQuantityInCart(input);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao alterar quantidade do item do carrinho:", error);
+      return { data: null, error };
+    }
+  }
 
   return (
     <SessionContext.Provider
@@ -682,7 +763,9 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getCartByUserId,
         createCartByUserId,
         getOrCreateActiveCart,
+        getCartItemsByCartId,
         addItemToCart,
+        updateCartItemQuantity,
         removeItemFromCart,
       }}
     >
