@@ -1,8 +1,8 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
-import productService from "@/src/services/products-service";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import productService from "@/src/services/products-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -295,7 +295,7 @@ export default function Cart() {
       );
 
       const productMap = new Map<string, Record<string, unknown>>(
-        productEntries.filter(([, data]) => Boolean(data)) as Array<[string, Record<string, unknown>]>
+        productEntries.filter(([, data]) => Boolean(data)) as [string, Record<string, unknown>][]
       );
 
       const storeIds = Array.from(
@@ -331,7 +331,7 @@ export default function Cart() {
       );
 
       const storeMap = new Map<string, Record<string, unknown>>(
-        storeEntries.filter(([, data]) => Boolean(data)) as Array<[string, Record<string, unknown>]>
+        storeEntries.filter(([, data]) => Boolean(data)) as [string, Record<string, unknown>][]
       );
 
       const previousSelections = selectedMapRef.current ?? {};
@@ -751,8 +751,8 @@ export default function Cart() {
                 {renderCheckbox(group.products.every((product) => product.selected))}
                 <View style={styles.storeHeaderText}>
                   <Text style={styles.storeTitle}>Produtos de {group.name}</Text>
-                  {group.description ? (
-                    <Text style={styles.storeSubtitle}>{group.description}</Text>
+                  {group.name ? (
+                    <Text style={styles.storeSubtitle}>Loja oficial de {group.name}</Text>
                   ) : null}
                 </View>
                 <Icon
