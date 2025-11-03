@@ -283,7 +283,7 @@ const createStyles = (theme: Theme) =>
       fontWeight: "700",
     },
     checkoutButton: {
-      marginTop: theme.spacing.md,
+      marginVertical: theme.spacing.md,
       backgroundColor: theme.colors.primary,
       borderRadius: theme.radius.full,
       paddingVertical: theme.spacing.sm,

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -310,6 +311,7 @@ export default function Cart() {
   const [groups, setGroups] = useState<CartStoreGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedMap, setSelectedMap] = useState<Record<string, boolean>>({});
   const selectedMapRef = useRef<Record<string, boolean>>({});
@@ -323,24 +325,30 @@ export default function Cart() {
     [currencyFormatter]
   );
 
-  const loadCart = useCallback(async () => {
-    if (!user?.id) {
-      setError("Usuário não autenticado.");
-      setGroups([]);
-      setIsLoading(false);
-      return;
-    }
+  const loadCart = useCallback(
+    async (options?: { silent?: boolean }) => {
+      const silent = Boolean(options?.silent);
 
-    setIsLoading(true);
-    setError(null);
+      if (!user?.id) {
+        setError("Usuário não autenticado.");
+        setGroups([]);
+        if (!silent) {
+          setIsLoading(false);
+        }
+        return;
+      }
 
-    try {
+      if (!silent) {
+        setIsLoading(true);
+      }
+      setError(null);
+
+      try {
       const { data: cartData, error: cartError } = await getOrCreateActiveCart(user.id);
 
       if (cartError || !cartData) {
         setError("Não foi possível carregar seu carrinho no momento.");
         setGroups([]);
-        setIsLoading(false);
         return;
       }
 
@@ -356,7 +364,6 @@ export default function Cart() {
       if (!resolvedCartId) {
         setError("Não foi possível identificar seu carrinho.");
         setGroups([]);
-        setIsLoading(false);
         return;
       }
 
@@ -371,7 +378,6 @@ export default function Cart() {
         console.error("Cart: erro ao buscar itens do carrinho", itemsError);
         setError("Não foi possível carregar os itens do carrinho.");
         setGroups([]);
-        setIsLoading(false);
         return;
       }
 
@@ -380,7 +386,6 @@ export default function Cart() {
       if (!items.length) {
         setGroups([]);
         setSelectedMap({});
-        setIsLoading(false);
         return;
       }
 
@@ -583,18 +588,37 @@ export default function Cart() {
 
       setGroups(builtGroups);
       setSelectedMap(nextSelections);
-    } catch (caughtError) {
-      console.error("Cart: erro inesperado ao carregar carrinho", caughtError);
-      setError("Ocorreu um erro ao carregar seu carrinho.");
-      setGroups([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getCartItemsByCartId, getOrCreateActiveCart, getStoreById, user?.id]);
+      } catch (caughtError) {
+        console.error("Cart: erro inesperado ao carregar carrinho", caughtError);
+        setError("Ocorreu um erro ao carregar seu carrinho.");
+        setGroups([]);
+      } finally {
+        if (!silent) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [getCartItemsByCartId, getOrCreateActiveCart, getStoreById, user?.id]
+  );
 
   useEffect(() => {
     loadCart();
   }, [loadCart]);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing || isMutating) {
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await loadCart({ silent: true });
+    } catch (refreshError) {
+      console.error("Cart: erro ao atualizar carrinho via pull-to-refresh", refreshError);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isMutating, isRefreshing, loadCart]);
 
   const allProductsSelected = useMemo(() => {
     if (!groups.length) {
@@ -759,12 +783,53 @@ export default function Cart() {
         return;
       }
 
-      runCartMutation(() =>
-        removeItemFromCart({
-          userId: user.id,
-          cart_id: cartId,
-          produto_id: productId,
-        })
+      runCartMutation(
+        () =>
+          removeItemFromCart({
+            userId: user.id,
+            cart_id: cartId,
+            produto_id: productId,
+          }),
+        {
+          skipReload: true,
+          onSuccess: () => {
+            setGroups((previousGroups) => {
+              const nextGroups: CartStoreGroup[] = [];
+
+              previousGroups.forEach((group) => {
+                if (group.id !== storeId) {
+                  nextGroups.push(group);
+                  return;
+                }
+
+                const remainingProducts = group.products.filter(
+                  (productItem) => productItem.id !== productId
+                );
+
+                if (remainingProducts.length === 0) {
+                  return;
+                }
+
+                const storeSelected = remainingProducts.every((product) => product.selected);
+
+                nextGroups.push({
+                  ...group,
+                  products: remainingProducts,
+                  selected: storeSelected,
+                });
+              });
+
+              return nextGroups;
+            });
+
+            setSelectedMap((previousMap) => {
+              const nextMap = { ...previousMap };
+              const selectionKey = buildSelectionKey(storeId, productId);
+              delete nextMap[selectionKey];
+              return nextMap;
+            });
+          },
+        }
       );
     },
     [cartId, removeItemFromCart, runCartMutation, user?.id]
@@ -926,6 +991,15 @@ export default function Cart() {
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              enabled={!isMutating}
+              tintColor={theme.colors.primary}
+              colors={[theme.colors.primary]}
+            />
+          }
         >
           <TouchableOpacity
             onPress={toggleAllProducts}
