@@ -38,6 +38,11 @@ type CartStoreGroup = {
 
 type CartItemRecord = Record<string, unknown>;
 
+type CartMutationOptions = {
+  skipReload?: boolean;
+  onSuccess?: () => void | Promise<void>;
+};
+
 const PRODUCT_NAME_KEYS = ["name", "title", "product_name"] as const;
 const PRODUCT_UNIT_KEYS = ["unit", "unit_label", "measure_unit"] as const;
 const PRODUCT_IMAGE_KEYS = [
@@ -580,18 +585,26 @@ export default function Cart() {
   }, []);
 
   const runCartMutation = useCallback(
-    async (mutation: () => Promise<{ data: unknown; error: unknown } | void>) => {
+      async (
+        mutation: () => Promise<{ data: unknown; error: unknown } | void>,
+        options?: CartMutationOptions
+      ) => {
       if (isMutating) {
         return;
       }
       setIsMutating(true);
-      try {
-        const result = await mutation();
-        const mutationError = result && typeof result === "object" ? (result as any).error : null;
-        if (mutationError) {
-          throw mutationError;
-        }
-        await loadCart();
+        try {
+          const result = await mutation();
+          const mutationError = result && typeof result === "object" ? (result as any).error : null;
+          if (mutationError) {
+            throw mutationError;
+          }
+          if (options?.onSuccess) {
+            await options.onSuccess();
+          }
+          if (!options?.skipReload) {
+            await loadCart();
+          }
       } catch (mutationError) {
         console.error("Cart: erro ao atualizar carrinho", mutationError);
         Alert.alert("Erro", "Não foi possível atualizar seu carrinho. Tente novamente.");
@@ -632,16 +645,37 @@ export default function Cart() {
         return;
       }
 
-      runCartMutation(() =>
-        addItemToCart({
-          userId: user.id,
-          cart_id: cartId,
-          store_id: storeId,
-          produto_id: productId,
-          quantity: 1,
-          unit_price: product.unitPrice,
-        })
-      );
+        runCartMutation(
+          () =>
+            addItemToCart({
+              userId: user.id,
+              cart_id: cartId,
+              store_id: storeId,
+              produto_id: productId,
+              quantity: 1,
+              unit_price: product.unitPrice,
+            }),
+          {
+            skipReload: true,
+            onSuccess: () => {
+              setGroups((previous) =>
+                previous.map((groupItem) => {
+                  if (groupItem.id !== storeId) {
+                    return groupItem;
+                  }
+                  return {
+                    ...groupItem,
+                    products: groupItem.products.map((productItem) =>
+                      productItem.id === productId
+                        ? { ...productItem, quantity: productItem.quantity + 1 }
+                        : productItem
+                    ),
+                  };
+                })
+              );
+            },
+          }
+        );
     },
     [addItemToCart, cartId, groups, runCartMutation, user?.id]
   );
@@ -659,14 +693,39 @@ export default function Cart() {
         return;
       }
 
-      runCartMutation(() =>
-        updateCartItemQuantity({
-          userId: user.id,
-          cart_id: cartId,
-          produto_id: productId,
-          quantity: product.quantity - 1,
-        })
-      );
+        runCartMutation(
+          () =>
+            updateCartItemQuantity({
+              userId: user.id,
+              cart_id: cartId,
+              produto_id: productId,
+              quantity: product.quantity - 1,
+            }),
+          {
+            skipReload: true,
+            onSuccess: () => {
+              setGroups((previous) =>
+                previous.map((groupItem) => {
+                  if (groupItem.id !== storeId) {
+                    return groupItem;
+                  }
+                  return {
+                    ...groupItem,
+                    products: groupItem.products.map((productItem) => {
+                      if (productItem.id !== productId) {
+                        return productItem;
+                      }
+                      return {
+                        ...productItem,
+                        quantity: Math.max(1, productItem.quantity - 1),
+                      };
+                    }),
+                  };
+                })
+              );
+            },
+          }
+        );
     },
     [cartId, groups, runCartMutation, updateCartItemQuantity, user?.id]
   );
