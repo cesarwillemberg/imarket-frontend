@@ -129,8 +129,8 @@ const createStyles = (theme: Theme) =>
       paddingVertical: theme.spacing.xs,
     },
     productImageWrapper: {
-      width: 56,
-      height: 56,
+      width: 100,
+      height: 100,
       borderRadius: theme.radius.md,
       backgroundColor: theme.colors.secondary,
       alignItems: "center",
@@ -171,10 +171,11 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.xs,
       color: theme.colors.primary,
       fontWeight: "600",
-      marginBottom: theme.spacing.sx,
+      marginVertical: theme.spacing.xs,
+      textDecorationLine: "underline",
     },
     quantityWrapper: {
-      marginTop: theme.spacing.xs,
+      marginTop: theme.spacing.sm,
     },
     quantityControls: {
       flexDirection: "row",
@@ -182,7 +183,7 @@ const createStyles = (theme: Theme) =>
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
       borderRadius: theme.radius.full,
-      paddingHorizontal: theme.spacing.sx,
+      paddingHorizontal: theme.spacing.ms,
       paddingVertical: theme.spacing.sx,
       alignSelf: "flex-start",
     },

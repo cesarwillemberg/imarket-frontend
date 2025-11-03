@@ -62,6 +62,30 @@ const PRODUCT_ORIGINAL_PRICE_KEYS = [
   "list_price",
   "regular_price",
 ] as const;
+const PRODUCT_PROMOTIONAL_PRICE_KEYS = [
+  "promotional_price",
+  "promo_price",
+  "sale_price",
+  "discount_price",
+  "price_with_discount",
+  "promotion_price",
+] as const;
+const PRODUCT_PRICE_KEYS = [
+  "price",
+  "unit_price",
+  "base_price",
+  "current_price",
+  "valor",
+  "value",
+] as const;
+const PRODUCT_PROMOTION_FLAG_KEYS = [
+  "in_promotion",
+  "inPromotion",
+  "has_promotion",
+  "hasPromotion",
+  "is_promotion",
+  "isPromotion",
+] as const;
 
 const STORE_NAME_KEYS = [
   "name",
@@ -129,9 +153,31 @@ const extractStringValue = (
   return null;
 };
 
+const parseBooleanValue = (value: unknown): boolean => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return ["true", "1", "yes", "sim"].includes(normalized);
+  }
+
+  return false;
+};
+
 const resolveImageUrl = (source: Record<string, unknown> | null | undefined): string | null => {
   if (!source || typeof source !== "object") {
     return null;
+  }
+
+  const explicitCartImage = source["cart_image_url"];
+  if (typeof explicitCartImage === "string" && explicitCartImage.trim().length > 0) {
+    return explicitCartImage;
   }
 
   for (const key of PRODUCT_IMAGE_KEYS) {
@@ -164,6 +210,77 @@ const resolveStoreShippingCost = (storeData: Record<string, unknown> | null | un
   }
 
   return 0;
+};
+
+const resolveProductPricing = (
+  productData: Record<string, unknown>,
+  fallbackUnitPrice: number | null
+): { unitPrice: number; originalPrice: number | null } => {
+  const extractFirstNumeric = (keys: readonly string[]) => {
+    for (const key of keys) {
+      const parsed = parseNumericValue(productData[key]);
+      if (parsed !== null) {
+        return parsed;
+      }
+    }
+    return null;
+  };
+
+  const explicitPromotion = PRODUCT_PROMOTION_FLAG_KEYS.some((key) =>
+    parseBooleanValue(productData[key])
+  );
+
+  const basePrice = extractFirstNumeric(PRODUCT_PRICE_KEYS);
+  const promotionalPrice = extractFirstNumeric(PRODUCT_PROMOTIONAL_PRICE_KEYS);
+  const originalPriceCandidate = extractFirstNumeric(PRODUCT_ORIGINAL_PRICE_KEYS);
+  const fallbackPrice = typeof fallbackUnitPrice === "number" && fallbackUnitPrice > 0 ? fallbackUnitPrice : null;
+
+  const referenceBase = basePrice ?? fallbackPrice ?? null;
+
+  const promoIsValid =
+    typeof promotionalPrice === "number" &&
+    promotionalPrice > 0 &&
+    (explicitPromotion ||
+      (typeof referenceBase === "number" && promotionalPrice < referenceBase) ||
+      (typeof originalPriceCandidate === "number" && promotionalPrice < originalPriceCandidate));
+
+  let unitPrice: number | null = referenceBase ?? promotionalPrice ?? originalPriceCandidate ?? fallbackPrice ?? null;
+  let originalPrice: number | null = null;
+
+  if (promoIsValid) {
+    const referencePrice =
+      originalPriceCandidate ??
+      referenceBase ??
+      fallbackPrice ??
+      promotionalPrice;
+    unitPrice = promotionalPrice;
+    originalPrice = referencePrice !== promotionalPrice ? referencePrice : null;
+  } else if (explicitPromotion && originalPriceCandidate !== null) {
+    const effectiveBase =
+      referenceBase ??
+      promotionalPrice ??
+      fallbackPrice;
+    if (typeof effectiveBase === "number" && effectiveBase > 0) {
+      unitPrice = effectiveBase;
+      originalPrice = originalPriceCandidate > effectiveBase ? originalPriceCandidate : null;
+    }
+  }
+
+  if (unitPrice === null || !Number.isFinite(unitPrice) || unitPrice <= 0) {
+    unitPrice = fallbackPrice ?? referenceBase ?? promotionalPrice ?? originalPriceCandidate ?? 0;
+  }
+
+  if (originalPrice !== null && (!Number.isFinite(originalPrice) || originalPrice <= unitPrice)) {
+    originalPrice = null;
+  }
+
+  const safeUnitPrice =
+    typeof unitPrice === "number" && Number.isFinite(unitPrice) && unitPrice > 0 ? unitPrice : 0;
+
+  return {
+    unitPrice: safeUnitPrice,
+    originalPrice,
+  };
 };
 
 export default function Cart() {
@@ -291,7 +408,37 @@ export default function Cart() {
             if (productError || !data) {
               return [productId, null] as const;
             }
-            return [productId, data] as const;
+
+            let imageUrl = resolveImageUrl(data as Record<string, unknown>);
+
+            if (!imageUrl) {
+              try {
+                const { data: imageData, error: imageError } =
+                  await productService.getImageProduct(productId);
+
+                if (!imageError && Array.isArray(imageData)) {
+                  const imageRecord = imageData.find(
+                    (item) => resolveImageUrl(item as Record<string, unknown>) !== null
+                  );
+                  const resolved =
+                    imageRecord !== undefined
+                      ? resolveImageUrl(imageRecord as Record<string, unknown>)
+                      : null;
+                  if (resolved) {
+                    imageUrl = resolved;
+                  }
+                }
+              } catch (imageFetchError) {
+                console.error("Cart: erro ao buscar imagem do produto", imageFetchError);
+              }
+            }
+
+            const augmentedData =
+              imageUrl && typeof imageUrl === "string"
+                ? { ...(data as Record<string, unknown>), cart_image_url: imageUrl }
+                : (data as Record<string, unknown>);
+
+            return [productId, augmentedData] as const;
           } catch (productFetchError) {
             console.error("Cart: erro ao buscar produto", productFetchError);
             return [productId, null] as const;
@@ -377,24 +524,15 @@ export default function Cart() {
           (typeof item.unit_label === "string" ? item.unit_label : null) ??
           "Un.";
 
-        const originalPrice =
-          PRODUCT_ORIGINAL_PRICE_KEYS.reduce<number | null>((acc, key) => {
-            if (acc !== null) {
-              return acc;
-            }
-            return parseNumericValue(productData[key]);
-          }, null) ?? null;
-
         const quantity =
           parseNumericValue(item.quantity) && Number(parseNumericValue(item.quantity)) > 0
             ? Number(parseNumericValue(item.quantity))
             : 1;
 
-        const unitPrice =
-          parseNumericValue(item.unit_price) ??
-          parseNumericValue(productData.price) ??
-          parseNumericValue(productData.current_price) ??
-          0;
+        const { unitPrice, originalPrice } = resolveProductPricing(
+          productData,
+          parseNumericValue(item.unit_price)
+        );
 
         const imageUrl = resolveImageUrl(productData);
 
@@ -840,7 +978,7 @@ export default function Cart() {
                           <Image
                             source={{ uri: product.imageUrl }}
                             style={styles.productImage}
-                            resizeMode="cover"
+                            resizeMode="contain"
                           />
                         ) : (
                           <View style={styles.productImageFallback}>
@@ -902,7 +1040,7 @@ export default function Cart() {
                         <View style={styles.priceWrapper}>
                           {product.originalPrice && product.originalPrice > product.unitPrice ? (
                             <Text style={styles.productOriginalPrice}>
-                              {formatCurrency(product.originalPrice)}
+                              {formatCurrency(product.originalPrice * product.quantity)}
                             </Text>
                           ) : null}
                           <Text style={styles.productPrice}>
