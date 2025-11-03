@@ -4,7 +4,7 @@ import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,7 +18,7 @@ import {
 import createStyles from "./styled";
 
 type LocalSearchParams = {
-  id_product?: string | string[];
+  id_produto?: string | string[];
 };
 
 type RawProduct = Record<string, unknown> & { id?: string };
@@ -36,7 +36,7 @@ type Product = {
   originalPrice: number | null;
   inPromotion: boolean;
   imageUrl: string | null;
-  isVariableWeight: boolean;
+  variableWeight: boolean;
 };
 
 const PROMOTION_FLAG_KEYS = [
@@ -46,6 +46,15 @@ const PROMOTION_FLAG_KEYS = [
   "hasPromotion",
   "is_promotion",
   "isPromotion",
+] as const;
+
+const VARIABLE_WEIGHT_FLAG_KEYS = [
+  "variable_weight",
+  "variableWeight",
+  "is_variable_weight",
+  "isVariableWeight",
+  "weight_variable",
+  "is_weight_variable",
 ] as const;
 
 const PRODUCT_IMAGE_URL_KEYS = [
@@ -117,6 +126,7 @@ const mapProduct = (raw: RawProduct): Product | null => {
       "product_id",
       "uuid",
       "id_product",
+      "id_produto",
     ]);
 
   if (!identifier) {
@@ -221,33 +231,42 @@ const mapProduct = (raw: RawProduct): Product | null => {
   const explicitPromotionFlag = parseBooleanValue(
     pickFirstValue(raw, PROMOTION_FLAG_KEYS) ?? false
   );
-  const variableWeightFlag = parseBooleanValue(
-    pickFirstValue(raw, ["variable_weight", "variableWeight", "is_variable_weight", "isVariableWeight"]) ?? false
+  const variableWeight = parseBooleanValue(
+    pickFirstValue(raw, VARIABLE_WEIGHT_FLAG_KEYS) ?? false
   );
 
-  let price: number | null = promotionalPrice ?? basePrice ?? null;
+  // Robust price mapping to avoid 0,00 on non-promotional items
+  let price: number | null = null;
   let originalPrice: number | null = null;
-  let inPromotion = explicitPromotionFlag;
+  let inPromotion = false;
 
-  if (promotionalPrice !== null) {
+  const promoIsValid =
+    promotionalPrice !== null &&
+    promotionalPrice > 0 &&
+    (
+      explicitPromotionFlag ||
+      (typeof basePrice === "number" && promotionalPrice < basePrice) ||
+      (typeof originalPriceCandidate === "number" && promotionalPrice < originalPriceCandidate)
+    );
+
+  if (promoIsValid) {
     const referencePrice = originalPriceCandidate ?? basePrice ?? promotionalPrice;
-    if (promotionalPrice < referencePrice) {
-      originalPrice = referencePrice;
-      price = promotionalPrice;
-      inPromotion = true;
-    } else if (explicitPromotionFlag && referencePrice !== promotionalPrice) {
-      originalPrice = referencePrice;
-      price = promotionalPrice;
-      inPromotion = true;
-    } else {
-      price = promotionalPrice;
-    }
-  } else if (explicitPromotionFlag && originalPriceCandidate !== null && basePrice !== null) {
-    price = basePrice;
-    originalPrice = originalPriceCandidate;
+    price = promotionalPrice;
+    originalPrice = referencePrice !== promotionalPrice ? referencePrice : null;
     inPromotion = true;
+  } else if (explicitPromotionFlag && originalPriceCandidate !== null && basePrice !== null) {
+    // Promotion flagged with base as discounted and original as list price
+    price = basePrice;
+    originalPrice = originalPriceCandidate > basePrice ? originalPriceCandidate : null;
+    inPromotion = originalPrice !== null;
   } else {
-    price = basePrice ?? originalPriceCandidate ?? null;
+    // No valid promotion; choose best available positive price
+    const base = typeof basePrice === "number" && basePrice > 0 ? basePrice : null;
+    const orig =
+      typeof originalPriceCandidate === "number" && originalPriceCandidate > 0
+        ? originalPriceCandidate
+        : null;
+    price = base ?? orig ?? null;
     originalPrice = null;
     inPromotion = false;
   }
@@ -281,7 +300,7 @@ const mapProduct = (raw: RawProduct): Product | null => {
       typeof imageRaw === "string" && imageRaw.trim().length
         ? imageRaw
         : null,
-    isVariableWeight: variableWeightFlag,
+    variableWeight,
   };
 };
 
@@ -328,16 +347,17 @@ const extractStoreName = (store: Record<string, unknown> | null | undefined): st
 };
 
 export default function ProductDetails() {
-  const { id_product } = useLocalSearchParams<LocalSearchParams>();
+  const { id_produto } = useLocalSearchParams<LocalSearchParams>();
   const productId = useMemo(() => {
-    if (Array.isArray(id_product)) {
-      return id_product[0] ?? null;
+    if (Array.isArray(id_produto)) {
+      return id_produto[0] ?? null;
     }
-    return id_product ?? null;
-  }, [id_product]);
+    return id_produto ?? null;
+  }, [id_produto]);
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -581,13 +601,20 @@ export default function ProductDetails() {
         {images.length > 1 ? (
           <View style={styles.dotsWrapper}>
             {images.map((_, index) => (
-              <View
+              <TouchableOpacity
                 key={`${product.id}-${index}`}
-                style={[
-                  styles.dot,
-                  index === activeImage ? styles.dotActive : styles.dotInactive,
-                ]}
-              />
+                onPress={() => setActiveImage(index)}
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para imagem ${index + 1}`}
+              >
+                <View
+                  style={[
+                    styles.dot,
+                    index === activeImage ? styles.dotActive : styles.dotInactive,
+                  ]}
+                />
+              </TouchableOpacity>
             ))}
           </View>
         ) : null}
@@ -609,19 +636,39 @@ export default function ProductDetails() {
           ) : (
             <Text style={styles.productUnavailable}>Preco nao informado</Text>
           )}
+
           <View style={styles.metaInfo}>
-            <Text style={styles.metaInfoText}>
-              <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
-              {product.storeName ?? "Nao informado"}
-            </Text>
+            {product.storeId ? (
+              <TouchableOpacity
+                onPress={() =>
+                  router.push({
+                    pathname: "/(auth)/store/[id_store]",
+                    params: { id_store: String(product.storeId ?? "") },
+                  })
+                }
+                activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel={`Ir para perfil da loja ${product.storeName ?? ""}`}
+              >
+                <Text style={[styles.metaInfoText, { textDecorationLine: "underline" }]}>
+                  <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
+                  {product.storeName ?? "Nao informado"}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.metaInfoText}>
+                <Text style={styles.metaInfoLabel}>Vendido Por:</Text>{" "}
+                {product.storeName ?? "Nao informado"}
+              </Text>
+            )}
             {product.code ? (
               <Text style={styles.metaInfoText}>Cod: {product.code}</Text>
             ) : null}
           </View>
         </View>
 
-        {product.isVariableWeight ? (
-          <View style={styles.variableWeightCard}>
+        {product.variableWeight ? (
+          <View style={styles.variableWeightWrapper}>
             <Text style={styles.variableWeightTitle}>Produto de peso variável</Text>
             <Text style={styles.variableWeightDescription}>
               Preço estimado que pode ser ajustado em até 50% após a pesagem final. Essa diferença será cobrada ou estornada, conforme necessário.
