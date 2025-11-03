@@ -834,34 +834,29 @@ export default function Cart() {
                   </TouchableOpacity>
 
                   <View style={styles.productCard}>
-                    <View style={styles.productImageWrapper}>
-                      {product.imageUrl ? (
-                        <Image
-                          source={{ uri: product.imageUrl }}
-                          style={styles.productImage}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={styles.productImageFallback}>
-                          <Icon
-                            type="MaterialCommunityIcons"
-                            name="image-off"
-                            size={24}
-                            color={theme.colors.disabled}
+                    <View style={styles.productDetails}>
+                      <View style={styles.productImageWrapper}>
+                        {product.imageUrl ? (
+                          <Image
+                            source={{ uri: product.imageUrl }}
+                            style={styles.productImage}
+                            resizeMode="cover"
                           />
-                        </View>
-                      )}
-                    </View>
+                        ) : (
+                          <View style={styles.productImageFallback}>
+                            <Icon
+                              type="MaterialCommunityIcons"
+                              name="image-off"
+                              size={24}
+                              color={theme.colors.disabled}
+                            />
+                          </View>
+                        )}
+                      </View>
 
-                    <View style={styles.productInfo}>
-                      <Text style={styles.productName}>{product.name}</Text>
-                      {product.originalPrice && product.originalPrice > product.unitPrice ? (
-                        <Text style={styles.productOriginalPrice}>
-                          {formatCurrency(product.originalPrice)}
-                        </Text>
-                      ) : null}
+                      <View style={styles.productInfo}>
+                        <Text style={styles.productName}>{product.name}</Text>
 
-                      <View style={styles.productActionsRow}>
                         <TouchableOpacity
                           activeOpacity={0.7}
                           onPress={() => handleRemoveProduct(group.id, product.id)}
@@ -870,42 +865,51 @@ export default function Cart() {
                           <Text style={styles.removeButtonText}>Excluir</Text>
                         </TouchableOpacity>
 
-                        <View style={styles.quantityControls}>
-                          <TouchableOpacity
-                            style={styles.quantityButton}
-                            activeOpacity={0.7}
-                            onPress={() => decrementQuantity(group.id, product.id)}
-                            disabled={isMutating || product.quantity <= 1}
-                          >
-                            <Icon
-                              type="MaterialCommunityIcons"
-                              name="minus"
-                              size={16}
-                              color={theme.colors.primary}
-                            />
-                          </TouchableOpacity>
-                          <Text style={styles.quantityValue}>
-                            {product.quantity} {product.unitLabel}
+                        <View style={styles.quantityWrapper}>
+                          <View style={styles.quantityControls}>
+                            <TouchableOpacity
+                              style={styles.quantityButton}
+                              activeOpacity={0.7}
+                              onPress={() => decrementQuantity(group.id, product.id)}
+                              disabled={isMutating || product.quantity <= 1}
+                            >
+                              <Icon
+                                type="MaterialCommunityIcons"
+                                name="minus"
+                                size={16}
+                                color={theme.colors.primary}
+                              />
+                            </TouchableOpacity>
+                            <Text style={styles.quantityValue}>
+                              {product.quantity} {product.unitLabel}
+                            </Text>
+                            <TouchableOpacity
+                              style={styles.quantityButton}
+                              activeOpacity={0.7}
+                              onPress={() => incrementQuantity(group.id, product.id)}
+                              disabled={isMutating}
+                            >
+                              <Icon
+                                type="MaterialCommunityIcons"
+                                name="plus"
+                                size={16}
+                                color={theme.colors.primary}
+                              />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+
+                        <View style={styles.priceWrapper}>
+                          {product.originalPrice && product.originalPrice > product.unitPrice ? (
+                            <Text style={styles.productOriginalPrice}>
+                              {formatCurrency(product.originalPrice)}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.productPrice}>
+                            {formatCurrency(product.unitPrice * product.quantity)}
                           </Text>
-                          <TouchableOpacity
-                            style={styles.quantityButton}
-                            activeOpacity={0.7}
-                            onPress={() => incrementQuantity(group.id, product.id)}
-                            disabled={isMutating}
-                          >
-                            <Icon
-                              type="MaterialCommunityIcons"
-                              name="plus"
-                              size={16}
-                              color={theme.colors.primary}
-                            />
-                          </TouchableOpacity>
                         </View>
                       </View>
-
-                      <Text style={styles.productPrice}>
-                        {formatCurrency(product.unitPrice * product.quantity)}
-                      </Text>
                     </View>
                   </View>
                 </View>

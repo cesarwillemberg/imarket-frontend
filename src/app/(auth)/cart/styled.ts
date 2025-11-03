@@ -120,6 +120,13 @@ const createStyles = (theme: Theme) =>
     productCard: {
       flex: 1,
       flexDirection: "row",
+      alignItems: "flex-start",
+    },
+    productDetails: {
+      flexDirection: "row",
+      flex: 1,
+      paddingRight: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
     },
     productImageWrapper: {
       width: 56,
@@ -143,31 +150,31 @@ const createStyles = (theme: Theme) =>
     },
     productInfo: {
       flex: 1,
+      paddingLeft: theme.spacing.sm,
     },
     productName: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
       fontWeight: "600",
+      marginBottom: theme.spacing.sx,
     },
     productOriginalPrice: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.xs,
       color: theme.colors.disabled,
       textDecorationLine: "line-through",
-      marginTop: theme.spacing.xs,
-    },
-    productActionsRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginTop: theme.spacing.sx,
+      marginBottom: theme.spacing.sx,
     },
     removeButtonText: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.xs,
       color: theme.colors.primary,
       fontWeight: "600",
-      marginRight: theme.spacing.sm,
+      marginBottom: theme.spacing.sx,
+    },
+    quantityWrapper: {
+      marginTop: theme.spacing.xs,
     },
     quantityControls: {
       flexDirection: "row",
@@ -177,6 +184,7 @@ const createStyles = (theme: Theme) =>
       borderRadius: theme.radius.full,
       paddingHorizontal: theme.spacing.sx,
       paddingVertical: theme.spacing.sx,
+      alignSelf: "flex-start",
     },
     quantityButton: {
       padding: theme.spacing.sx,
@@ -188,12 +196,16 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
       marginHorizontal: theme.spacing.sx,
     },
+    priceWrapper: {
+      marginTop: theme.spacing.sm,
+      alignItems: "flex-end",
+    },
     productPrice: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
-      fontWeight: "700",
-      marginTop: theme.spacing.xs,
+      fontWeight: "bold",
+      textAlign: "left",
     },
     shippingRow: {
       flexDirection: "row",
