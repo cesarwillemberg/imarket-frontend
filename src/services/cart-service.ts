@@ -69,7 +69,6 @@ const cartService = {
         .from("cart_item")
         .select("*")
         .eq("cart_id", cartId)
-        // .eq("user_id", userId);
 
       if (error) {
         console.error("cartService: erro ao buscar itens do carrinho:", error);
@@ -98,7 +97,6 @@ const cartService = {
         .select("quantity")
         .eq("cart_id", input.cart_id)
         .eq("produto_id", input.produto_id)
-        .eq("user_id", input.userId)
         .maybeSingle();
 
       if (existingError) {
@@ -122,7 +120,6 @@ const cartService = {
           })
           .eq("cart_id", input.cart_id)
           .eq("produto_id", input.produto_id)
-          .eq("user_id", input.userId)
           .select("*")
           .single();
 
@@ -138,7 +135,6 @@ const cartService = {
         .from("cart_item")
         .insert([
           {
-            user_id: input.userId,
             cart_id: input.cart_id,
             store_id: input.store_id,
             produto_id: input.produto_id,
@@ -175,7 +171,6 @@ const cartService = {
         })
         .eq("cart_id", input.cart_id)
         .eq("produto_id", input.produto_id)
-        .eq("user_id", input.userId)
         .select("*")
         .single();
 
@@ -201,8 +196,7 @@ const cartService = {
         .from("cart_item")
         .delete()
         .eq("cart_id", input.cart_id)
-        .eq("produto_id", input.produto_id)
-        .eq("user_id", input.userId);
+        .eq("produto_id", input.produto_id);
 
       if (error) {
         console.error("cartService: erro ao remover item do carrinho:", error);
@@ -215,32 +209,6 @@ const cartService = {
       return { data: null, error };
     }
   },
-
-  changeProductQuantityInCart: async (input: {
-    productId: string;
-    cartId: string;
-    quantity: number;
-  }) => {
-    try {
-      const { data, error } = await supabase
-        .from("cart_item")
-        .update({ quantity: input.quantity })
-        .eq("cart_id", input.cartId)
-        .eq("produto_id", input.productId)
-        .select("*")
-        .single();
-
-      if (error) {
-        console.error("cartService: erro ao alterar quantidade do item:", error);
-        return { data: null, error };
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      console.error("cartService: erro ao alterar quantidade do item:", error);
-      return { data: null, error };
-    }
-  }
 
 };
 
