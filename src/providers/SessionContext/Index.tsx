@@ -105,6 +105,8 @@ interface SessionContextProps {
   getImageProduct: (productId: string) => Promise<{ data: any; error: any }>;
   getItemPromotionByStore: (storeId: string) => Promise<{ data: any; error: any }>;
   getCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
+  createCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
+  getOrCreateActiveCart: (userId: string) => Promise<{ data: any; error: any }>;
   addItemToCart: (inputProduct: {
     userId: string;
     cart_id: string;
@@ -112,7 +114,7 @@ interface SessionContextProps {
     produto_id: string;
     quantity: number;
     unit_price: number;
-    total_price: number;
+    total_price?: number;
   }) => Promise<{ data: any; error: any }>;
   removeItemFromCart: (userId: string, productId: string) => Promise<{ data: any; error: any }>;
 }
@@ -238,6 +240,12 @@ const SessionContext = createContext<SessionContextProps>({
   getCartByUserId: async (_userId: string) => {
     throw new Error("getCartByUserId not implemented.");
   },
+  createCartByUserId: async (_userId: string) => {
+    throw new Error("createCartByUserId not implemented.");
+  },
+  getOrCreateActiveCart: async (_userId: string) => {
+    throw new Error("getOrCreateActiveCart not implemented.");
+  },
   addItemToCart: (inputProduct: {
     userId: string;
     cart_id: string;
@@ -245,7 +253,7 @@ const SessionContext = createContext<SessionContextProps>({
     produto_id: string;
     quantity: number;
     unit_price: number;
-    total_price: number;
+    total_price?: number;
   }) => {
     throw new Error("addItemToCart not implemented.");
   },
@@ -593,6 +601,26 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const createCartByUserId = async (userId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.createCartByUserId(userId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao criar carrinho do usuário:", error);
+      return { data: null, error };
+    }
+  }
+
+  const getOrCreateActiveCart = async (userId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.getOrCreateActiveCart(userId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao obter/criar carrinho do usuário:", error);
+      return { data: null, error };
+    }
+  }
+
   const addItemToCart = async (inputProduct: {
     userId: string;
     cart_id: string;
@@ -600,7 +628,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     produto_id: string;
     quantity: number;
     unit_price: number;
-    total_price: number;
+    total_price?: number;
   }): Promise<{ data: any; error: any }> => {
     try {
       const { data, error } = await cartService.addItemToCart(inputProduct);
@@ -652,6 +680,8 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getImageProduct,
         getItemPromotionByStore,
         getCartByUserId,
+        createCartByUserId,
+        getOrCreateActiveCart,
         addItemToCart,
         removeItemFromCart,
       }}

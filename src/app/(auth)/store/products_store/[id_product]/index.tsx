@@ -3,6 +3,7 @@ import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -338,6 +339,7 @@ export default function ProductDetails() {
 
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { user, getOrCreateActiveCart, addItemToCart } = useSession();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -345,6 +347,7 @@ export default function ProductDetails() {
   const [images, setImages] = useState<string[]>([]);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   const resolveImages = useCallback(
     (imageRows: RawProductImage[] | null | undefined, fallbackImage: string | null) => {
@@ -493,13 +496,101 @@ export default function ProductDetails() {
     });
   };
 
-  const handleAddToCart = () => {
-    if (!product) return;
-    Alert.alert(
-      "Adicionar ao carrinho",
-      `${quantity} unidade(s) de ${product.name} adicionadas ao carrinho.`
-    );
-  };
+  const handleAddToCart = useCallback(async () => {
+    if (!product) {
+      return;
+    }
+
+    if (!user?.id) {
+      Alert.alert("Sessao expirada", "Faca login para adicionar produtos ao carrinho.");
+      return;
+    }
+
+    if (product.price === null) {
+      Alert.alert(
+        "Produto indisponivel",
+        "Este produto nao possui preco cadastrado e nao pode ser adicionado ao carrinho."
+      );
+      return;
+    }
+
+    if (!product.storeId) {
+      Alert.alert(
+        "Produto indisponivel",
+        "Nao foi possivel identificar a loja deste produto."
+      );
+      return;
+    }
+
+    if (isAddingToCart) {
+      return;
+    }
+
+    setIsAddingToCart(true);
+
+    try {
+      const { data: cartData, error: cartError } = await getOrCreateActiveCart(user.id);
+
+      if (cartError) {
+        console.error("ProductDetails: erro ao obter carrinho ativo", cartError);
+        Alert.alert(
+          "Erro",
+          "Nao foi possivel acessar ou criar seu carrinho. Tente novamente em instantes."
+        );
+        return;
+      }
+
+      const cartId =
+        cartData?.id ??
+        cartData?.cart_id ??
+        cartData?.cartId ??
+        cartData?.id_cart;
+
+      if (!cartId) {
+        Alert.alert(
+          "Carrinho indisponivel",
+          "Nao foi possivel identificar um carrinho ativo para sua conta."
+        );
+        return;
+      }
+
+      const unitPrice = product.price;
+      const totalPrice = unitPrice * quantity;
+
+      const { error: addError } = await addItemToCart({
+        userId: user.id,
+        cart_id: String(cartId),
+        store_id: product.storeId,
+        produto_id: product.id,
+        quantity,
+        unit_price: unitPrice,
+        total_price: totalPrice,
+      });
+
+      if (addError) {
+        console.error("ProductDetails: erro ao adicionar item ao carrinho", addError);
+        Alert.alert("Erro", "Nao foi possivel adicionar o produto ao carrinho.");
+        return;
+      }
+
+      Alert.alert(
+        "Adicionar ao carrinho",
+        `${quantity} unidade(s) de ${product.name} adicionadas ao carrinho.`
+      );
+    } catch (caughtError) {
+      console.error("ProductDetails: erro inesperado ao adicionar ao carrinho", caughtError);
+      Alert.alert("Erro", "Ocorreu um erro ao adicionar o produto ao carrinho.");
+    } finally {
+      setIsAddingToCart(false);
+    }
+  }, [
+    addItemToCart,
+    getOrCreateActiveCart,
+    isAddingToCart,
+    product,
+    quantity,
+    user?.id,
+  ]);
 
   const handleBuyNow = () => {
     if (!product) return;
@@ -661,16 +752,26 @@ export default function ProductDetails() {
         <View style={styles.actionsSection}>
           <TouchableOpacity
             onPress={handleAddToCart}
-            style={styles.addToCartButton}
+            style={[
+              styles.addToCartButton,
+              isAddingToCart && styles.addToCartButtonDisabled,
+            ]}
             activeOpacity={0.8}
+            disabled={isAddingToCart}
           >
-            <Icon
-              type="MaterialCommunityIcons"
-              name="cart-plus"
-              size={20}
-              color={theme.colors.onPrimary}
-            />
-            <Text style={styles.addToCartText}>Adicionar ao carrinho</Text>
+            {isAddingToCart ? (
+              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+            ) : (
+              <Icon
+                type="MaterialCommunityIcons"
+                name="cart-plus"
+                size={20}
+                color={theme.colors.onPrimary}
+              />
+            )}
+            <Text style={styles.addToCartText}>
+              {isAddingToCart ? "Adicionando..." : "Adicionar ao carrinho"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
