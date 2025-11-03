@@ -1,6 +1,7 @@
 import { supabase } from "@/src/lib/supabase";
 import addressService from "@/src/services/address-service";
 import authService, { UserInfo } from "@/src/services/auth-service";
+import cartService from "@/src/services/cart-service";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -103,6 +104,17 @@ interface SessionContextProps {
   getProductsByStoreId: (storeId: string) => Promise<{ data: any; error: any }>;
   getImageProduct: (productId: string) => Promise<{ data: any; error: any }>;
   getItemPromotionByStore: (storeId: string) => Promise<{ data: any; error: any }>;
+  getCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
+  addItemToCart: (inputProduct: {
+    userId: string;
+    cart_id: string;
+    store_id: string;
+    produto_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+  }) => Promise<{ data: any; error: any }>;
+  removeItemFromCart: (userId: string, productId: string) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -222,8 +234,24 @@ const SessionContext = createContext<SessionContextProps>({
   },
   getItemPromotionByStore: async (_storeId: string) => {
     throw new Error("getItemPromotionByStore not implemented.");
+  },
+  getCartByUserId: async (_userId: string) => {
+    throw new Error("getCartByUserId not implemented.");
+  },
+  addItemToCart: (inputProduct: {
+    userId: string;
+    cart_id: string;
+    store_id: string;
+    produto_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+  }) => {
+    throw new Error("addItemToCart not implemented.");
+  },
+  removeItemFromCart: async (_userId: string, _productId: string) => {
+    throw new Error("removeItemFromCart not implemented.");
   }
-
 });
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -555,6 +583,44 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const getCartByUserId = async (userId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.getCartByUserId(userId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar carrinho do usuário:", error);
+      return { data: null, error };
+    }
+  }
+
+  const addItemToCart = async (inputProduct: {
+    userId: string;
+    cart_id: string;
+    store_id: string;
+    produto_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+  }): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.addItemToCart(inputProduct);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao adicionar item ao carrinho:", error);
+      return { data: null, error };
+    }
+  };
+
+  const removeItemFromCart = async (userId: string, productId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.removeItemFromCart(userId, productId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao remover item do carrinho:", error);
+      return { data: null, error };
+    }
+  };
+
   return (
     <SessionContext.Provider
       value={{
@@ -585,6 +651,9 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getProductsByStoreId,
         getImageProduct,
         getItemPromotionByStore,
+        getCartByUserId,
+        addItemToCart,
+        removeItemFromCart,
       }}
     >
       {children}
