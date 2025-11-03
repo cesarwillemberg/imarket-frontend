@@ -128,11 +128,6 @@ interface SessionContextProps {
     cart_id: string;
     produto_id: string;
   }) => Promise<{ data: any; error: any }>;
-  changeProductQuantityInCart: (input: {
-    productId: string;
-    cartId: string;
-    quantity: number;
-  }) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -291,13 +286,6 @@ const SessionContext = createContext<SessionContextProps>({
   }) => {
     throw new Error("removeItemFromCart not implemented.");
   },
-  changeProductQuantityInCart: async (_input: {
-    productId: string;
-    cartId: string;
-    quantity: number;
-  }) => {
-    throw new Error("changeProductQuantityInCart not implemented.");
-  }
 });
 
 export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -715,20 +703,6 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
       return { data: null, error };
     }
   };
-
-  const changeProductQuantityInCart = async (input: {
-    productId: string;
-    cartId: string;
-    quantity: number;
-  }): Promise<{ data: any; error: any }> => {
-    try {
-      const { data, error } = await cartService.changeProductQuantityInCart(input);
-      return { data, error };
-    } catch (error) {
-      console.error("SessionContext: Erro ao alterar quantidade do item do carrinho:", error);
-      return { data: null, error };
-    }
-  }
 
   return (
     <SessionContext.Provider
