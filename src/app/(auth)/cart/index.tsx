@@ -1184,7 +1184,7 @@ export default function Cart() {
             ]}
             activeOpacity={0.8}
             disabled={!summaryHasItems || isMutating}
-            onPress={() => router.push("/(auth)/cart/finalizeorder")}
+            onPress={() => router.push("/(auth)/cart/deliverymethod")}
           >
             <Text style={styles.checkoutButtonText}>Continuar a compra</Text>
           </TouchableOpacity>

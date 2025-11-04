@@ -1,3 +1,4 @@
+import createTabStyles from "@/src/assets/styles/tabStyles";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
@@ -140,9 +141,10 @@ const resolveStoreName = (raw: Record<string, unknown> | null | undefined) => {
   return pickFirstString(raw, STORE_NAME_KEYS) ?? "";
 };
 
-const FinalizeOrder = () => {
+const DeliveryMethod = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const tabBarBaseStyle = useMemo(() => createTabStyles(theme).tabBar, [theme]);
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -218,7 +220,7 @@ const FinalizeOrder = () => {
         const { data: addressData, error: addressError } = await getAddresses({ user_id: user.id });
 
         if (addressError) {
-          console.error("FinalizeOrder: erro ao buscar enderecos do usuario:", addressError);
+          console.error("DeliveryMethod: erro ao buscar enderecos do usuario:", addressError);
         }
 
         const addressesArray = (Array.isArray(addressData) ? addressData : []) as Record<string, unknown>[];
@@ -235,7 +237,7 @@ const FinalizeOrder = () => {
         const { data: cartData, error: cartError } = await getOrCreateActiveCart(user.id);
 
         if (cartError) {
-          console.error("FinalizeOrder: erro ao buscar carrinho:", cartError);
+          console.error("DeliveryMethod: erro ao buscar carrinho:", cartError);
         }
 
         if (cartData && isRecord(cartData)) {
@@ -245,7 +247,7 @@ const FinalizeOrder = () => {
             const { data: cartItems, error: cartItemsError } = await getCartItemsByCartId(cartId, user.id);
 
             if (cartItemsError) {
-              console.error("FinalizeOrder: erro ao buscar itens do carrinho:", cartItemsError);
+              console.error("DeliveryMethod: erro ao buscar itens do carrinho:", cartItemsError);
             }
 
             const cartItemsArray = (Array.isArray(cartItems) ? cartItems : []) as Record<string, unknown>[];
@@ -259,11 +261,11 @@ const FinalizeOrder = () => {
                 ]);
 
               if (storeError) {
-                console.error("FinalizeOrder: erro ao buscar loja:", storeError);
+                console.error("DeliveryMethod: erro ao buscar loja:", storeError);
               }
 
               if (storeAddressError) {
-                console.error("FinalizeOrder: erro ao buscar endereco da loja:", storeAddressError);
+                console.error("DeliveryMethod: erro ao buscar endereco da loja:", storeAddressError);
               }
 
               const storeAddressesArray = (Array.isArray(storeAddresses) ? storeAddresses : []) as Record<string, unknown>[];
@@ -313,7 +315,7 @@ const FinalizeOrder = () => {
           setError("Nenhuma informacao de entrega encontrada. Cadastre um endereco ou selecione uma loja.");
         }
       } catch (caughtError) {
-        console.error("FinalizeOrder: erro ao carregar dados:", caughtError);
+        console.error("DeliveryMethod: erro ao carregar dados:", caughtError);
         setError("Nao foi possivel carregar as informacoes de entrega. Tente novamente.");
       } finally {
         if (!silent) {
@@ -338,12 +340,20 @@ const FinalizeOrder = () => {
   useFocusEffect(
     useCallback(() => {
       const parent = navigation.getParent();
-      parent?.setOptions({ tabBarStyle: { display: "none" } });
+      if (!parent) {
+        return;
+      }
+
+      parent.setOptions({
+        tabBarStyle: [tabBarBaseStyle, { display: "none" }],
+      });
 
       return () => {
-        parent?.setOptions({ tabBarStyle: undefined });
+        parent.setOptions({
+          tabBarStyle: tabBarBaseStyle,
+        });
       };
-    }, [navigation])
+    }, [navigation, tabBarBaseStyle])
   );
 
   const handleRefresh = useCallback(async () => {
@@ -483,4 +493,4 @@ const FinalizeOrder = () => {
   );
 };
 
-export default FinalizeOrder;
+export default DeliveryMethod;
