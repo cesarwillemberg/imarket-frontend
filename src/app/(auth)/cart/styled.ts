@@ -47,6 +47,7 @@ const createStyles = (theme: Theme) =>
     masterToggle: {
       flexDirection: "row",
       alignItems: "center",
+      paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.sx,
     },
     masterToggleText: {
