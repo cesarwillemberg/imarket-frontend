@@ -7,6 +7,10 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    content: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
     body: {
       flex: 1,
       backgroundColor: theme.colors.background,
@@ -129,6 +133,50 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.xs,
       color: theme.colors.danger,
       textAlign: "center",
+    },
+    footer: {
+      borderTopWidth: theme.size.xs,
+      borderTopColor: theme.colors.border,
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.lg,
+      backgroundColor: theme.colors.background,
+    },
+    shippingRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing.md,
+    },
+    shippingLabel: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    shippingValue: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    shippingValueFree: {
+      color: theme.colors.success,
+      fontWeight: "700",
+    },
+    continueButton: {
+      backgroundColor: theme.colors.primary,
+      borderRadius: theme.radius.full,
+      paddingVertical: theme.spacing.md,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    continueButtonDisabled: {
+      opacity: theme.opacity.disabled,
+    },
+    continueButtonText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.surface,
+      fontWeight: "700",
     },
   });
 

@@ -378,116 +378,164 @@ const DeliveryMethod = () => {
 
   const customerAddressLine = formatAddressLine(customerAddress);
   const storeAddressLine = formatAddressLine(storeInfo?.address ?? null);
+  const continueDisabled =
+    isLoading ||
+    (selectedOption === "delivery" ? deliveryDisabled : pickupDisabled);
+
+  const handleContinue = useCallback(() => {
+    const params: Record<string, string> = {};
+
+    if (selectedOption === "delivery") {
+      if (customerAddressLine) {
+        params.addressLine = customerAddressLine;
+      }
+    } else {
+      if (storeAddressLine) {
+        params.addressLine = storeAddressLine;
+      }
+      if (storeInfo?.name) {
+        params.destinationLabel = storeInfo.name;
+      }
+    }
+
+    router.push({
+      pathname: "/(auth)/cart/deliverydateandtime",
+      params,
+    });
+  }, [customerAddressLine, router, selectedOption, storeAddressLine, storeInfo?.name]);
 
   return (
     <ScreenContainer style={styles.container}>
       <HeaderScreen title="Finalizar Pedido" showButtonBack />
-      <View style={styles.body}>
-        {isLoading ? (
-          <View style={styles.loadingWrapper}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-          </View>
-        ) : (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                colors={[theme.colors.primary]}
-                tintColor={theme.colors.primary}
-              />
-            }
-            showsVerticalScrollIndicator={false}
-          >
-            <Text style={styles.sectionTitle}>Escolha a forma de entrega</Text>
-
-            <TouchableOpacity
-              style={[
-                styles.optionCard,
-                selectedOption === "delivery" && !deliveryDisabled && styles.optionCardSelected,
-                deliveryDisabled && styles.optionCardDisabled,
-              ]}
-              activeOpacity={deliveryDisabled ? 1 : 0.85}
-              disabled={deliveryDisabled}
-              onPress={() => handleSelectOption("delivery")}
+      <View style={styles.content}>
+        <View style={styles.body}>
+          {isLoading ? (
+            <View style={styles.loadingWrapper}>
+              <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+          ) : (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  colors={[theme.colors.primary]}
+                  tintColor={theme.colors.primary}
+                />
+              }
+              showsVerticalScrollIndicator={false}
             >
-              <View style={styles.optionHeader}>
-                <Text style={styles.optionTitle}>Enviar no meu endereco</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Gratis</Text>
-                </View>
-                <View style={styles.optionIconWrapper}>
-                  <Icon type="MaterialCommunityIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
-                </View>
-              </View>
-
-              <Text style={styles.optionDescription}>
-                {customerAddressLine ?? "Cadastre um endereco padrao para receber o pedido."}
-              </Text>
-
-              {customerAddress?.title ? (
-                <Text style={styles.optionSubtitle}>{formatTitle(customerAddress.title)}</Text>
-              ) : null}
-
-              {customerAddress?.complement ? (
-                <Text style={styles.optionComplement}>{customerAddress.complement}</Text>
-              ) : null}
+              <Text style={styles.sectionTitle}>Escolha a forma de entrega</Text>
 
               <TouchableOpacity
-                style={styles.changeAddressButton}
-                activeOpacity={0.7}
-                onPress={() => router.push("/(auth)/profile/address")}
+                style={[
+                  styles.optionCard,
+                  selectedOption === "delivery" && !deliveryDisabled && styles.optionCardSelected,
+                  deliveryDisabled && styles.optionCardDisabled,
+                ]}
+                activeOpacity={deliveryDisabled ? 1 : 0.85}
+                disabled={deliveryDisabled}
+                onPress={() => handleSelectOption("delivery")}
               >
-                <Text style={styles.changeAddressButtonText}>
-                  Alterar ou escolher outro endereco
-                </Text>
-              </TouchableOpacity>
-            </TouchableOpacity>
-
-            {/* <TouchableOpacity
-              style={[
-                styles.optionCard,
-                selectedOption === "pickup" && !pickupDisabled && styles.optionCardSelected,
-                pickupDisabled && styles.optionCardDisabled,
-              ]}
-              activeOpacity={pickupDisabled ? 1 : 0.85}
-              disabled={pickupDisabled}
-              onPress={() => handleSelectOption("pickup")}
-            >
-              <View style={styles.optionHeader}>
-                <Text style={styles.optionTitle}>Retirada no estabelecimento</Text>
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>Gratis</Text>
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>Enviar no meu endereco</Text>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>Gratis</Text>
+                  </View>
+                  <View style={styles.optionIconWrapper}>
+                    <Icon type="MaterialCommunityIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
+                  </View>
                 </View>
-                <View style={styles.optionIconWrapper}>
-                  <Icon type="MaterialCommunityIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
-                </View>
-              </View>
 
-              {pickupDisabled ? (
-                <Text style={styles.emptyMessage}>
-                  Adicione itens de uma loja para habilitar esta opcao.
+                <Text style={styles.optionDescription}>
+                  {customerAddressLine ?? "Cadastre um endereco padrao para receber o pedido."}
                 </Text>
-              ) : (
-                <>
-                  <Text style={styles.optionDescription}>
-                    {storeAddressLine ?? "Endereco da loja indisponivel."}
+
+                {customerAddress?.title ? (
+                  <Text style={styles.optionSubtitle}>{formatTitle(customerAddress.title)}</Text>
+                ) : null}
+
+                {customerAddress?.complement ? (
+                  <Text style={styles.optionComplement}>{customerAddress.complement}</Text>
+                ) : null}
+
+                <TouchableOpacity
+                  style={styles.changeAddressButton}
+                  activeOpacity={0.7}
+                  onPress={() => router.push("/(auth)/profile/address")}
+                >
+                  <Text style={styles.changeAddressButtonText}>
+                    Alterar ou escolher outro endereco
                   </Text>
-                  {storeInfo?.name ? (
-                    <Text style={styles.storeName}>{storeInfo.name}</Text>
-                  ) : null}
-                  {storeInfo?.address?.neighborhood ? (
-                    <Text style={styles.optionSubtitle}>{storeInfo.address.neighborhood}</Text>
-                  ) : null}
-                </>
-              )}
-            </TouchableOpacity> */}
+                </TouchableOpacity>
+              </TouchableOpacity>
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          </ScrollView>
-        )}
+              {/* <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  selectedOption === "pickup" && !pickupDisabled && styles.optionCardSelected,
+                  pickupDisabled && styles.optionCardDisabled,
+                ]}
+                activeOpacity={pickupDisabled ? 1 : 0.85}
+                disabled={pickupDisabled}
+                onPress={() => handleSelectOption("pickup")}
+              >
+                <View style={styles.optionHeader}>
+                  <Text style={styles.optionTitle}>Retirada no estabelecimento</Text>
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>Gratis</Text>
+                  </View>
+                  <View style={styles.optionIconWrapper}>
+                    <Icon type="MaterialCommunityIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
+                  </View>
+                </View>
+
+                {pickupDisabled ? (
+                  <Text style={styles.emptyMessage}>
+                    Adicione itens de uma loja para habilitar esta opcao.
+                  </Text>
+                ) : (
+                  <>
+                    <Text style={styles.optionDescription}>
+                      {storeAddressLine ?? "Endereco da loja indisponivel."}
+                    </Text>
+                    {storeInfo?.name ? (
+                      <Text style={styles.storeName}>{storeInfo.name}</Text>
+                    ) : null}
+                    {storeInfo?.address?.neighborhood ? (
+                      <Text style={styles.optionSubtitle}>{storeInfo.address.neighborhood}</Text>
+                    ) : null}
+                  </>
+                )}
+              </TouchableOpacity> */}
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.footer}>
+          <View style={styles.shippingRow}>
+            <Text style={styles.shippingLabel}>Frete</Text>
+            <Text style={[styles.shippingValue, styles.shippingValueFree]}>
+              Grátis
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              continueDisabled && styles.continueButtonDisabled,
+            ]}
+            activeOpacity={0.8}
+            disabled={continueDisabled}
+            onPress={handleContinue}
+          >
+            <Text style={styles.continueButtonText}>Continuar a compra</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </ScreenContainer>
   );
