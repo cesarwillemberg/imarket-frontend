@@ -437,7 +437,10 @@ const DeliveryMethod = () => {
                 ]}
                 activeOpacity={deliveryDisabled ? 1 : 0.85}
                 disabled={deliveryDisabled}
-                onPress={() => handleSelectOption("delivery")}
+                onPress={() =>{
+                  handleContinue()
+                  handleSelectOption("delivery")
+                }}
               >
                 <View style={styles.optionHeader}>
                   <Text style={styles.optionTitle}>Enviar no meu endereco</Text>
@@ -516,7 +519,7 @@ const DeliveryMethod = () => {
           )}
         </View>
 
-        <View style={styles.footer}>
+        {/* <View style={styles.footer}>
           <View style={styles.shippingRow}>
             <Text style={styles.shippingLabel}>Frete</Text>
             <Text style={[styles.shippingValue, styles.shippingValueFree]}>
@@ -535,7 +538,7 @@ const DeliveryMethod = () => {
           >
             <Text style={styles.continueButtonText}>Continuar a compra</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
     </ScreenContainer>
   );

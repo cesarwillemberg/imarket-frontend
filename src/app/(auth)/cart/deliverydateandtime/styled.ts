@@ -114,7 +114,7 @@ const createStyles = (theme: Theme) =>
     continueButtonText: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
-      color: theme.colors.surface,
+      color: theme.colors.onPrimary,
       fontWeight: "700",
     },
     pickerOverlay: {
