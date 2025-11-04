@@ -4,6 +4,7 @@ import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import { useTheme } from "@/src/themes/ThemeContext";
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -287,6 +288,7 @@ const resolveProductPricing = (
 export default function Cart() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const router = useRouter();
 
   const {
     user,
@@ -1182,6 +1184,7 @@ export default function Cart() {
             ]}
             activeOpacity={0.8}
             disabled={!summaryHasItems || isMutating}
+            onPress={() => router.push("/(auth)/cart/finalizeorder")}
           >
             <Text style={styles.checkoutButtonText}>Continuar a compra</Text>
           </TouchableOpacity>
