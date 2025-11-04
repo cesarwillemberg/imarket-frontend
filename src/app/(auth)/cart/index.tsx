@@ -1192,7 +1192,7 @@ export default function Cart() {
 
   return (
     <ScreenContainer style={styles.container}>
-      <HeaderScreen title="Carrinho" showButtonBack />
+      <HeaderScreen title="Carrinho" />
       <View style={styles.body}>{renderContent()}</View>
     </ScreenContainer>
   );
