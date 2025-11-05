@@ -137,7 +137,7 @@ const DeliveryDateAndTime = () => {
   }, []);
 
   const onContinue = useCallback(() => {
-    router.push("/(auth)/cart/finalizeorder");
+    router.push("/(auth)/cart/paymentmethod/");
   }, [router]);
 
   const shouldDisableContinue = !deliveryDate || !startTime || !endTime;
