@@ -108,6 +108,11 @@ interface SessionContextProps {
   createCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
   getOrCreateActiveCart: (userId: string) => Promise<{ data: any; error: any }>;
   getCartItemsByCartId: (cartId: string, userId: string) => Promise<{ data: any; error: any }>;
+  setCartItemChecked: (input: {
+    cartId: string;
+    produtoId: string;
+    checked: boolean;
+  }) => Promise<{ data: any; error: any }>;
   addItemToCart: (inputProduct: {
     userId: string;
     cart_id: string;
@@ -657,6 +662,24 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const setCartItemChecked = async (input: {
+    cartId: string;
+    produtoId: string;
+    checked: boolean;
+  }): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await cartService.setCartItemChecked(
+        input.cartId,
+        input.produtoId,
+        input.checked
+      );
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao atualizar selecao do item do carrinho:", error);
+      return { data: null, error };
+    }
+  };
+
   const addItemToCart = async (inputProduct: {
     userId: string;
     cart_id: string;
@@ -738,6 +761,7 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         createCartByUserId,
         getOrCreateActiveCart,
         getCartItemsByCartId,
+        setCartItemChecked,
         addItemToCart,
         updateCartItemQuantity,
         removeItemFromCart,

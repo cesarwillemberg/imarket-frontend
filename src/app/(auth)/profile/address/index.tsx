@@ -26,12 +26,12 @@ import LottieView from "lottie-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 const ADDRESS_OPTIONS = [
-  { id: "home", icon: "home-outline", label: "Casa", type: "MaterialCommunityIcons" },
-  { id: "work", icon: "briefcase-outline", label: "Trabalho", type: "MaterialCommunityIcons" },
-  { id: "love", icon: "heart-outline", label: "Amor", type: "MaterialCommunityIcons" },
-  { id: "school", icon: "school-outline", label: "Escola", type: "MaterialCommunityIcons" },
-  { id: "friend", icon: "account-multiple-outline", label: "Amigo", type: "MaterialCommunityIcons" },
-  { id: "other", icon: "map-marker-outline", label: "Outro", type: "MaterialCommunityIcons" },
+  { id: "Casa", icon: "home-outline", label: "Casa", type: "MaterialCommunityIcons" },
+  { id: "Trabalho", icon: "briefcase-outline", label: "Trabalho", type: "MaterialCommunityIcons" },
+  { id: "Amor", icon: "heart-outline", label: "Amor", type: "MaterialCommunityIcons" },
+  { id: "Escola", icon: "school-outline", label: "Escola", type: "MaterialCommunityIcons" },
+  { id: "Amigo", icon: "account-multiple-outline", label: "Amigo", type: "MaterialCommunityIcons" },
+  { id: "Outro", icon: "map-marker-outline", label: "Outro", type: "MaterialCommunityIcons" },
 ] as const;
 
 export default function Address() {
@@ -66,7 +66,26 @@ export default function Address() {
       return;
     }
 
-    setAddresses(data ?? []);
+    const safeAddresses = Array.isArray(data) ? data : [];
+    const sortedAddresses = [...safeAddresses].sort((a, b) => {
+      const parseTimestamp = (value?: string) => {
+        if (typeof value !== "string") {
+          return 0;
+        }
+        const parsed = Date.parse(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+
+      const aTimestamp = parseTimestamp(a.created_at);
+      const bTimestamp = parseTimestamp(b.created_at);
+
+      if (aTimestamp === bTimestamp) {
+        return 0;
+      }
+
+      return aTimestamp - bTimestamp;
+    });
+    setAddresses(sortedAddresses);
   };
 
   const handleInitialFetch = async () => {

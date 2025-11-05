@@ -30,6 +30,35 @@ const formatTime = (value: Date | null) => {
   });
 };
 
+const formatDateParam = (value: Date | null) => {
+  if (!value) {
+    return "";
+  }
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const formatTimeParam = (value: Date | null) => {
+  if (!value) {
+    return "";
+  }
+  const hours = String(value.getHours()).padStart(2, "0");
+  const minutes = String(value.getMinutes()).padStart(2, "0");
+  const seconds = String(value.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+};
+
+const formatWindowParam = (start: Date | null, end: Date | null) => {
+  const startLabel = formatTime(start);
+  const endLabel = formatTime(end);
+  if (!startLabel || !endLabel) {
+    return "";
+  }
+  return `${startLabel} até ${endLabel}`;
+};
+
 const DeliveryDateAndTime = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -165,11 +194,31 @@ const DeliveryDateAndTime = () => {
       nextParams.total = totalParam;
     }
 
+    const deliveryDateParam = formatDateParam(deliveryDate);
+    if (deliveryDateParam) {
+      nextParams.deliveryDate = deliveryDateParam;
+    }
+
+    const startTimeParam = formatTimeParam(startTime);
+    if (startTimeParam) {
+      nextParams.deliveryStartTime = startTimeParam;
+    }
+
+    const endTimeParam = formatTimeParam(endTime);
+    if (endTimeParam) {
+      nextParams.deliveryEndTime = endTimeParam;
+    }
+
+    const windowParam = formatWindowParam(startTime, endTime);
+    if (windowParam) {
+      nextParams.deliveryWindow = windowParam;
+    }
+
     router.push({
       pathname: "/(auth)/cart/paymentmethod/",
       params: nextParams,
     });
-  }, [productTotalParam, router, shippingFeeParam, totalParam]);
+  }, [deliveryDate, endTime, productTotalParam, router, shippingFeeParam, startTime, totalParam]);
 
   const shouldDisableContinue = !deliveryDate || !startTime || !endTime;
 

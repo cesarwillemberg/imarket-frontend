@@ -261,22 +261,38 @@ const isCartItemSelected = (item: Record<string, unknown>) => {
   return true;
 };
 
+const formatDateAsIsoLocal = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
 const normalizeDateForOrder = (value?: string | null) => {
+  const fallback = formatDateAsIsoLocal(new Date());
   if (!value) {
-    return new Date().toISOString().split("T")[0];
+    return fallback;
   }
   const trimmed = value.trim();
   if (!trimmed) {
-    return new Date().toISOString().split("T")[0];
+    return fallback;
   }
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
     return trimmed;
   }
-  const parsed = Date.parse(trimmed);
-  if (Number.isNaN(parsed)) {
-    return new Date().toISOString().split("T")[0];
+
+  const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (brMatch) {
+    const [, day, month, year] = brMatch;
+    return `${year}-${month}-${day}`;
   }
-  return new Date(parsed).toISOString().split("T")[0];
+
+  const parsed = Date.parse(trimmed);
+  if (!Number.isNaN(parsed)) {
+    return formatDateAsIsoLocal(new Date(parsed));
+  }
+
+  return fallback;
 };
 
 const normalizeTimeForOrder = (value?: string | null) => {

@@ -15,6 +15,8 @@ export interface inputAddressProps {
     reference?: string;
     complement?: string;
     postal_code?: string;
+    created_at?: string;
+    updated_at?: string;
 }
 
 const sanitizePayload = (payload: Record<string, unknown>) =>

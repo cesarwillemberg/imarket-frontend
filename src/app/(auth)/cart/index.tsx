@@ -4,7 +4,7 @@ import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -294,6 +294,7 @@ export default function Cart() {
     user,
     getOrCreateActiveCart,
     getCartItemsByCartId,
+    setCartItemChecked,
     addItemToCart,
     updateCartItemQuantity,
     removeItemFromCart,
@@ -544,7 +545,16 @@ export default function Cart() {
         const imageUrl = resolveImageUrl(productData);
 
         const selectionKey = buildSelectionKey(storeId, productId);
-        const productSelected = previousSelections[selectionKey] ?? true;
+        const rawChecked = item.checked;
+        const persistedChecked =
+          typeof rawChecked === "boolean"
+            ? rawChecked
+            : typeof rawChecked === "number"
+            ? rawChecked === 1
+            : typeof rawChecked === "string"
+            ? rawChecked.toLowerCase() === "true" || rawChecked === "1"
+            : undefined;
+        const productSelected = persistedChecked ?? previousSelections[selectionKey] ?? true;
         nextSelections[selectionKey] = productSelected;
 
         const storeName =
@@ -603,9 +613,11 @@ export default function Cart() {
     [getCartItemsByCartId, getOrCreateActiveCart, getStoreById, user?.id]
   );
 
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
+  useFocusEffect(
+    useCallback(() => {
+      loadCart();
+    }, [loadCart])
+  );
 
   const handleRefresh = useCallback(async () => {
     if (isRefreshing || isMutating) {
@@ -655,98 +667,206 @@ export default function Cart() {
   const cartTotal = selectedProductsTotal + selectedShippingTotal;
 
   const toggleAllProducts = useCallback(() => {
+    if (!cartId || !groups.length) {
+      return;
+    }
+
     const shouldSelectAll = !allProductsSelected;
-    setGroups((previous) =>
-      previous.map((group) => ({
-        ...group,
-        selected: shouldSelectAll,
-        products: group.products.map((product) => ({
-          ...product,
-          selected: shouldSelectAll,
-        })),
-      }))
+    const updates = groups.reduce(
+      (accumulator, group) => {
+        group.products.forEach((product) => {
+          accumulator.push({
+            storeId: group.id,
+            productId: product.id,
+            checked: shouldSelectAll,
+          });
+        });
+        return accumulator;
+      },
+      [] as Array<{ storeId: string; productId: string; checked: boolean }>
     );
 
-    setSelectedMap((previous) => {
-      const nextSelections = { ...previous };
-      groups.forEach((group) => {
-        group.products.forEach((product) => {
-          nextSelections[buildSelectionKey(group.id, product.id)] = shouldSelectAll;
-        });
-      });
-      return nextSelections;
-    });
-  }, [allProductsSelected, groups]);
+    if (!updates.length) {
+      return;
+    }
+
+    runCartMutation(
+      async () => {
+        const results = await Promise.all(
+          updates.map(({ productId, checked }) =>
+            setCartItemChecked({
+              cartId,
+              produtoId: productId,
+              checked,
+            })
+          )
+        );
+
+        const failed = results.find((result) => result?.error);
+        if (failed?.error) {
+          return { data: null, error: failed.error };
+        }
+        return { data: results, error: null };
+      },
+      {
+        skipReload: true,
+        onSuccess: () => {
+          setGroups((previous) =>
+            previous.map((group) => ({
+              ...group,
+              selected: shouldSelectAll,
+              products: group.products.map((product) => ({
+                ...product,
+                selected: shouldSelectAll,
+              })),
+            }))
+          );
+
+          setSelectedMap((previous) => {
+            const next = { ...previous };
+            updates.forEach(({ storeId, productId, checked }) => {
+              const key = buildSelectionKey(storeId, productId);
+              next[key] = checked;
+            });
+            return next;
+          });
+        },
+      }
+    );
+  }, [allProductsSelected, cartId, groups, runCartMutation, setCartItemChecked]);
 
   const toggleStoreSelection = useCallback(
     (storeId: string) => {
-      setGroups((previous) =>
-        previous.map((group) => {
-          if (group.id !== storeId) {
-            return group;
-          }
-          const shouldSelect = !group.products.every((product) => product.selected);
-          return {
-            ...group,
-            selected: shouldSelect,
-            products: group.products.map((product) => ({
-              ...product,
-              selected: shouldSelect,
-            })),
-          };
-        })
-      );
+      if (!cartId) {
+        return;
+      }
 
-      setSelectedMap((previous) => {
-        const next = { ...previous };
-        const targetGroup = groups.find((group) => group.id === storeId);
-        if (!targetGroup) {
-          return next;
+      const targetGroup = groups.find((group) => group.id === storeId);
+      if (!targetGroup || !targetGroup.products.length) {
+        return;
+      }
+
+      const shouldSelect = !targetGroup.products.every((product) => product.selected);
+      const updates = targetGroup.products.map((product) => ({
+        productId: product.id,
+        checked: shouldSelect,
+      }));
+
+      runCartMutation(
+        async () => {
+          const results = await Promise.all(
+            updates.map(({ productId, checked }) =>
+              setCartItemChecked({
+                cartId,
+                produtoId: productId,
+                checked,
+              })
+            )
+          );
+
+          const failed = results.find((result) => result?.error);
+          if (failed?.error) {
+            return { data: null, error: failed.error };
+          }
+          return { data: results, error: null };
+        },
+        {
+          skipReload: true,
+          onSuccess: () => {
+            setGroups((previous) =>
+              previous.map((group) => {
+                if (group.id !== storeId) {
+                  return group;
+                }
+                return {
+                  ...group,
+                  selected: shouldSelect,
+                  products: group.products.map((product) => ({
+                    ...product,
+                    selected: shouldSelect,
+                  })),
+                };
+              })
+            );
+
+            setSelectedMap((previous) => {
+              const next = { ...previous };
+              updates.forEach(({ productId, checked }) => {
+                const key = buildSelectionKey(storeId, productId);
+                next[key] = checked;
+              });
+              return next;
+            });
+          },
         }
-        const shouldSelect = !targetGroup.products.every((product) => product.selected);
-        targetGroup.products.forEach((product) => {
-          next[buildSelectionKey(storeId, product.id)] = shouldSelect;
-        });
-        return next;
-      });
+      );
     },
-    [groups]
+    [cartId, groups, runCartMutation, setCartItemChecked]
   );
 
-  const toggleProductSelection = useCallback((storeId: string, productId: string) => {
-    setGroups((previous) =>
-      previous.map((group) => {
-        if (group.id !== storeId) {
-          return group;
+  const toggleProductSelection = useCallback(
+    (storeId: string, productId: string) => {
+      if (!cartId) {
+        return;
+      }
+
+      const group = groups.find((item) => item.id === storeId);
+      const product = group?.products.find((item) => item.id === productId);
+
+      if (!group || !product) {
+        return;
+      }
+
+      const nextSelected = !product.selected;
+
+      runCartMutation(
+        () =>
+          setCartItemChecked({
+            cartId,
+            produtoId: productId,
+            checked: nextSelected,
+          }),
+        {
+          skipReload: true,
+          onSuccess: () => {
+            setGroups((previous) =>
+              previous.map((groupItem) => {
+                if (groupItem.id !== storeId) {
+                  return groupItem;
+                }
+
+                const updatedProducts = groupItem.products.map((productItem) => {
+                  if (productItem.id !== productId) {
+                    return productItem;
+                  }
+                  return {
+                    ...productItem,
+                    selected: nextSelected,
+                  };
+                });
+
+                const storeSelected = updatedProducts.every((productItem) => productItem.selected);
+
+                return {
+                  ...groupItem,
+                  selected: storeSelected,
+                  products: updatedProducts,
+                };
+              })
+            );
+
+            setSelectedMap((previous) => {
+              const next = { ...previous };
+              const key = buildSelectionKey(storeId, productId);
+              next[key] = nextSelected;
+              return next;
+            });
+          },
         }
-
-        const updatedProducts = group.products.map((product) => {
-          if (product.id !== productId) {
-            return product;
-          }
-          return {
-            ...product,
-            selected: !product.selected,
-          };
-        });
-
-        const storeSelected = updatedProducts.every((product) => product.selected);
-
-        return {
-          ...group,
-          products: updatedProducts,
-          selected: storeSelected,
-        };
-      })
-    );
-
-    setSelectedMap((previous) => {
-      const next = { ...previous };
-      const key = buildSelectionKey(storeId, productId);
-      next[key] = !(previous[key] ?? true);
-      return next;
-    });
-  }, []);
+      );
+    },
+    [cartId, groups, runCartMutation, setCartItemChecked]
+  );
 
   const runCartMutation = useCallback(
       async (

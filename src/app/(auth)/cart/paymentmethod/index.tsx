@@ -23,6 +23,10 @@ type PaymentMethodParams = {
   productTotal?: string | string[];
   shippingFee?: string | string[];
   total?: string | string[];
+  deliveryDate?: string | string[];
+  deliveryStartTime?: string | string[];
+  deliveryEndTime?: string | string[];
+  deliveryWindow?: string | string[];
 };
 
 const getSingleParam = (value?: string | string[]) => {
@@ -57,6 +61,10 @@ export default function PaymentMethod() {
   const productTotalParam = getSingleParam(params.productTotal);
   const shippingFeeParam = getSingleParam(params.shippingFee);
   const totalParam = getSingleParam(params.total);
+  const deliveryDateParam = getSingleParam(params.deliveryDate);
+  const deliveryStartTimeParam = getSingleParam(params.deliveryStartTime);
+  const deliveryEndTimeParam = getSingleParam(params.deliveryEndTime);
+  const deliveryWindowParam = getSingleParam(params.deliveryWindow);
 
   const currencyFormatter = useMemo(
     () =>
@@ -170,11 +178,31 @@ export default function PaymentMethod() {
       total: totalParam ?? totalValue.toFixed(2),
     };
 
+    if (deliveryDateParam) {
+      nextParams.deliveryDate = deliveryDateParam;
+    }
+
+    if (deliveryStartTimeParam) {
+      nextParams.deliveryStartTime = deliveryStartTimeParam;
+    }
+
+    if (deliveryEndTimeParam) {
+      nextParams.deliveryEndTime = deliveryEndTimeParam;
+    }
+
+    if (deliveryWindowParam) {
+      nextParams.deliveryWindow = deliveryWindowParam;
+    }
+
     router.push({
       pathname: "/(auth)/cart/reviewconfirmorder/",
       params: nextParams,
     });
   }, [
+    deliveryDateParam,
+    deliveryEndTimeParam,
+    deliveryStartTimeParam,
+    deliveryWindowParam,
     productTotal,
     productTotalParam,
     router,

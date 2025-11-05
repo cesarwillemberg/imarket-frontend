@@ -13,9 +13,10 @@ const createStyles = (theme: Theme) =>
       borderRadius: theme.radius.full,
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.sx,
+      paddingHorizontal: theme.spacing.gl,
+      paddingVertical: theme.spacing.sm,
       backgroundColor: theme.colors.surface,
+      marginTop: theme.spacing.sx
     },
     refreshButtonDisabled: {
       opacity: theme.opacity.disabled,
@@ -45,7 +46,7 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
       textAlign: "center",
-      marginTop: theme.spacing.sm,
+      marginVertical: theme.spacing.ms,
     },
     retryButton: {
       marginTop: theme.spacing.md,
