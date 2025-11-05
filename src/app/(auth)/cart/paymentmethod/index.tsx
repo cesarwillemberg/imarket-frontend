@@ -4,7 +4,7 @@ import { Icon, IconName, IconType } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 import createStyles from "./styled";
@@ -19,6 +19,32 @@ type PaymentOption = {
   };
 };
 
+type PaymentMethodParams = {
+  productTotal?: string | string[];
+  shippingFee?: string | string[];
+  total?: string | string[];
+};
+
+const getSingleParam = (value?: string | string[]) => {
+  if (!value) {
+    return undefined;
+  }
+  return Array.isArray(value) ? value[0] : value;
+};
+
+const parseCurrencyParam = (value?: string | string[]) => {
+  const single = getSingleParam(value);
+  if (!single) {
+    return null;
+  }
+  const normalized = single.replace(/[^\d,.-]/g, "").replace(",", ".");
+  if (!normalized) {
+    return null;
+  }
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
 export default function PaymentMethod() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -26,6 +52,39 @@ export default function PaymentMethod() {
   const router = useRouter();
   const navigation = useNavigation();
   const { session } = useSession();
+  const params = useLocalSearchParams<PaymentMethodParams>();
+
+  const productTotalParam = getSingleParam(params.productTotal);
+  const shippingFeeParam = getSingleParam(params.shippingFee);
+  const totalParam = getSingleParam(params.total);
+
+  const currencyFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+        minimumFractionDigits: 2,
+      }),
+    []
+  );
+
+  const productTotal = useMemo(
+    () => parseCurrencyParam(productTotalParam) ?? 0,
+    [productTotalParam]
+  );
+
+  const shippingFee = useMemo(
+    () => parseCurrencyParam(shippingFeeParam) ?? 0,
+    [shippingFeeParam]
+  );
+
+  const totalValue = useMemo(() => {
+    const parsedTotal = parseCurrencyParam(totalParam);
+    if (parsedTotal !== null) {
+      return parsedTotal;
+    }
+    return productTotal + shippingFee;
+  }, [productTotal, shippingFee, totalParam]);
 
   const recommendedOptions = useMemo<PaymentOption[]>(
     () => [
@@ -104,13 +163,27 @@ export default function PaymentMethod() {
       return;
     }
 
+    const nextParams: Record<string, string> = {
+      paymentMethod: selectedOption,
+      productTotal: productTotalParam ?? productTotal.toFixed(2),
+      shippingFee: shippingFeeParam ?? shippingFee.toFixed(2),
+      total: totalParam ?? totalValue.toFixed(2),
+    };
+
     router.push({
-      pathname: "/(auth)/cart/finalizeorder",
-      params: {
-        paymentMethod: selectedOption,
-      },
+      pathname: "/(auth)/cart/reviewconfirmorder/",
+      params: nextParams,
     });
-  }, [router, selectedOption]);
+  }, [
+    productTotal,
+    productTotalParam,
+    router,
+    selectedOption,
+    shippingFee,
+    shippingFeeParam,
+    totalParam,
+    totalValue,
+  ]);
 
   const renderOption = useCallback(
     (option: PaymentOption) => {
@@ -185,6 +258,27 @@ export default function PaymentMethod() {
       </View>
 
       <View style={styles.footer}>
+        <View style={styles.summaryWrapper}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Produto</Text>
+            <Text style={styles.summaryValue}>
+              {currencyFormatter.format(productTotal)}
+            </Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Frete</Text>
+            <Text
+              style={[
+                styles.summaryValue,
+                shippingFee === 0 && styles.summaryValueFree,
+              ]}
+            >
+              {shippingFee === 0
+                ? "Grátis"
+                : currencyFormatter.format(shippingFee)}
+            </Text>
+          </View>
+        </View>
         <TouchableOpacity
           style={[styles.continueButton, !selectedOption && styles.continueButtonDisabled]}
           activeOpacity={0.8}

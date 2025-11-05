@@ -1184,7 +1184,16 @@ export default function Cart() {
             ]}
             activeOpacity={0.8}
             disabled={!summaryHasItems || isMutating}
-            onPress={() => router.push("/(auth)/cart/deliverymethod")}
+            onPress={() =>
+              router.push({
+                pathname: "/(auth)/cart/deliverymethod",
+                params: {
+                  productTotal: selectedProductsTotal.toFixed(2),
+                  shippingFee: selectedShippingTotal.toFixed(2),
+                  total: cartTotal.toFixed(2),
+                },
+              })
+            }
           >
             <Text style={styles.checkoutButtonText}>Continuar a compra</Text>
           </TouchableOpacity>

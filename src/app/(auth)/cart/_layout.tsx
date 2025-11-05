@@ -7,6 +7,7 @@ export default function CartLayout() {
       <Stack.Screen name="deliverymethod/index" options={{ headerShown: false }} />
       <Stack.Screen name="deliverydateandtime/index" options={{ headerShown: false }} />
       <Stack.Screen name="paymentmethod/index" options={{ headerShown: false }} />
+      <Stack.Screen name="reviewconfirmorder/index" options={{ headerShown: false }} />
     </Stack>
   );
 }

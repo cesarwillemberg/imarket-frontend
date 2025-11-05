@@ -114,6 +114,29 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.background,
       borderTopWidth: theme.size.xs,
       borderTopColor: theme.colors.border,
+      gap: theme.spacing.md,
+    },
+    summaryWrapper: {
+      gap: theme.spacing.xs,
+    },
+    summaryRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    summaryLabel: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+    },
+    summaryValue: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+      fontWeight: "600",
+    },
+    summaryValueFree: {
+      color: theme.colors.success,
     },
     continueButton: {
       borderRadius: theme.radius.full,

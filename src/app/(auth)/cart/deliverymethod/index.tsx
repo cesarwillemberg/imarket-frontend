@@ -4,7 +4,7 @@ import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -147,6 +147,23 @@ const DeliveryMethod = () => {
   const tabBarBaseStyle = useMemo(() => createTabStyles(theme).tabBar, [theme]);
   const router = useRouter();
   const navigation = useNavigation();
+  const sharedParams = useLocalSearchParams<{
+    productTotal?: string | string[];
+    shippingFee?: string | string[];
+    total?: string | string[];
+  }>();
+
+  const productTotalParam = Array.isArray(sharedParams.productTotal)
+    ? sharedParams.productTotal[0]
+    : sharedParams.productTotal;
+
+  const shippingFeeParam = Array.isArray(sharedParams.shippingFee)
+    ? sharedParams.shippingFee[0]
+    : sharedParams.shippingFee;
+
+  const totalParam = Array.isArray(sharedParams.total)
+    ? sharedParams.total[0]
+    : sharedParams.total;
 
   const {
     user,
@@ -398,11 +415,32 @@ const DeliveryMethod = () => {
       }
     }
 
+    if (productTotalParam) {
+      params.productTotal = productTotalParam;
+    }
+
+    if (shippingFeeParam) {
+      params.shippingFee = shippingFeeParam;
+    }
+
+    if (totalParam) {
+      params.total = totalParam;
+    }
+
     router.push({
       pathname: "/(auth)/cart/deliverydateandtime",
       params,
     });
-  }, [customerAddressLine, router, selectedOption, storeAddressLine, storeInfo?.name]);
+  }, [
+    customerAddressLine,
+    productTotalParam,
+    router,
+    selectedOption,
+    shippingFeeParam,
+    storeAddressLine,
+    storeInfo?.name,
+    totalParam,
+  ]);
 
   return (
     <ScreenContainer style={styles.container}>

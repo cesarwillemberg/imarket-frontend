@@ -41,6 +41,9 @@ const DeliveryDateAndTime = () => {
   const params = useLocalSearchParams<{
     addressLine?: string | string[];
     destinationLabel?: string | string[];
+    productTotal?: string | string[];
+    shippingFee?: string | string[];
+    total?: string | string[];
   }>();
 
   const addressLineParam = Array.isArray(params.addressLine)
@@ -49,6 +52,15 @@ const DeliveryDateAndTime = () => {
   const destinationLabelParam = Array.isArray(params.destinationLabel)
     ? params.destinationLabel[0]
     : params.destinationLabel;
+  const productTotalParam = Array.isArray(params.productTotal)
+    ? params.productTotal[0]
+    : params.productTotal;
+  const shippingFeeParam = Array.isArray(params.shippingFee)
+    ? params.shippingFee[0]
+    : params.shippingFee;
+  const totalParam = Array.isArray(params.total)
+    ? params.total[0]
+    : params.total;
 
   const [deliveryDate, setDeliveryDate] = useState<Date>(() => {
     const tomorrow = new Date();
@@ -139,8 +151,25 @@ const DeliveryDateAndTime = () => {
   }, []);
 
   const onContinue = useCallback(() => {
-    router.push("/(auth)/cart/paymentmethod/");
-  }, [router]);
+    const nextParams: Record<string, string> = {};
+
+    if (productTotalParam) {
+      nextParams.productTotal = productTotalParam;
+    }
+
+    if (shippingFeeParam) {
+      nextParams.shippingFee = shippingFeeParam;
+    }
+
+    if (totalParam) {
+      nextParams.total = totalParam;
+    }
+
+    router.push({
+      pathname: "/(auth)/cart/paymentmethod/",
+      params: nextParams,
+    });
+  }, [productTotalParam, router, shippingFeeParam, totalParam]);
 
   const shouldDisableContinue = !deliveryDate || !startTime || !endTime;
 
