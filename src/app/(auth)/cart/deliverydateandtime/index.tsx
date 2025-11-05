@@ -8,6 +8,7 @@ import DateTimePicker, { DateTimePickerEvent } from "@react-native-community/dat
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import createStyles from "./styled";
 
 type PickerType = "date" | "start" | "end";
@@ -33,6 +34,7 @@ const DeliveryDateAndTime = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const tabBarBaseStyle = useMemo(() => createTabStyles(theme).tabBar, [theme]);
+  const insets = useSafeAreaInsets();
 
   const navigation = useNavigation();
   const router = useRouter();
@@ -143,7 +145,7 @@ const DeliveryDateAndTime = () => {
   const shouldDisableContinue = !deliveryDate || !startTime || !endTime;
 
   return (
-    <ScreenContainer style={styles.container}>
+    <ScreenContainer style={styles.container} safeAreaEdges={["top", "bottom"]}>
       <HeaderScreen title="Finalizar Pedido" showButtonBack />
       <View style={styles.content}>
         <View style={styles.sectionHeader}>
@@ -230,7 +232,7 @@ const DeliveryDateAndTime = () => {
         </View>
       </View>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: theme.spacing.lg + insets.bottom }]}>
         <View style={styles.shippingRow}>
           <Text style={styles.shippingLabel}>Frete</Text>
           <Text style={styles.shippingValue}>Grátis</Text>
