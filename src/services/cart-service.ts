@@ -1,5 +1,25 @@
 import { supabase } from "../lib/supabase";
 
+interface Cart {
+  profile_id: string;
+  is_active: boolean;
+  total_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CartItem {
+  cart_id: string;
+  store_id: string;
+  produto_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  checked: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 const cartService = {
   getCartByUserId: async (userId: string) => {
     try {
@@ -25,6 +45,47 @@ const cartService = {
       return { data: cart, error: null };
     } catch (error) {
       console.error("cartService: erro ao obter o carrinho ativo:", error);
+      return { data: null, error };
+    }
+  },
+
+  getCartItemCheckedByCart: async (cartId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("cart_item")
+        .select("*")
+        .eq("cart_id", cartId)
+        .eq("checked", true);
+
+      if (error) {
+        console.error("cartService: erro ao buscar itens do carrinho marcados:", error);
+        return { data: null, error };
+      }
+      return { data, error: null };
+    } catch (error) {
+      console.error("cartService: erro ao buscar itens do carrinho marcados:", error);
+      return { data: null, error };
+    }
+  },
+
+  setCartItemChecked: async (cartId: string, produtoId: string, checked: boolean) => {
+    try {
+      const { data, error } = await supabase
+        .from("cart_item")
+        .update({ checked })
+        .eq("cart_id", cartId)
+        .eq("produto_id", produtoId)
+        .select("*")
+        .single();
+
+      if (error) {
+        console.error("cartService: erro ao atualizar item do carrinho:", error);
+        return { data: null, error };
+      }
+
+      return { data, error: null };
+    } catch (error) {
+      console.error("cartService: erro ao atualizar item do carrinho:", error);
       return { data: null, error };
     }
   },
