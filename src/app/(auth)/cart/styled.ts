@@ -7,6 +7,29 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    refreshButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: theme.radius.full,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.sx,
+      backgroundColor: theme.colors.surface,
+    },
+    refreshButtonDisabled: {
+      opacity: theme.opacity.disabled,
+    },
+    refreshButtonText: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.xs,
+      color: theme.colors.primary,
+      fontWeight: "600",
+      marginLeft: theme.spacing.xs,
+    },
+    refreshButtonTextDisabled: {
+      color: theme.colors.disabled,
+    },
     body: {
       flex: 1,
       backgroundColor: theme.colors.background,

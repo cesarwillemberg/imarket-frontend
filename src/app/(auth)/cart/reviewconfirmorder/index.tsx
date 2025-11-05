@@ -3,6 +3,9 @@ import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon, IconName, IconType } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import cartService from "@/src/services/cart-service";
+import orderItemService from "@/src/services/order-item-service";
+import orderService from "@/src/services/order-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -164,6 +167,179 @@ const formatCpfValue = (value?: string) => {
   return normalized;
 };
 
+const coerceBoolean = (value: unknown): boolean | null => {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "number") {
+    if (value === 1) {
+      return true;
+    }
+    if (value === 0) {
+      return false;
+    }
+    return null;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["true", "1", "yes", "sim"].includes(normalized)) {
+      return true;
+    }
+    if (["false", "0", "no", "nao"].includes(normalized)) {
+      return false;
+    }
+    return null;
+  }
+  return null;
+};
+
+const parseNumericValue = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+};
+
+const extractIdentifier = (record: Record<string, unknown>, keys: string[]): string | null => {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+  return null;
+};
+
+const extractNumber = (record: Record<string, unknown>, keys: string[]): number | null => {
+  for (const key of keys) {
+    const value = parseNumericValue(record[key]);
+    if (value !== null) {
+      return value;
+    }
+  }
+  return null;
+};
+
+
+
+const isValidUuid = (value?: string | null) => {
+  if (typeof value !== "string") {
+    return false;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return false;
+  }
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(trimmed);
+};
+const isCartItemSelected = (item: Record<string, unknown>) => {
+  const candidates = ["is_selected", "selected", "isSelected", "selection", "checked"];
+  for (const key of candidates) {
+    if (key in item) {
+      const coerced = coerceBoolean(item[key]);
+      if (coerced !== null) {
+        return coerced;
+      }
+    }
+  }
+  return true;
+};
+
+const normalizeDateForOrder = (value?: string | null) => {
+  if (!value) {
+    return new Date().toISOString().split("T")[0];
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return new Date().toISOString().split("T")[0];
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return trimmed;
+  }
+  const parsed = Date.parse(trimmed);
+  if (Number.isNaN(parsed)) {
+    return new Date().toISOString().split("T")[0];
+  }
+  return new Date(parsed).toISOString().split("T")[0];
+};
+
+const normalizeTimeForOrder = (value?: string | null) => {
+  if (!value) {
+    return "00:00:00";
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "00:00:00";
+  }
+  const simpleMatch = trimmed.match(/^\d{1,2}:\d{2}(?::\d{2})?$/);
+  if (simpleMatch) {
+    const [hours, minutes, seconds = "00"] = trimmed.split(":");
+    const normalizedHours = hours.padStart(2, "0");
+    const normalizedSeconds = seconds.padStart(2, "0");
+    return `${normalizedHours}:${minutes}:${normalizedSeconds}`;
+  }
+  const parsed = Date.parse(`1970-01-01T${trimmed}`);
+  if (Number.isNaN(parsed)) {
+    return "00:00:00";
+  }
+  const date = new Date(parsed);
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const seconds = String(date.getSeconds()).padStart(2, "0");
+  return `${hours}:${minutes}:${seconds}`;
+};
+
+
+const ensureValidTimeWindow = (startValue?: string | null, endValue?: string | null) => {
+  const toTotalMinutes = (time: string) => {
+    const [hours = "0", minutes = "0", seconds = "0"] = time.split(":");
+    const total = Number(hours) * 60 + Number(minutes) + Number(seconds) / 60;
+    return Number.isFinite(total) ? Math.floor(total) : 0;
+  };
+
+  const formatFromMinutes = (value: number) => {
+    const clamped = Math.min(Math.max(Math.floor(value), 0), 1439);
+    const hours = Math.floor(clamped / 60);
+    const mins = clamped % 60;
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+  };
+
+  let startMinutes = toTotalMinutes(normalizeTimeForOrder(startValue));
+  let endMinutes = toTotalMinutes(normalizeTimeForOrder(endValue));
+
+  if (endMinutes <= startMinutes) {
+    endMinutes = Math.min(startMinutes + 60, 1439);
+    if (endMinutes <= startMinutes) {
+      endMinutes = Math.min(startMinutes + 1, 1439);
+      if (endMinutes <= startMinutes) {
+        startMinutes = Math.max(startMinutes - 1, 0);
+        endMinutes = Math.min(startMinutes + 1, 1439);
+      }
+    }
+  }
+
+  return {
+    startTime: formatFromMinutes(startMinutes),
+    endTime: formatFromMinutes(endMinutes),
+  };
+};
+
 const ReviewConfirmOrder = () => {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -172,7 +348,7 @@ const ReviewConfirmOrder = () => {
   const router = useRouter();
   const navigation = useNavigation();
   const params = useLocalSearchParams<ReviewConfirmOrderParams>();
-  const { user, getInfoUser } = useSession();
+  const { user, getInfoUser, getAddresses } = useSession();
   const userMetadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
   const [profileBillingName, setProfileBillingName] = useState<string | undefined>(() =>
     normalizeString(userMetadata.name) ??
@@ -241,6 +417,7 @@ const ReviewConfirmOrder = () => {
     };
   }, [getInfoUser, user]);
   const paymentMethodValue = getSingleParam(params.paymentMethod);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
   const currencyFormatter = useMemo(
     () =>
@@ -298,9 +475,12 @@ const ReviewConfirmOrder = () => {
   const deliveryAddress =
     getSingleParam(params.deliveryAddress) || "Rua Pará 408";
   const deliveryComplement = getSingleParam(params.deliveryComplement);
-  const deliveryDate = formatDateLabel(params.deliveryDate) || "15/12/2025";
-  const deliveryStartTimeLabel = formatTimeLabel(params.deliveryStartTime);
-  const deliveryEndTimeLabel = formatTimeLabel(params.deliveryEndTime);
+  const deliveryDateRaw = getSingleParam(params.deliveryDate);
+  const deliveryStartTimeRaw = getSingleParam(params.deliveryStartTime);
+  const deliveryEndTimeRaw = getSingleParam(params.deliveryEndTime);
+  const deliveryDate = formatDateLabel(deliveryDateRaw) || "15/12/2025";
+  const deliveryStartTimeLabel = formatTimeLabel(deliveryStartTimeRaw);
+  const deliveryEndTimeLabel = formatTimeLabel(deliveryEndTimeRaw);
   const deliveryInterval =
     getSingleParam(params.deliveryWindow) ||
     (deliveryStartTimeLabel && deliveryEndTimeLabel
@@ -313,7 +493,9 @@ const ReviewConfirmOrder = () => {
   const paymentEditPath =
     getSingleParam(params.paymentEditPath) || "/(auth)/cart/paymentmethod";
   const confirmPath = getSingleParam(params.confirmPath) || "/(auth)/home/";
-  const isConfirmDisabled = parseBooleanParam(params.disableConfirm);
+  const disableConfirmParam = parseBooleanParam(params.disableConfirm);
+  const deliveryNotes = deliveryComplement;
+  const isConfirmDisabled = disableConfirmParam || isProcessingOrder;
 
   const sections = useMemo<SectionCardDefinition[]>(() => {
     const sectionList: SectionCardDefinition[] = [
@@ -391,37 +573,236 @@ const ReviewConfirmOrder = () => {
       totalToPay,
   ]);
 
-  const handleConfirm = useCallback(() => {
+  const confirmOrder = useCallback(async () => {
+  if (!user?.id) {
     Alert.alert(
-      "Confirmar compra",
-      "Deseja confirmar a compra?",
-      [
-        {
-          text: "Cancelar",
-          style: "cancel",
-        },
-        {
-          text: "Confirmar",
-          style: "default",
-          onPress: () => {
-            Alert.alert(
-              "Estamos processando o seu pedido!",
-              "Você finalizou a compra e receberá atualizações em breve. Agora, você será redirecionado para a tela inicial. Obrigado por comprar conosco!"
-            );
-            setTimeout(() => {
-              if (confirmPath) {
-                router.dismissAll();
-                router.push(confirmPath as never);
-                return;
-              }
-            }, 1000 * 6);
-          },
-        },
-      ],
-      { cancelable: true }
+      "Erro ao confirmar compra",
+      "Não foi possível identificar o usuário autenticado."
     );
-  }, [confirmPath, router]);
+    return;
+  }
+  if (isProcessingOrder) {
+    return;
+  }
+  setIsProcessingOrder(true);
+  try {
+    const { data: cartRecord, error: cartError } = await cartService.getOrCreateActiveCart(
+      user.id
+    );
+    if (cartError || !cartRecord || typeof cartRecord !== "object") {
+      throw new Error("Não foi possível localizar o carrinho ativo.");
+    }
+    const cartData = Array.isArray(cartRecord)
+      ? ((cartRecord[0] ?? null) as Record<string, unknown> | null)
+      : (cartRecord as Record<string, unknown> | null);
+    if (!cartData) {
+      throw new Error("Não foi possível carregar os dados do carrinho.");
+    }
+    const cartId =
+      extractIdentifier(cartData, ["id", "cart_id", "id_cart"]) ??
+      extractIdentifier(cartData, ["cartId", "idCart"]);
+    if (!cartId) {
+      throw new Error("Não foi possível identificar o carrinho ativo.");
+    }
+    const { data: rawItems, error: itemsError } = await cartService.getCartItemsByCartId(
+      cartId,
+      user.id
+    );
+    if (itemsError) {
+      throw new Error("Não foi possível carregar os itens do carrinho.");
+    }
+    const cartItemsArray = (Array.isArray(rawItems) ? rawItems : []) as Record<string, unknown>[];
+    const selectedItems = cartItemsArray.filter(isCartItemSelected);
+    if (!selectedItems.length) {
+      throw new Error("Não há itens selecionados no carrinho.");
+    }
+    const addressIdRaw =
+      extractIdentifier(cartData, [
+        "address_id",
+        "delivery_address_id",
+        "profile_address_id",
+        "addressId",
+      ]) ?? null;
 
+    let addressId: string | null = isValidUuid(addressIdRaw) ? addressIdRaw : null;
+
+    if (!addressId) {
+      try {
+        const { data: addressData } = await getAddresses({ user_id: user.id });
+        const addressesArray = (Array.isArray(addressData) ? addressData : []) as Record<string, unknown>[];
+        const defaultAddress =
+          addressesArray.find((record) =>
+            ["is_default", "isDefault", "is_default_address", "isDefaultAddress", "default", "is_main", "isMain"].some((key) =>
+              coerceBoolean(record[key])
+            )
+          ) ??
+          addressesArray[0] ??
+          null;
+        const fallbackAddressId = defaultAddress
+          ? extractIdentifier(defaultAddress, ["id", "address_id", "addressId"])
+          : null;
+        if (isValidUuid(fallbackAddressId)) {
+          addressId = fallbackAddressId;
+        }
+      } catch (addressLookupError) {
+        console.error(
+          "ReviewConfirmOrder: erro ao localizar endere?o de entrega:",
+          addressLookupError
+        );
+      }
+    }
+
+    if (!addressId) {
+      throw new Error(
+        "Não foi possível identificar um endereço de entrega válido. Atualize os dados de entrega e tente novamente."
+      );
+    }
+
+const paymentMethodIdRaw =
+      paymentMethodValue ??
+      extractIdentifier(cartData, [
+        "profile_payment_method_id",
+        "payment_method_id",
+        "paymentMethodId",
+      ]) ??
+      null;
+    const paymentMethodId = isValidUuid(paymentMethodIdRaw) ? paymentMethodIdRaw : null;
+    const { startTime: deliveryTimeStart, endTime: deliveryTimeEnd } = ensureValidTimeWindow(
+      deliveryStartTimeRaw,
+      deliveryEndTimeRaw
+    );
+
+    const orderPayload: Record<string, unknown> = {
+      profile_id: user.id,
+      cart_id: cartId,
+      address_id: addressId,
+      profile_payment_method_id: paymentMethodId,
+      total_amount: totalToPay,
+      status: "pending",
+      payment_method: paymentMethodValue ?? "desconhecido",
+      delivery_method: "delivery",
+      delivery_date: normalizeDateForOrder(deliveryDateRaw),
+      delivery_time_start: deliveryTimeStart,
+      delivery_time_end: deliveryTimeEnd,
+      delivery_notes: deliveryNotes ?? "",
+    };
+    const orderResult = await orderService.createOrder(orderPayload as any);
+    const orderIdentifier =
+      extractIdentifier(orderResult as Record<string, unknown>, ["order_id", "id", "id_order"]) ??
+      null;
+    if (!orderIdentifier) {
+      throw new Error("Não foi possível identificar o pedido criado.");
+    }
+    const orderItemsPayload = selectedItems
+      .map((item) => {
+        const storeId =
+          extractIdentifier(item, ["store_id", "storeId", "id_store", "store"]) ?? null;
+        const productId =
+          extractIdentifier(item, ["produto_id", "product_id", "productId", "id_product"]) ??
+          null;
+        if (!storeId || !productId) {
+          return null;
+        }
+        const quantity =
+          extractNumber(item, ["quantity", "qty"]) ?? extractNumber(item, ["amount"]) ?? 1;
+        const unitPrice =
+          extractNumber(item, ["unit_price", "price", "unitPrice", "value"]) ?? 0;
+        const totalPrice =
+          extractNumber(item, ["total_price", "total", "totalPrice"]) ??
+          unitPrice * quantity;
+        return {
+          order_id: orderIdentifier,
+          store_id: storeId,
+          produto_id: productId,
+          quantity: Math.max(1, Math.trunc(quantity)),
+          unit_price: unitPrice,
+        };
+      })
+      .filter((value): value is {
+        order_id: string;
+        store_id: string;
+        produto_id: string;
+        quantity: number;
+        unit_price: number;
+      } => Boolean(value));
+    if (!orderItemsPayload.length) {
+      throw new Error("Não foi possível preparar os itens do pedido.");
+    }
+    await orderItemService.createOrderItems(orderItemsPayload);
+    await Promise.all(
+      orderItemsPayload.map(async (item) => {
+        const produtoId = item.produto_id;
+        if (!isValidUuid(produtoId)) {
+          console.warn("ReviewConfirmOrder: id de produto inválido ao limpar o carrinho", produtoId);
+          return;
+        }
+        const { error } = await cartService.removeItemFromCart({
+          userId: user.id,
+          cart_id: cartId,
+          produto_id: produtoId,
+        });
+        if (error) {
+          throw new Error("Falha ao remover itens do carrinho após criar o pedido.");
+        }
+      })
+    );
+    Alert.alert(
+      "Estamos processando o seu pedido!",
+      "Você finalizou a compra e receberá atualizações em breve. Agora, você será redirecionado para a tela inicial. Obrigado por comprar conosco!"
+    );
+    setTimeout(() => {
+      if (confirmPath) {
+        router.dismissAll();
+        router.push(confirmPath as never);
+      }
+    }, 1000 * 6);
+  } catch (caughtError) {
+    console.error("ReviewConfirmOrder: erro ao confirmar pedido:", caughtError);
+    const message =
+      caughtError instanceof Error
+        ? caughtError.message
+        : "Ocorreu um erro ao confirmar sua compra. Tente novamente.";
+    Alert.alert("Erro ao confirmar compra", message);
+  } finally {
+    setIsProcessingOrder(false);
+  }
+}, [
+  confirmPath,
+  deliveryDateRaw,
+  deliveryEndTimeRaw,
+  deliveryNotes,
+  deliveryStartTimeRaw,
+  getAddresses,
+  isProcessingOrder,
+  paymentMethodValue,
+  router,
+  totalToPay,
+  user?.id,
+]);
+
+const handleConfirm = useCallback(() => {
+  if (isConfirmDisabled) {
+    return;
+  }
+  Alert.alert(
+    "Confirmar compra",
+    "Deseja confirmar a compra?",
+    [
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+      {
+        text: "Confirmar",
+        style: "default",
+        onPress: () => {
+          void confirmOrder();
+        },
+      },
+    ],
+    { cancelable: true }
+  );
+}, [confirmOrder, isConfirmDisabled]);
   return (
     <ScreenContainer style={styles.container} safeAreaEdges={["top", "bottom"]}>
       <HeaderScreen title="Confirmar Pedido" showButtonBack />

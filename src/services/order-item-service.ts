@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 interface OrderItem {
     order_id: string;
     store_id: string;
-    product_id: string;
+    produto_id: string;
     quantity: number;
     unit_price: number;
     total_price: number;

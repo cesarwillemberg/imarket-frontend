@@ -984,6 +984,34 @@ export default function Cart() {
             color={theme.colors.disabled}
           />
           <Text style={styles.feedbackText}>Seu carrinho está vazio.</Text>
+          <TouchableOpacity
+            style={[
+              styles.refreshButton,
+              (isRefreshing || isMutating) && styles.refreshButtonDisabled,
+            ]}
+            activeOpacity={0.7}
+            onPress={handleRefresh}
+            disabled={isRefreshing || isMutating}
+          >
+            {isRefreshing ? (
+              <ActivityIndicator size="small" color={theme.colors.primary} />
+            ) : (
+              <Icon
+                type="MaterialCommunityIcons"
+                name="refresh"
+                size={18}
+                color={theme.colors.primary}
+              />
+            )}
+            <Text
+              style={[
+                styles.refreshButtonText,
+                (isRefreshing || isMutating) && styles.refreshButtonTextDisabled,
+              ]}
+            >
+              Recarregar
+            </Text>
+          </TouchableOpacity>
         </View>
       );
     }
