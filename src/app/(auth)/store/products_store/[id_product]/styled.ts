@@ -224,6 +224,9 @@ const createStyles = (theme: Theme) =>
       borderRadius: theme.radius.full,
       marginBottom: theme.spacing.sm,
     },
+    addToCartButtonDisabled: {
+      opacity: theme.opacity.disabled,
+    },
     addToCartText: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
