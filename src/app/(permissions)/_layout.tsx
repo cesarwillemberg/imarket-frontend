@@ -10,7 +10,7 @@ export default function PermissionsLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="permissionlocation/index" options={{ headerShown: false }} />
-      <Stack.Screen name="permissionnotification/index" options={{ headerShown: false }} />
+      <Stack.Screen name="permissionnotifications/index" options={{ headerShown: false }} />
       <Stack.Screen name="permissionacrossapp/index" options={{ headerShown: false }} />
     </Stack>
   );
