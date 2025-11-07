@@ -47,6 +47,7 @@ function ThemedStack() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(no-auth)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(permissions)" />
     </Stack>
   );
 }
