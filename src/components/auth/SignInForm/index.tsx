@@ -6,7 +6,6 @@ import { Button } from '@/src/components/common/Button';
 import { Input } from '@/src/components/common/Input';
 import InputPassword from '@/src/components/common/InputPassword';
 import { Subtitle } from '@/src/components/common/subtitle';
-import ThemedCheckbox from '@/src/components/common/ThemedCheckbox';
 import { Title } from '@/src/components/common/Title/index';
 import { useSession } from '@/src/providers/SessionContext/Index';
 import { useTheme } from '@/src/themes/ThemeContext';
@@ -21,7 +20,6 @@ interface IFormData {
 
 interface IFormState {
   isLoading: boolean;
-  keepLoggedIn: boolean;
   showPassword: boolean;
 }
 
@@ -40,7 +38,6 @@ export const SignInForm = () => {
   // Form state
   const [formState, setFormState] = useState<IFormState>({
     isLoading: false,
-    keepLoggedIn: false,
     showPassword: false,
   });
 
@@ -131,11 +128,6 @@ export const SignInForm = () => {
       </View>
 
       <View style={styles.options_row}>
-        <ThemedCheckbox
-          label="mantenha-me conectado."
-          checked={formState.keepLoggedIn}
-          onChange={(checked) => updateFormState('keepLoggedIn', checked)}
-        />
         <TouchableOpacity onPress={handleForgotPassword}>
           <Text style={styles.forgot_password_text}>Esqueceu a senha?</Text>
         </TouchableOpacity>

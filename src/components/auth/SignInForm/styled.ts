@@ -14,7 +14,7 @@ const createStyles = (theme: Theme) =>
     options_row: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       marginTop: theme.spacing.clear,
       color: theme.colors.text,
     },

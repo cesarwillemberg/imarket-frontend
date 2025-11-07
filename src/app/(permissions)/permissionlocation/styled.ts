@@ -72,6 +72,19 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       opacity: 0.6,
     },
+    skipButton: {
+      marginTop: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.lg,
+    },
+    skipButtonText: {
+      color: theme.colors.primary,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: "600",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
   });
 
 export default createStyles;

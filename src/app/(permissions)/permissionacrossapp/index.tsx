@@ -1,16 +1,17 @@
+import TrackingIllustration from "@/src/assets/images/onboarding/undraw_applications_h0mq.svg";
 import { createTextStyles } from "@/src/assets/styles/textStyles";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { Icon } from "@/src/components/common/Icon";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
-import TrackingIllustration from "@/src/assets/images/onboarding/undraw_applications_h0mq.svg";
 import {
   getPendingPermissionRoute,
   HOME_ROUTE,
+  skipPermissionRequest,
   TRACKING_PERMISSION_ROUTE,
 } from "@/src/utils/permissions";
-import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
 import { useRouter } from "expo-router";
+import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -29,6 +30,7 @@ export default function PermissionAcrossTheApp() {
   const router = useRouter();
   const { session } = useSession();
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [isSkippingPermission, setIsSkippingPermission] = useState(false);
 
   useEffect(() => {
     if (!session) return router.replace("/signin");
@@ -96,6 +98,25 @@ export default function PermissionAcrossTheApp() {
     }
   };
 
+  const handleSkipPermission = async () => {
+    if (isSkippingPermission) return;
+
+    try {
+      setIsSkippingPermission(true);
+      await skipPermissionRequest("tracking");
+      const pendingRoute = await getPendingPermissionRoute();
+      router.replace(pendingRoute ?? HOME_ROUTE);
+    } catch (error) {
+      Alert.alert(
+        "Não foi possível continuar",
+        "Tente novamente mais tarde ou ajuste essa permissão nas configurações."
+      );
+      console.error("PermissionAcrossApp: skip error", error);
+    } finally {
+      setIsSkippingPermission(false);
+    }
+  };
+
   return (
     <ScreenContainer
       style={styles.container}
@@ -132,17 +153,31 @@ export default function PermissionAcrossTheApp() {
               <ActivityIndicator color={theme.colors.onPrimary} />
             ) : (
               <>
-                <Icon
-                  type="MaterialCommunityIcons"
-                  name="access-point"
-                  size={20}
-                  color={theme.colors.onPrimary}
-                />
                 <Text style={styles.buttonText}>
                   Permitir atividades de rastreamento
                 </Text>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="radar"
+                  size={20}
+                  color={theme.colors.onPrimary}
+                />
               </>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.skipButton,
+              (isRequestingPermission || isSkippingPermission) && {
+                opacity: theme.opacity.disabled,
+              },
+            ]}
+            activeOpacity={theme.opacity.pressed}
+            onPress={handleSkipPermission}
+            disabled={isRequestingPermission || isSkippingPermission}
+          >
+            <Text style={styles.skipButtonText}>Não, obrigado</Text>
           </TouchableOpacity>
 
           <Text style={[textStyles.centeredText, styles.helperText]}>

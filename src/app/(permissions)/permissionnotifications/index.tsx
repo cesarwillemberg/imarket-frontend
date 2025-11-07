@@ -1,15 +1,17 @@
+import PushIllustration from "@/src/assets/images/onboarding/undraw_push-notifications_5z1s.svg";
 import { createTextStyles } from "@/src/assets/styles/textStyles";
-import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { Icon } from "@/src/components/common/Icon";
+import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
-import PushIllustration from "@/src/assets/images/onboarding/undraw_push-notifications_5z1s.svg";
 import {
   getPendingPermissionRoute,
   HOME_ROUTE,
   NOTIFICATION_PERMISSION_ROUTE,
+  skipPermissionRequest,
 } from "@/src/utils/permissions";
 import * as Notifications from "expo-notifications";
+import { isRegisteredForRemoteNotificationsAsync } from "expo-notifications";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -29,6 +31,7 @@ export default function PermissionNotification() {
   const router = useRouter();
   const { session } = useSession();
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [isSkippingPermission, setIsSkippingPermission] = useState(false);
 
   useEffect(() => {
     if (!session) return router.replace("/signin");
@@ -94,12 +97,9 @@ export default function PermissionNotification() {
         return;
       }
 
-      if (
-        typeof Notifications.isRegisteredForRemoteNotificationsAsync ===
-        "function"
-      ) {
+      if (typeof isRegisteredForRemoteNotificationsAsync === "function") {
         const isRegisteredForNotifications =
-          await Notifications.isRegisteredForRemoteNotificationsAsync();
+          await isRegisteredForRemoteNotificationsAsync();
         if (!isRegisteredForNotifications) {
           Alert.alert(
             "Ative as notificações",
@@ -126,6 +126,25 @@ export default function PermissionNotification() {
       console.error("PermissionNotification: request error", error);
     } finally {
       setIsRequestingPermission(false);
+    }
+  };
+
+  const handleSkipPermission = async () => {
+    if (isSkippingPermission) return;
+
+    try {
+      setIsSkippingPermission(true);
+      await skipPermissionRequest("notification");
+      const pendingRoute = await getPendingPermissionRoute();
+      router.replace(pendingRoute ?? HOME_ROUTE);
+    } catch (error) {
+      Alert.alert(
+        "Não foi possível continuar",
+        "Tente novamente ou permita essa configuração depois nas configurações."
+      );
+      console.error("PermissionNotification: skip error", error);
+    } finally {
+      setIsSkippingPermission(false);
     }
   };
 
@@ -165,15 +184,29 @@ export default function PermissionNotification() {
               <ActivityIndicator color={theme.colors.onPrimary} />
             ) : (
               <>
+                <Text style={styles.buttonText}>Permitir notificações</Text>
                 <Icon
                   type="MaterialCommunityIcons"
                   name="bell-ring"
                   size={20}
                   color={theme.colors.onPrimary}
                 />
-                <Text style={styles.buttonText}>Permitir notificações</Text>
               </>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.skipButton,
+              (isRequestingPermission || isSkippingPermission) && {
+                opacity: theme.opacity.disabled,
+              },
+            ]}
+            activeOpacity={theme.opacity.pressed}
+            onPress={handleSkipPermission}
+            disabled={isRequestingPermission || isSkippingPermission}
+          >
+            <Text style={styles.skipButtonText}>Não, obrigado</Text>
           </TouchableOpacity>
 
           <Text style={[textStyles.centeredText, styles.helperText]}>

@@ -64,7 +64,7 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
       textTransform: "uppercase",
       letterSpacing: 0.5,
-      marginLeft: theme.spacing.sm,
+      marginRight: theme.spacing.sm,
     },
     helperText: {
       marginTop: theme.spacing.lg,
@@ -73,7 +73,19 @@ const createStyles = (theme: Theme) =>
       opacity: 0.6,
       textAlign: "center",
     },
+    skipButton: {
+      marginTop: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.lg,
+    },
+    skipButtonText: {
+      color: theme.colors.primary,
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      fontWeight: "600",
+      textTransform: "uppercase",
+      letterSpacing: 0.5,
+    },
   });
 
 export default createStyles;
-

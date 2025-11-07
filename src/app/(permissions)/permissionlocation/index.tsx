@@ -8,6 +8,7 @@ import {
   getPendingPermissionRoute,
   HOME_ROUTE,
   LOCATION_PERMISSION_ROUTE,
+  skipPermissionRequest,
 } from "@/src/utils/permissions";
 import {
   getCurrentPositionAsync,
@@ -33,6 +34,7 @@ export default function PermissionLocation() {
   const router = useRouter();
   const { session } = useSession();
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
+  const [isSkippingPermission, setIsSkippingPermission] = useState(false);
 
   useEffect(() => {
     if (!session) return router.replace("/signin");
@@ -112,6 +114,25 @@ export default function PermissionLocation() {
     }
   };
 
+  const handleSkipPermission = async () => {
+    if (isSkippingPermission) return;
+
+    try {
+      setIsSkippingPermission(true);
+      await skipPermissionRequest("location");
+      const pendingRoute = await getPendingPermissionRoute();
+      router.replace(pendingRoute ?? HOME_ROUTE);
+    } catch (error) {
+      Alert.alert(
+        "Não foi possível continuar",
+        "Tente novamente ou ajuste essa permissão mais tarde nas configurações."
+      );
+      console.error("PermissionLocation: skip error", error);
+    } finally {
+      setIsSkippingPermission(false);
+    }
+  };
+
   return (
     <ScreenContainer
       style={styles.container}
@@ -156,6 +177,20 @@ export default function PermissionLocation() {
                 />
               </>
             )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.skipButton,
+              (isRequestingPermission || isSkippingPermission) && {
+                opacity: theme.opacity.disabled,
+              },
+            ]}
+            activeOpacity={theme.opacity.pressed}
+            onPress={handleSkipPermission}
+            disabled={isRequestingPermission || isSkippingPermission}
+          >
+            <Text style={styles.skipButtonText}>Não, obrigado</Text>
           </TouchableOpacity>
 
           <Text style={[textStyles.centeredText, styles.helperText]}>
