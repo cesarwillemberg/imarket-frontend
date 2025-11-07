@@ -36,6 +36,12 @@ const DEFAULT_FILTERS = {
   radiusKm: 5,
 } as const;
 
+const EMPTY_FILTERS = {
+  state: null,
+  city: null,
+  radiusKm: null,
+} as const;
+
 type StoreInfoBlock = { label: string; value: string };
 type StorePromotion = {
   id: string;
@@ -250,10 +256,12 @@ export default function StoreScreen() {
   >({});
   const [favoriteStoreIds, setFavoriteStoreIds] = useState<Record<string, boolean>>({});
 
+  const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
+
   const [filters, setFilters] = useState<StoreFilters>({
-    state: DEFAULT_FILTERS.state,
-    city: DEFAULT_FILTERS.city,
-    radiusKm: DEFAULT_FILTERS.radiusKm,
+    state: EMPTY_FILTERS.state,
+    city: EMPTY_FILTERS.city,
+    radiusKm: EMPTY_FILTERS.radiusKm,
   });
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -279,10 +287,35 @@ export default function StoreScreen() {
       try {
         const { status } = await requestForegroundPermissionsAsync();
 
-        if (status !== "granted") {
-          console.warn("StoreScreen: permissão de localização não concedida.");
+        if (cancelled) {
           return;
         }
+
+        const granted = status === "granted";
+        setHasLocationPermission(granted);
+
+        if (!granted) {
+          console.warn("StoreScreen: permissao de localizacao nao concedida.");
+          setUserLocation(null);
+          setFilters({
+            state: EMPTY_FILTERS.state,
+            city: EMPTY_FILTERS.city,
+            radiusKm: EMPTY_FILTERS.radiusKm,
+          });
+          return;
+        }
+
+        setFilters((current) => {
+          if (current.state || current.city || current.radiusKm !== null) {
+            return current;
+          }
+
+          return {
+            state: DEFAULT_FILTERS.state,
+            city: DEFAULT_FILTERS.city,
+            radiusKm: DEFAULT_FILTERS.radiusKm,
+          };
+        });
 
         const position = await getCurrentPositionAsync({
           accuracy: LocationAccuracy.Balanced,
@@ -295,7 +328,7 @@ export default function StoreScreen() {
           });
         }
       } catch (error) {
-        console.error("StoreScreen: erro ao obter localização do usuário:", error);
+        console.error("StoreScreen: erro ao obter localizacao do usuario:", error);
       } finally {
         if (!cancelled) {
           setIsRequestingLocation(false);
@@ -310,17 +343,22 @@ export default function StoreScreen() {
     };
   }, []);
 
+
   const locationLabel = filters.city && filters.state
     ? `${filters.city} - ${filters.state}`
     : filters.state ?? "Selecionar local";
 
-  const hasFilterOverrides = useMemo(
-    () =>
-      (filters.state ?? null) !== DEFAULT_FILTERS.state ||
-      (filters.city ?? null) !== DEFAULT_FILTERS.city ||
-      (filters.radiusKm ?? null) !== DEFAULT_FILTERS.radiusKm,
-    [filters]
-  );
+  const hasFilterOverrides = useMemo(() => {
+    const expectedState = hasLocationPermission ? DEFAULT_FILTERS.state : EMPTY_FILTERS.state;
+    const expectedCity = hasLocationPermission ? DEFAULT_FILTERS.city : EMPTY_FILTERS.city;
+    const expectedRadius = hasLocationPermission ? DEFAULT_FILTERS.radiusKm : EMPTY_FILTERS.radiusKm;
+
+    return (
+      (filters.state ?? null) !== expectedState ||
+      (filters.city ?? null) !== expectedCity ||
+      (filters.radiusKm ?? null) !== expectedRadius
+    );
+  }, [filters, hasLocationPermission]);
 
   const hasVisibleFilters = useMemo(
     () =>
@@ -1012,12 +1050,21 @@ export default function StoreScreen() {
   };
 
   const handleResetFilters = useCallback(() => {
+    if (hasLocationPermission) {
+      setFilters({
+        state: DEFAULT_FILTERS.state,
+        city: DEFAULT_FILTERS.city,
+        radiusKm: DEFAULT_FILTERS.radiusKm,
+      });
+      return;
+    }
+
     setFilters({
-      state: null,
-      city: null,
-      radiusKm: null,
+      state: EMPTY_FILTERS.state,
+      city: EMPTY_FILTERS.city,
+      radiusKm: EMPTY_FILTERS.radiusKm,
     });
-  }, []);
+  }, [hasLocationPermission]);
 
   const renderListHeader = useCallback(() => {
     const filterIconColor = theme.colors.primary;
