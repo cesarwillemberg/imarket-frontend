@@ -21,6 +21,15 @@ export async function getPendingPermissionRoute(): Promise<string | null> {
   ) {
     return NOTIFICATION_PERMISSION_ROUTE;
   }
+  if (
+    typeof Notifications.isRegisteredForRemoteNotificationsAsync === "function"
+  ) {
+    const isRegisteredForNotifications =
+      await Notifications.isRegisteredForRemoteNotificationsAsync();
+    if (!isRegisteredForNotifications) {
+      return NOTIFICATION_PERMISSION_ROUTE;
+    }
+  }
 
   const trackingPermission = await getTrackingPermissionsAsync();
   if (trackingPermission.status !== "granted") {

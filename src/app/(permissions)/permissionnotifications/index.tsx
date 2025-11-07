@@ -94,6 +94,28 @@ export default function PermissionNotification() {
         return;
       }
 
+      if (
+        typeof Notifications.isRegisteredForRemoteNotificationsAsync ===
+        "function"
+      ) {
+        const isRegisteredForNotifications =
+          await Notifications.isRegisteredForRemoteNotificationsAsync();
+        if (!isRegisteredForNotifications) {
+          Alert.alert(
+            "Ative as notificações",
+            "Parece que as notificações ainda estão bloqueadas. Verifique as configurações do dispositivo para liberar o envio.",
+            [
+              { text: "Cancelar", style: "cancel" },
+              {
+                text: "Abrir configurações",
+                onPress: () => Linking.openSettings(),
+              },
+            ]
+          );
+          return;
+        }
+      }
+
       const pendingRoute = await getPendingPermissionRoute();
       router.replace(pendingRoute ?? HOME_ROUTE);
     } catch (error) {
