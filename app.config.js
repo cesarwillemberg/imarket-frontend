@@ -20,7 +20,7 @@ export default {
     ios: {
       supportsTablet: true,
       buildNumber: "1",
-      // bundleIdentifier: "com.cesar.willemberg.imarketFrontend",
+      // bundleIdentifier: "com.cesar.willemberg.imarket_frontend",
     },
     android: {
       versionCode: 3,
@@ -43,6 +43,11 @@ export default {
         "com.google.android.gms.permission.AD_ID",
       ],
       package: "com.cesar.willemberg.imarket_frontend",
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        }
+      }
     },
     web: {
       output: "static",
@@ -69,6 +74,13 @@ export default {
           photosPermission:
             "Permita que o $(PRODUCT_NAME) acesse suas fotos para poder escolher sua foto de perfil.",
         },
+      ],
+      [
+        "expo-maps",
+        {
+          "requestLocationPermission": true,
+          "locationPermission": "Allow $(PRODUCT_NAME) to use your location"
+        }
       ],
       [
         "expo-camera",
