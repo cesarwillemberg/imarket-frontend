@@ -8,6 +8,9 @@
     "scheme": "imarketfrontend",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "nativeVersion"
+    },
     "packagerOpts": {
       "config": "metro.config.js",
       "sourceExts": [
@@ -19,9 +22,12 @@
       ]
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "buildNumber": "1",
+      // "bundleIdentifier": "com.cesar.willemberg.imarketFrontend",
     },
     "android": {
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./src/assets/images/android-icon-foreground.png",
@@ -38,11 +44,7 @@
         "android.permission.CAMERA",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.WAKE_LOCK",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "com.google.android.gms.permission.AD_ID"
       ],
       "package": "com.cesar.willemberg.imarket_frontend"
     },
@@ -55,7 +57,6 @@
       [
         "expo-splash-screen",
         {
-          // "image": "./src/assets/images/splash-icon.png",
           "image": "./src/assets/images/android-icon-foreground.png",
           "imageWidth": 200,
           "resizeMode": "contain",
@@ -102,6 +103,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "35dd46f1-e04e-4cc2-95aa-65527414d05a"
+      }
     }
   }
 }
