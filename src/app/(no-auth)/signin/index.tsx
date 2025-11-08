@@ -14,8 +14,9 @@ import {
   HOME_ROUTE,
 } from "@/src/utils/permissions";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect } from "react";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { useEffect } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import createStyles from "./styled";
 
 
@@ -60,7 +61,13 @@ export default function SignIn() {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={stylesCommon.centeredContainer}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={stylesCommon.centeredContainer}
+        enableOnAndroid
+        extraScrollHeight={theme.spacing.lg}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Logo />
         <View style={styles.form_wrapper}>
           <SignInForm />
@@ -77,12 +84,12 @@ export default function SignIn() {
           <Text style={styles.divider_text}>OU</Text>
         </View>
         <View style={styles.social_login_wrapper}>
-          <SocialButton icon={<Facebook width={60} height={60}/>} onPress={() => console.log("Login com Facebook")}/>
-          <SocialButton icon={<X width={60} height={60}/>} onPress={() => console.log("Login com X")}/>
-          <SocialButton icon={<Apple width={60} height={60}/>} onPress={() => console.log("Login com Apple")}/>
-          <SocialButton icon={<Google width={60} height={60}/>} onPress={() => console.log("Login com Google")}/>
+          <SocialButton icon={<Facebook width={60} height={60} />} onPress={() => console.log("Login com Facebook")} />
+          <SocialButton icon={<X width={60} height={60} />} onPress={() => console.log("Login com X")} />
+          <SocialButton icon={<Apple width={60} height={60} />} onPress={() => console.log("Login com Apple")} />
+          <SocialButton icon={<Google width={60} height={60} />} onPress={() => console.log("Login com Google")} />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </ScreenContainer>
   );
 };
