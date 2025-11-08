@@ -94,7 +94,8 @@ const cartService = {
     try {
       const { data, error } = await supabase
         .from("cart")
-        .insert([{ user_id: userId, is_active: true }])
+        // database column is `profile_id` (see Cart interface) — use the same column when creating
+        .insert([{ profile_id: userId, is_active: true }])
         .select("*")
         .single();
 
