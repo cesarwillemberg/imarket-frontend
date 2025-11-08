@@ -84,7 +84,9 @@ export default {
         "expo-location",
         {
           locationAlwaysAndWhenInUsePermission:
-            "Allow $(PRODUCT_NAME) to use your location.",
+            "Permita que o $(PRODUCT_NAME) acesse sua localizacao mesmo em segundo plano para encontrar lojas proximas.",
+          locationWhenInUsePermission:
+            "Permita que o $(PRODUCT_NAME) acesse sua localizacao enquanto voce usa o app para selecionar enderecos no mapa.",
         },
       ],
       [
