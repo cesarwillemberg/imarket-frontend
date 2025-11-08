@@ -1,35 +1,50 @@
 import { Button } from "@/src/components/common/Button";
+import BackButton from "@/src/components/common/BackButton";
+import Logo from "@/src/components/common/Logo";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
-import { Title } from "@/src/components/common/Title/index";
+import { Title } from "@/src/components/common/Title";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 import createStyles from "./styled";
 
-import LogoLight from "@/src/assets/images/splashscreen/logo.svg";
-import LogoDark from "@/src/assets/images/splashscreen/logo_dark.svg";
-import HeaderScreen from "@/src/components/common/HeaderScreen";
+type ConfirmEmailParams = {
+  email?: string | string[];
+};
 
-export default function ConfirmEmailScreen() {;
-    const { email } = useLocalSearchParams();
-    const { theme, currentTheme } = useTheme();
-    const styles = createStyles(theme);
-    return (
-        <ScreenContainer style={{ justifyContent: "center" }}>
-            <HeaderScreen />
-            <View style={styles.logo_wrapper}>
-                {currentTheme === "light" ? (
-                    <LogoLight width={250} height={250} />
-                ) : (
-                    <LogoDark width={250} height={250} />
-                )}
-            </View>
-            <View>
-                <Text style={{color: theme.colors.text, alignItems: "center", justifyContent: "center", textAlign: "center"}}>Foi enviado um email de confirmação para o seguinte email:</Text>
-                <Title align="center" >{email}</Title>
-            </View>
+export default function ConfirmEmailScreen() {
+  const { email } = useLocalSearchParams<ConfirmEmailParams>();
+  const { theme } = useTheme();
+  const styles = createStyles(theme);
 
-            <Button title="Back to Sign In" onPress={() => router.replace("/signin") } />
-        </ScreenContainer>
-    )
+  const parsedEmail = Array.isArray(email) ? email[0] : email;
+  const emailTarget = parsedEmail ?? "o seu email";
+
+  return (
+    <ScreenContainer safeAreaEdges={["top", "bottom"]}>
+      <View style={styles.content}>
+        <View style={styles.header}>
+          <BackButton />
+        </View>
+
+        <View style={styles.body}>
+          <Logo />
+          <Title align="center" style={styles.title}>
+            Confirmar Email
+          </Title>
+          <Text style={styles.description}>
+            Foi enviado um email de confirmação para{" "}
+            <Text style={styles.email}>{emailTarget}</Text>. Por favor,
+            verifique-o para poder efetuar o login.
+          </Text>
+        </View>
+
+        <Button
+          title="CONFIRMAR"
+          onPress={() => router.replace("/signin")}
+          style={styles.button}
+        />
+      </View>
+    </ScreenContainer>
+  );
 }
