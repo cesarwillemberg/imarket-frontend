@@ -1,9 +1,9 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
-import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -328,7 +328,7 @@ const extractStoreName = (store: Record<string, unknown> | null | undefined): st
   return null;
 };
 
-export default function ProductDetails() {
+export default function ProductSotreDetails() {
   const { id_product } = useLocalSearchParams<LocalSearchParams>();
   const productId = useMemo(() => {
     if (Array.isArray(id_product)) {
@@ -470,8 +470,11 @@ export default function ProductDetails() {
   const currentImage = hasImages ? images[Math.min(activeImage, images.length - 1)] : null;
 
   const showDiscount = Boolean(
-    product?.inPromotion && product.price !== null && product.originalPrice !== null
+    product?.inPromotion && product?.price !== null && product.originalPrice !== null
   );
+  const displayedPrice = showDiscount
+    ? product?.price ?? null
+    : product?.price ?? product?.originalPrice ?? null;
 
   const handlePrevImage = () => {
     if (images.length < 2) return;
@@ -686,15 +689,15 @@ export default function ProductDetails() {
         <View style={styles.informationSection}>
           <Text style={styles.productName}>{product.name}</Text>
 
-          {showDiscount ? (
+          {product.inPromotion === true ? (
             <Text style={styles.productOriginalPrice}>
               De {currencyFormatter.format(product.originalPrice ?? 0)}
             </Text>
-          ) : null}
+          ) : null }
 
-          {product.price !== null ? (
+          {displayedPrice !== null ? (
             <Text style={styles.productPrice}>
-              Por {currencyFormatter.format(product.price)}
+              Por {currencyFormatter.format(displayedPrice)}
               {product.unit ? <Text style={styles.productUnit}> {product.unit}</Text> : null}
             </Text>
           ) : (

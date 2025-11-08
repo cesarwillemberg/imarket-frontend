@@ -76,8 +76,18 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 });
 
 const parseCurrencyValue = (value: unknown): number | null => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
+  const ensurePositive = (numeric: number | null): number | null => {
+    if (typeof numeric !== "number") {
+      return null;
+    }
+    if (!Number.isFinite(numeric) || Number.isNaN(numeric)) {
+      return null;
+    }
+    return numeric > 0 ? numeric : null;
+  };
+
+  if (typeof value === "number") {
+    return ensurePositive(value);
   }
 
   if (typeof value === "string") {
@@ -86,9 +96,7 @@ const parseCurrencyValue = (value: unknown): number | null => {
       return null;
     }
     const parsed = Number(sanitized);
-    if (!Number.isNaN(parsed)) {
-      return parsed;
-    }
+    return ensurePositive(Number.isNaN(parsed) ? null : parsed);
   }
 
   return null;
