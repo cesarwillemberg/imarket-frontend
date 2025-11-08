@@ -136,29 +136,8 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.disabled,
       marginTop: theme.spacing.xs,
     },
-    variableWeightCard: {
-      marginTop: theme.spacing.lg,
-      // padding: theme.spacing.md,
-      borderRadius: theme.radius.lg,
-      // backgroundColor: theme.colors.surface,
-      // borderWidth: theme.size.xs,
-      // borderColor: theme.colors.primary,
-    },
-    variableWeightTitle: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.md,
-      color: theme.colors.primary,
-      fontWeight: "700",
-      marginBottom: theme.spacing.xs,
-    },
-    variableWeightDescription: {
-      fontFamily: theme.fonts.regular,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
-      lineHeight: 20,
-    },
     metaInfo: {
-      // marginTop: theme.spacing.md,
+      marginTop: theme.spacing.md,
     },
     metaInfoText: {
       fontFamily: theme.fonts.regular,
@@ -262,6 +241,23 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
       lineHeight: 20,
+    },
+    variableWeightWrapper: {
+      marginTop: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
+    variableWeightTitle: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.primary,
+      fontWeight: "600",
+      marginBottom: theme.spacing.xs,
+    },
+    variableWeightDescription: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.disabled,
+      lineHeight: 18,
     },
   });
 
