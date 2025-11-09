@@ -2,6 +2,16 @@ import { supabase } from "@/src/lib/supabase";
 import { decode } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system/legacy';
 // import { File } from 'expo-file-system';
+const sanitizeDigits = (value: string) => value.replace(/\D/g, "");
+
+const formatCpfMask = (digits: string) => {
+  if (digits.length !== 11) {
+    return digits;
+  }
+
+  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
+
 interface SignInAttributes {
   email: string;
   password: string;
@@ -71,29 +81,35 @@ const authService = {
     cpf,
   }: CheckUserExistsAttributes): Promise<{ emailExists: boolean; cpfExists: boolean; }> => {
     const normalizedEmail = email.trim().toLowerCase();
-    const normalizedCpf = cpf.replace(/\D/g, "");
+    const normalizedCpf = sanitizeDigits(cpf);
+    const maskedCpf = formatCpfMask(normalizedCpf);
 
-    const [
-      { count: emailCount, error: emailError },
-      { count: cpfCount, error: cpfError },
-    ] = await Promise.all([
+    const uniqueCpfValues = [normalizedCpf, maskedCpf]
+      .filter(Boolean)
+      .filter((value, index, self) => self.indexOf(value) === index);
+
+    const [emailResult, cpfResult] = await Promise.all([
       supabase
         .from("perfis")
-        .select("id", { count: "exact", head: true })
-        .eq("email", normalizedEmail),
-      supabase
-        .from("perfis")
-        .select("id", { count: "exact", head: true })
-        .eq("cpf", normalizedCpf),
+        .select("id")
+        .ilike("email", normalizedEmail)
+        .limit(1),
+      uniqueCpfValues.length
+        ? supabase
+            .from("perfis")
+            .select("id")
+            .in("cpf", uniqueCpfValues)
+            .limit(1)
+        : Promise.resolve({ data: [], error: null }),
     ]);
 
-    if (emailError || cpfError) {
-      throw emailError ?? cpfError;
+    if (emailResult.error || cpfResult.error) {
+      throw emailResult.error ?? cpfResult.error;
     }
 
     return {
-      emailExists: (emailCount ?? 0) > 0,
-      cpfExists: (cpfCount ?? 0) > 0,
+      emailExists: (emailResult.data?.length ?? 0) > 0,
+      cpfExists: (cpfResult.data?.length ?? 0) > 0,
     };
   },
 
@@ -102,10 +118,11 @@ const authService = {
       const [day, month, year] = input.date_birth.split("/").map(Number);
       const parsedDate = new Date(year, month - 1, day);
       const date_birth = parsedDate.toISOString().split("T")[0];
-      const phone = input.phone.replace(/\D/g, "");
+      const phone = sanitizeDigits(input.phone);
+      const sanitizedCpf = sanitizeDigits(input.cpf);
 
-      if (!phone || Number.isNaN(parsedDate.getTime())) {
-        const validationError = new Error("Invalid phone number or date of birth.");
+      if (!phone || Number.isNaN(parsedDate.getTime()) || !sanitizedCpf) {
+        const validationError = new Error("Invalid phone number, CPF or date of birth.");
         return { data: null, error: validationError };
       }
 
@@ -117,7 +134,7 @@ const authService = {
             name: input.name,
             email: input.email,
             phone,
-            cpf: input.cpf,
+            cpf: sanitizedCpf,
             date_birth,
           },
         },
@@ -126,6 +143,12 @@ const authService = {
       if (error) {
         console.error("Error during sign up:", error);
         return { data: null, error };
+      }
+
+      const identities = data?.user?.identities;
+      if (Array.isArray(identities) && identities.length === 0) {
+        const duplicateEmailError = new Error("Email já está cadastrado.");
+        return { data: null, error: duplicateEmailError };
       }
 
       return { 
