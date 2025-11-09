@@ -51,6 +51,8 @@ const EmailInput: React.FC<EmailInputProps> = ({
         })}
         onFocus={() => scrollToInput?.(inputEmailRef)}
         inputMode="email"
+        autoCapitalize="none"
+        autoCorrect={false}
         value={value}
         onChangeText={handleEmailChange}
         returnKeyType="next"

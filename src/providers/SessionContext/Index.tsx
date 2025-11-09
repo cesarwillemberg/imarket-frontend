@@ -363,7 +363,29 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     cpf: string;
     date_birth: string;
   }) => {
-    const { data, error } = await authService.signUp(input);
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const normalizedCpf = input.cpf.replace(/\D/g, "");
+
+    const { emailExists, cpfExists } = await authService.checkExistingUser({
+      email: normalizedEmail,
+      cpf: normalizedCpf,
+    });
+
+    if (emailExists || cpfExists) {
+      if (emailExists && cpfExists) {
+        throw new Error("Email e CPF já estão cadastrados.");
+      }
+      if (emailExists) {
+        throw new Error("Email já está cadastrado.");
+      }
+      throw new Error("CPF já está cadastrado.");
+    }
+
+    const { data, error } = await authService.signUp({
+      ...input,
+      email: normalizedEmail,
+      cpf: normalizedCpf,
+    });
     if (error) {
       throw error;
     }

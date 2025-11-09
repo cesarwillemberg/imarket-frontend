@@ -16,6 +16,11 @@ interface SignUpAttributes {
   date_birth: string;
 }
 
+interface CheckUserExistsAttributes {
+  email: string;
+  cpf: string;
+}
+
 interface getInfoUserAttributes {
   id: string;
 }
@@ -59,6 +64,37 @@ const authService = {
       throw error;
     }
     return data;
+  },
+
+  checkExistingUser: async ({
+    email,
+    cpf,
+  }: CheckUserExistsAttributes): Promise<{ emailExists: boolean; cpfExists: boolean; }> => {
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedCpf = cpf.replace(/\D/g, "");
+
+    const [
+      { count: emailCount, error: emailError },
+      { count: cpfCount, error: cpfError },
+    ] = await Promise.all([
+      supabase
+        .from("perfis")
+        .select("id", { count: "exact", head: true })
+        .eq("email", normalizedEmail),
+      supabase
+        .from("perfis")
+        .select("id", { count: "exact", head: true })
+        .eq("cpf", normalizedCpf),
+    ]);
+
+    if (emailError || cpfError) {
+      throw emailError ?? cpfError;
+    }
+
+    return {
+      emailExists: (emailCount ?? 0) > 0,
+      cpfExists: (cpfCount ?? 0) > 0,
+    };
   },
 
   signUp: async (input: SignUpAttributes) => {
