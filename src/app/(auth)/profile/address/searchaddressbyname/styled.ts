@@ -32,20 +32,7 @@ const createStyles = (theme: Theme) => StyleSheet.create({
     searchContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: theme.colors.surface,
-        borderColor: theme.colors.primary,
-        borderWidth: theme.size.xs,
-        borderRadius: theme.radius.full,
-        paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.sm,
-    },
-    searchIconWrapper: {
-        marginRight: theme.spacing.sm,
-    },
-    searchInput: {
-        flex: 1,
-        color: theme.colors.text,
-        fontSize: theme.fontSizes.md,
+        width: '100%',
     },
     searchSpinner: {
         marginLeft: theme.spacing.sm,

@@ -3,6 +3,7 @@ import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import SearchBar from "@/src/components/common/SearchBar";
 import { useTheme } from "@/src/themes/ThemeContext";
 import {
   geocodeAsync,
@@ -25,7 +26,6 @@ import {
   RefreshControl,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -279,30 +279,22 @@ export default function SearchAddressByName() {
             <View style={styles.contentWrapper}>
               <View style={styles.mainContent}>
                 <View style={styles.searchContainer}>
-                  <View style={styles.searchIconWrapper}>
-                    <Icon
-                      name="magnify"
-                      type="MaterialCommunityIcons"
-                      size={20}
-                      color={theme.colors.primary}
-                    />
-                  </View>
-                  <TextInput
+                  <SearchBar
                     value={query}
                     onChangeText={setQuery}
                     placeholder="Pesquisar..."
-                    placeholderTextColor={theme.colors.disabled}
-                    style={styles.searchInput}
-                    autoCapitalize="none"
-                    autoCorrect={false}
+                    inputProps={{
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                    }}
                   />
-                  {isSearching && (
+                  {isSearching ? (
                     <ActivityIndicator
                       size="small"
                       color={theme.colors.primary}
                       style={styles.searchSpinner}
                     />
-                  )}
+                  ) : null}
                 </View>
 
                 {errorMessage ? (

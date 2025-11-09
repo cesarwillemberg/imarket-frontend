@@ -45,7 +45,7 @@ export default {
       package: "com.cesar.willemberg.imarket_frontend",
       config: {
         googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+          apiKey: "AIzaSyC0thWUzUQmTAouTt0O3gh3PMBnIpSpg7M",
         }
       }
     },

@@ -5,6 +5,13 @@ import { StyleSheet, View } from "react-native";
 import MapView, { Circle, Marker, Region } from "react-native-maps";
 import createStyles from "./styles";
 
+const DEV_LOG_ENABLED = typeof __DEV__ !== "undefined" ? __DEV__ : true;
+const mapPickerLog = (...args: unknown[]) => {
+  if (DEV_LOG_ENABLED) {
+    console.log("[MapPicker]", ...args);
+  }
+};
+
 export type MapPickerProps = {
   location: { latitude: number; longitude: number }; // centro atual do mapa
   userLocation?: { latitude: number; longitude: number }; // posição real do usuário
@@ -37,6 +44,10 @@ export const MapPicker: React.FC<MapPickerProps> = ({
     longitudeDelta: regionDelta ?? DEFAULT_DELTA,
   }));
 
+  useEffect(() => {
+    mapPickerLog("Props update", { location, userLocation, heading, readOnly, regionDelta });
+  }, [location, userLocation, heading, readOnly, regionDelta]);
+
   // 🚀 Atualiza o mapa quando o "location" mudar de fato (novo endereço, não apenas zoom)
   useEffect(() => {
     if (!mapRef.current) return;
@@ -57,6 +68,7 @@ export const MapPicker: React.FC<MapPickerProps> = ({
       Math.abs(newRegion.latitudeDelta - currentRegion.latitudeDelta) > 0.0001;
 
     if (hasLatitudeChanged || hasLongitudeChanged || hasDeltaChanged) {
+      mapPickerLog("Syncing region with new props", { newRegion, currentRegion });
       setCurrentRegion(newRegion);
       mapRef.current.animateToRegion(newRegion, 400);
     }
@@ -64,11 +76,16 @@ export const MapPicker: React.FC<MapPickerProps> = ({
 
   // Quando o usuário movimenta o mapa manualmente
   const handleRegionChangeComplete = (region: Region) => {
+    mapPickerLog("Region change complete", region);
     setCurrentRegion(region);
     onLocationChange?.({
       latitude: region.latitude,
       longitude: region.longitude,
     });
+  };
+
+  const handleMapReady = () => {
+    mapPickerLog("Map ready", currentRegion);
   };
 
   return (
@@ -79,6 +96,7 @@ export const MapPicker: React.FC<MapPickerProps> = ({
         initialRegion={currentRegion}
         region={currentRegion} // ✅ mantém o zoom estável
         onRegionChangeComplete={handleRegionChangeComplete}
+        onMapReady={handleMapReady}
         scrollEnabled={!readOnly}
         zoomEnabled={!readOnly}
         rotateEnabled={!readOnly}
