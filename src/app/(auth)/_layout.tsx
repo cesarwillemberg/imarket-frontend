@@ -1,11 +1,23 @@
 import createStyles from "@/src/assets/styles/tabStyles";
 import { Icon } from "@/src/components/common/Icon";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { Tabs } from "expo-router";
+import { useCallback } from "react";
 
 export default function TabLayout() {
   const { theme } = useTheme();
+  const { user, getOrCreateActiveCart } = useSession();
   const styles = createStyles(theme);
+  const handleCartTabPress = useCallback(() => {
+    if (!user?.id) {
+      return;
+    }
+
+    getOrCreateActiveCart(user.id).catch((error) => {
+      console.error("TabLayout: failed to ensure active cart", error);
+    });
+  }, [getOrCreateActiveCart, user?.id]);
 
   return (
     <Tabs
@@ -47,6 +59,11 @@ export default function TabLayout() {
           headerShown: false,
           tabBarLabel(props) {
             return "";
+          },
+          listeners: {
+            tabPress: () => {
+              handleCartTabPress();
+            },
           },
           tabBarIcon: ({ color }) => (
             <Icon

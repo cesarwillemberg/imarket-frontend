@@ -11,10 +11,26 @@ import PhoneInput from "@/src/components/common/PhoneInput";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import Checkbox from "expo-checkbox";
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Title } from "../../common/Title";
 import createStyles from "./styled";
+
+const formatCPF = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+
+    if (digits.length <= 3) {
+        return digits;
+    }
+    if (digits.length <= 6) {
+        return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    }
+    if (digits.length <= 9) {
+        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    }
+
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
 
 export const SignUpForm = () => {
     const { theme } = useTheme();
@@ -54,20 +70,35 @@ export const SignUpForm = () => {
             return;
         }
 
-        const data = await signUp({ 
-            name, 
-            cpf, 
-            date_birth: dateOfBirth, 
-            phone, 
-            email, 
-            password,
-        });
-
-        router.push({
-          pathname: "/confirmemailscreen",
-          params: {email: email}
-        });
+        try {
+            await signUp({ 
+                name, 
+                cpf, 
+                date_birth: dateOfBirth, 
+                phone, 
+                email, 
+                password,
+            });
+    
+            router.push({
+              pathname: "/confirmemailscreen",
+              params: {email: email}
+            });
+        } catch (error) {
+            const message =
+              error instanceof Error
+                ? error.message
+                : "Não foi possível concluir o cadastro. Tente novamente.";
+            Alert.alert("Erro ao cadastrar", message);
+        }
     }
+
+    const formattedCPF = useMemo(() => formatCPF(cpf), [cpf]);
+
+    const handleCPFChange = (text: string) => {
+        const digitsOnly = text.replace(/\D/g, "").slice(0, 11);
+        setCPF(digitsOnly);
+    };
 
     return (
         <>
@@ -90,13 +121,13 @@ export const SignUpForm = () => {
                 <Text style={styles.label}>CPF</Text>
                 <Input 
                   placeholder="000.000.000-00" 
-                  value={cpf} 
-                  onChangeText={setCPF} 
+                  value={formattedCPF} 
+                  onChangeText={handleCPFChange} 
                   onSubmitEditing={() => inputDateOfBirthRef.current?.focus()}
                   ref={inputCPFRf}
                   returnKeyType={"next"}
                   blurOnSubmit={false}
-                  inputMode="text"
+                  keyboardType="numeric"
                 />
             </View>
             <View style={styles.input_group}>

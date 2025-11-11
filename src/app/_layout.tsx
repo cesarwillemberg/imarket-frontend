@@ -1,5 +1,6 @@
 
 import { SessionProvider } from "@/src/providers/SessionContext/Index";
+import PermissionWatcher from "@/src/components/permissions/PermissionWatcher";
 import { useFonts } from 'expo-font';
 import { Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
@@ -29,6 +30,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SessionProvider>
+        <PermissionWatcher />
         <ThemedStack />
       </SessionProvider>
     </ThemeProvider>
@@ -47,6 +49,7 @@ function ThemedStack() {
       <Stack.Screen name="index" />
       <Stack.Screen name="(no-auth)" />
       <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(permissions)" />
     </Stack>
   );
 }

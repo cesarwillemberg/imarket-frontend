@@ -238,34 +238,41 @@ const SessionContext = createContext<SessionContextProps>({
   getStoreRatingsAverage: async (_storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getStoreRatingsAverage not implemented.");
   },
-  getAddressesStore: async (storeId: string) => {
+  getAddressesStore: async (storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getAddressesStore not implemented.");
   },
-  getStoreSchedule: async (storeId: string) => {
+  getStoreSchedule: async (storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getStoreSchedule not implemented.");
   },
-  getProductsByStoreId: async (storeId: string) => {
+  getProductsByStoreId: async (storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getProductsByStoreId not implemented.");
   },
-  getImageProduct: async (_productId: string) => {
+  getImageProduct: async (_productId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getImageProduct not implemented.");
   },
-  getItemPromotionByStore: async (_storeId: string) => {
+  getItemPromotionByStore: async (_storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getItemPromotionByStore not implemented.");
   },
-  getCartByUserId: async (_userId: string) => {
+  getCartByUserId: async (_userId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getCartByUserId not implemented.");
   },
-  createCartByUserId: async (_userId: string) => {
+  createCartByUserId: async (_userId: string): Promise<{ data: any; error: any }> => {
     throw new Error("createCartByUserId not implemented.");
   },
-  getOrCreateActiveCart: async (_userId: string) => {
+  getOrCreateActiveCart: async (_userId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getOrCreateActiveCart not implemented.");
   },
-  getCartItemsByCartId: async (_cartId: string, _userId: string) => {
+  getCartItemsByCartId: async (_cartId: string, _userId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getCartItemsByCartId not implemented.");
   },
-  addItemToCart: (inputProduct: {
+  setCartItemChecked: async (_input: {
+    cartId: string;
+    produtoId: string;
+    checked: boolean;
+  }): Promise<{ data: any; error: any }> => {
+    throw new Error("setCartItemChecked not implemented.");
+  },
+  addItemToCart: async (inputProduct: {
     userId: string;
     cart_id: string;
     store_id: string;
@@ -273,7 +280,7 @@ const SessionContext = createContext<SessionContextProps>({
     quantity: number;
     unit_price: number;
     total_price?: number;
-  }) => {
+  }): Promise<{ data: any; error: any }> => {
     throw new Error("addItemToCart not implemented.");
   },
   updateCartItemQuantity: async (_input: {
@@ -281,14 +288,14 @@ const SessionContext = createContext<SessionContextProps>({
     cart_id: string;
     produto_id: string;
     quantity: number;
-  }) => {
+  }): Promise<{ data: any; error: any }> => {
     throw new Error("updateCartItemQuantity not implemented.");
   },
   removeItemFromCart: async (_input: {
     userId: string;
     cart_id: string;
     produto_id: string;
-  }) => {
+  }): Promise<{ data: any; error: any }> => {
     throw new Error("removeItemFromCart not implemented.");
   },
 });
@@ -363,7 +370,29 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     cpf: string;
     date_birth: string;
   }) => {
-    const { data, error } = await authService.signUp(input);
+    const normalizedEmail = input.email.trim().toLowerCase();
+    const normalizedCpf = input.cpf.replace(/\D/g, "");
+
+    const { emailExists, cpfExists } = await authService.checkExistingUser({
+      email: normalizedEmail,
+      cpf: normalizedCpf,
+    });
+
+    if (emailExists || cpfExists) {
+      if (emailExists && cpfExists) {
+        throw new Error("Email e CPF já estão cadastrados.");
+      }
+      if (emailExists) {
+        throw new Error("Email já está cadastrado.");
+      }
+      throw new Error("CPF já está cadastrado.");
+    }
+
+    const { data, error } = await authService.signUp({
+      ...input,
+      email: normalizedEmail,
+      cpf: normalizedCpf,
+    });
     if (error) {
       throw error;
     }

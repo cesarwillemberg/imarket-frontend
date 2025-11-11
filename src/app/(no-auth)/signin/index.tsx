@@ -1,35 +1,57 @@
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
-import { useTheme } from "@/src/themes/ThemeContext";
-import { useRouter } from "expo-router";
-import { ScrollView, Text, TouchableOpacity, View } from "react-native";
-import createStyles from "./styled";
-
-
+import { createCommonStyles } from "@/src/assets/styles/commonStyles";
 import Apple from "@/src/assets/images/login/apple.svg";
 import Facebook from "@/src/assets/images/login/facebook.svg";
 import Google from "@/src/assets/images/login/google.svg";
 import X from "@/src/assets/images/login/x.svg";
-import { createCommonStyles } from "@/src/assets/styles/commonStyles";
 import { SignInForm } from "@/src/components/auth/SignInForm";
 import Logo from "@/src/components/common/Logo";
 import SocialButton from "@/src/components/common/SocialButton";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import { useTheme } from "@/src/themes/ThemeContext";
+import {
+  getPendingPermissionRoute,
+  HOME_ROUTE,
+} from "@/src/utils/permissions";
+import { useRouter } from "expo-router";
 import { useEffect } from "react";
+import { Text, TouchableOpacity, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
+import createStyles from "./styled";
 
 
 export default function SignIn() {
-
-  const { theme, currentTheme } = useTheme();
+  const { theme } = useTheme();
   const styles = createStyles(theme);
   const stylesCommon = createCommonStyles(theme);
   const router = useRouter();
-  const { session, user} = useSession();
+  const { session } = useSession();
 
   useEffect(() => {
-    if (session) {
-      router.replace("/(auth)/home");
-    }
-  }, [session, router]);
+    if (!session) return;
+
+    let isMounted = true;
+
+    const redirect = async () => {
+      try {
+        const pendingRoute = await getPendingPermissionRoute();
+        if (!isMounted) return;
+
+        router.replace(pendingRoute ?? HOME_ROUTE);
+      } catch (error) {
+        console.error("SignIn: failed to check permissions", error);
+        if (isMounted) {
+          router.replace(HOME_ROUTE);
+        }
+      }
+    };
+
+    redirect();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router, session]);
 
 
   const handleSingUp = () => {
@@ -39,7 +61,13 @@ export default function SignIn() {
 
   return (
     <ScreenContainer>
-      <ScrollView contentContainerStyle={stylesCommon.centeredContainer}>
+      <KeyboardAwareScrollView
+        contentContainerStyle={stylesCommon.centeredContainer}
+        enableOnAndroid
+        extraScrollHeight={theme.spacing.lg}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         <Logo />
         <View style={styles.form_wrapper}>
           <SignInForm />
@@ -56,12 +84,12 @@ export default function SignIn() {
           <Text style={styles.divider_text}>OU</Text>
         </View>
         <View style={styles.social_login_wrapper}>
-          <SocialButton icon={<Facebook width={60} height={60}/>} onPress={() => console.log("Login com Facebook")}/>
-          <SocialButton icon={<X width={60} height={60}/>} onPress={() => console.log("Login com X")}/>
-          <SocialButton icon={<Apple width={60} height={60}/>} onPress={() => console.log("Login com Apple")}/>
-          <SocialButton icon={<Google width={60} height={60}/>} onPress={() => console.log("Login com Google")}/>
+          <SocialButton icon={<Facebook width={60} height={60} />} onPress={() => console.log("Login com Facebook")} />
+          <SocialButton icon={<X width={60} height={60} />} onPress={() => console.log("Login com X")} />
+          <SocialButton icon={<Apple width={60} height={60} />} onPress={() => console.log("Login com Apple")} />
+          <SocialButton icon={<Google width={60} height={60} />} onPress={() => console.log("Login com Google")} />
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </ScreenContainer>
   );
 };

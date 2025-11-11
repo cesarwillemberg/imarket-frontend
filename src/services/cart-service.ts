@@ -94,7 +94,7 @@ const cartService = {
     try {
       const { data, error } = await supabase
         .from("cart")
-        .insert([{ user_id: userId, is_active: true }])
+        .insert([{ profile_id: userId, is_active: true }])
         .select("*")
         .single();
 
