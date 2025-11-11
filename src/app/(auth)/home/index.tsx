@@ -6,9 +6,11 @@ import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import { Text, View } from "react-native";
+import createStyles from "./styled";
 
 export default function Home() {
     const { theme } = useTheme();
+    const styles = createStyles(theme);
     const commonStyles = createCommonStyles(theme);
     const textStyles = createTextStyles(theme);
     const router = useRouter();
