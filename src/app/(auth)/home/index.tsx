@@ -12,6 +12,7 @@ import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
+  LayoutChangeEvent,
   RefreshControl,
   ScrollView,
   Text,
@@ -46,6 +47,15 @@ type StoreCardItem = {
   badge: string | null;
   logoUrl: string | null;
   city: string | null;
+};
+
+type SearchResultItem = {
+  id: string;
+  type: "product" | "store";
+  title: string;
+  subtitle: string | null;
+  extra: string | null;
+  imageUrl: string | null;
 };
 
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
@@ -371,6 +381,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [products, setProducts] = useState<ProductCardItem[]>([]);
   const [stores, setStores] = useState<StoreCardItem[]>([]);
+  const [searchBarLayout, setSearchBarLayout] = useState<{ y: number; height: number } | null>(null);
   const notificationCount = 0;
   const animationLoading = useRef<LottieView>(null);
 
@@ -435,6 +446,10 @@ export default function Home() {
     loadHomeData(true);
   }, [isRefreshing, loadHomeData]);
 
+  const handleNotificationPress = useCallback(() => {
+    router.push("/(auth)/profile/notifications");
+  }, [router]);
+
   const handleProductPress = useCallback(
     (productId: string) => {
       router.push({
@@ -452,18 +467,6 @@ export default function Home() {
     [router]
   );
 
-  const normalizedQuery = useMemo(() => normalizeText(searchTerm.trim()), [searchTerm]);
-
-  const matchesQuery = useCallback(
-    (text: string | null | undefined) => {
-      if (!normalizedQuery) {
-        return true;
-      }
-      return normalizeText(text).includes(normalizedQuery);
-    },
-    [normalizedQuery]
-  );
-
   const promotions = useMemo(
     () => products.filter((product) => product.inPromotion),
     [products]
@@ -473,35 +476,82 @@ export default function Home() {
     [products]
   );
 
-  const filteredPromotions = useMemo(
-    () =>
-      promotions.filter(
-        (item) => matchesQuery(item.name) || matchesQuery(item.storeName) || matchesQuery(item.code)
-      ),
-    [matchesQuery, promotions]
-  );
-  const filteredStores = useMemo(
-    () =>
-      stores.filter(
-        (item) =>
-          matchesQuery(item.name) ||
-          matchesQuery(item.category) ||
-          matchesQuery(item.badge) ||
-          matchesQuery(item.city)
-      ),
-    [matchesQuery, stores]
-  );
-  const filteredSuggestions = useMemo(
-    () =>
-      otherSuggestions.filter(
-        (item) => matchesQuery(item.name) || matchesQuery(item.storeName) || matchesQuery(item.code)
-      ),
-    [matchesQuery, otherSuggestions]
+  const promotionsToShow = promotions.slice(0, 3);
+  const storesToShow = stores.slice(0, 3);
+  const suggestionsToShow = otherSuggestions.slice(0, 9);
+
+  const trimmedSearchTerm = searchTerm.trim();
+
+  const normalizedQuery = useMemo(
+    () => normalizeText(trimmedSearchTerm),
+    [trimmedSearchTerm]
   );
 
-  const promotionsToShow = filteredPromotions.slice(0, 3);
-  const storesToShow = filteredStores.slice(0, 3);
-  const suggestionsToShow = filteredSuggestions.slice(0, 9);
+  const searchResults = useMemo(() => {
+    if (!normalizedQuery.length) {
+      return [];
+    }
+
+    const matches = (text: string | null) => normalizeText(text).includes(normalizedQuery);
+
+    const storeMatches: SearchResultItem[] = stores
+      .filter(
+        (item) =>
+          matches(item.name) ||
+          matches(item.category) ||
+          matches(item.badge) ||
+          matches(item.city)
+      )
+      .map((store) => ({
+        id: store.id,
+        type: "store" as const,
+        title: store.name,
+        subtitle: store.category ?? "Mercado",
+        extra: store.distanceLabel ?? store.city,
+        imageUrl: store.logoUrl,
+      }));
+
+    const productMatches: SearchResultItem[] = products
+      .filter((item) => matches(item.name) || matches(item.storeName) || matches(item.code))
+      .map((product) => ({
+        id: product.id,
+        type: "product" as const,
+        title: product.name,
+        subtitle: product.storeName ?? "Produto",
+        extra: product.unit ?? product.code,
+        imageUrl: product.imageUrl,
+      }));
+
+    return [...storeMatches, ...productMatches].slice(0, 8);
+  }, [normalizedQuery, products, stores]);
+
+  const handleSearchResultPress = useCallback(
+    (item: SearchResultItem) => {
+      if (item.type === "store") {
+        handleStorePress(item.id);
+      } else {
+        handleProductPress(item.id);
+      }
+    },
+    [handleProductPress, handleStorePress]
+  );
+
+  const handleHeaderLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      const { y, height } = event.nativeEvent.layout;
+      setSearchBarLayout((prev) => {
+        if (prev && prev.y === y && prev.height === height) {
+          return prev;
+        }
+        return { y, height };
+      });
+    },
+    []
+  );
+
+  const overlayTop = searchBarLayout
+    ? searchBarLayout.y + searchBarLayout.height + theme.spacing.sm
+    : null;
 
   if (isLoading) {
     return (
@@ -522,23 +572,89 @@ export default function Home() {
 
   return (
     <ScreenContainer style={styles.container}>
-      <View style={styles.headerRow}>
+        <View style={styles.headerRow} onLayout={handleHeaderLayout}>
           <SearchInputBar
             value={searchTerm}
             onChangeText={setSearchTerm}
             placeholder="Pesquisar produtos ou mercados..."
             containerStyle={styles.searchBar}
           />
-        <View style={styles.notificationButton}>
-          <Icon type="MaterialCommunityIcons" name="bell-outline" size={22} color={theme.colors.primary} />
-          {notificationCount > 0 ? (
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationText}>{notificationCount}</Text>
-            </View>
-          ) : null}
+          <TouchableOpacity
+            style={styles.notificationButton}
+            activeOpacity={0.8}
+            onPress={handleNotificationPress}
+          >
+            <Icon type="MaterialCommunityIcons" name="bell-outline" size={22} color={theme.colors.primary} />
+            {notificationCount > 0 ? (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationText}>{notificationCount}</Text>
+              </View>
+            ) : null}
+          </TouchableOpacity>
         </View>
-      </View>
-      <ScrollView
+
+        {trimmedSearchTerm.length && overlayTop !== null ? (
+          <View style={[styles.searchResultsWrapper, { top: overlayTop }]}>
+            {searchResults.length ? (
+              searchResults.map((item, index) => (
+                <TouchableOpacity
+                  key={`${item.type}-${item.id}`}
+                  style={[
+                    styles.searchResultCard,
+                    index < searchResults.length - 1 ? styles.searchResultCardSpacing : null,
+                  ]}
+                  activeOpacity={0.85}
+                  onPress={() => handleSearchResultPress(item)}
+                >
+                  <View style={styles.searchResultImageWrapper}>
+                    {item.imageUrl ? (
+                      <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.searchResultImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.searchResultFallback}>
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name={item.type === "store" ? "storefront-outline" : "package-variant"}
+                          size={24}
+                          color={theme.colors.primary}
+                        />
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.searchResultInfo}>
+                    <View style={styles.searchResultTitleRow}>
+                      <Text style={styles.searchResultTitle} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <View style={styles.searchResultTag}>
+                        <Text style={styles.searchResultTagText}>
+                          {item.type === "store" ? "Loja" : "Produto"}
+                        </Text>
+                      </View>
+                    </View>
+                    {item.subtitle ? (
+                      <Text style={styles.searchResultSubtitle} numberOfLines={1}>
+                        {item.subtitle}
+                      </Text>
+                    ) : null}
+                    {item.extra ? (
+                      <Text style={styles.searchResultExtra} numberOfLines={1}>
+                        {item.extra}
+                      </Text>
+                    ) : null}
+                  </View>
+                  <Icon type="MaterialIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text style={styles.emptyText}>Nenhum resultado para “{trimmedSearchTerm}”.</Text>
+            )}
+          </View>
+        ) : null}
+        <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         refreshControl={

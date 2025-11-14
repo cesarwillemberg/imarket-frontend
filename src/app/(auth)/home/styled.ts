@@ -51,6 +51,91 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.xs,
       fontWeight: "600",
     },
+    searchResultsWrapper: {
+      position: "absolute",
+      left: theme.spacing.lg,
+      right: theme.spacing.lg,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xxl,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      padding: theme.spacing.md,
+      zIndex: 20,
+      elevation: 6,
+      shadowColor: theme.colors.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 6,
+    },
+    searchResultCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.sm,
+    },
+    searchResultCardSpacing: {
+      marginBottom: theme.spacing.sm,
+    },
+    searchResultImageWrapper: {
+      width: 48,
+      height: 48,
+      borderRadius: theme.radius.full,
+      overflow: "hidden",
+      marginRight: theme.spacing.sm,
+      backgroundColor: theme.colors.secondary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    searchResultImage: {
+      width: "100%",
+      height: "100%",
+    },
+    searchResultFallback: {
+      flex: 1,
+      width: "100%",
+      height: "100%",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    searchResultInfo: {
+      flex: 1,
+      marginRight: theme.spacing.sm,
+    },
+    searchResultTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      marginBottom: theme.spacing.sx,
+    },
+    searchResultTitle: {
+      flex: 1,
+      fontSize: theme.fontSizes.md,
+      fontWeight: "600",
+      color: theme.colors.text,
+      marginRight: theme.spacing.sm,
+    },
+    searchResultTag: {
+      backgroundColor: theme.colors.secondary,
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.sx,
+    },
+    searchResultTagText: {
+      fontSize: theme.fontSizes.xs,
+      color: theme.colors.primary,
+      fontWeight: "600",
+    },
+    searchResultSubtitle: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    searchResultExtra: {
+      fontSize: theme.fontSizes.xs,
+      color: theme.colors.disabled,
+      marginTop: theme.spacing.sx,
+    },
     errorBanner: {
       flexDirection: "row",
       alignItems: "center",
@@ -279,4 +364,3 @@ const createStyles = (theme: Theme) =>
   });
 
 export default createStyles;
-
