@@ -1,13 +1,14 @@
 
 import { useTheme } from "@/src/themes/ThemeContext";
-import { FC } from "react";
+import LottieView from "lottie-react-native";
+import { FC, useRef } from "react";
 import {
-  ActivityIndicator,
   Text,
   TextStyle,
   TouchableOpacity,
-  ViewStyle,
+  ViewStyle
 } from "react-native";
+import LoadingIcon from "../LoadingIcon";
 import createStyles from "./styled";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "danger" | "success";
@@ -57,6 +58,8 @@ export const Button: FC<Props> = ({
   const textColor =
     variant === "outline" ? theme.colors.primary : theme.colors.onPrimary;
 
+  const animationLoading = useRef<LottieView>(null);
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -67,7 +70,15 @@ export const Button: FC<Props> = ({
         style,
       ]}
     >
-      {loading && <ActivityIndicator color={textColor} />}
+      {loading && 
+        <LoadingIcon
+            autoPlay
+            loop
+            // source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
+      }
       {!loading && (
         <Text style={[styles.text, { color: textColor }, textStyle]}>
           {String(title)}

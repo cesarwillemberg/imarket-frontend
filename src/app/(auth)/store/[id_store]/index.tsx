@@ -1,19 +1,21 @@
+import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   ImageBackground,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 // Local defaults replacing removed mockStores.ts
@@ -523,7 +525,7 @@ const mapScheduleResponseToWorkingHours = (raw: unknown): Store["workingHours"] 
 export default function StoreProfile() {
   const { id_store } = useLocalSearchParams<{ id_store?: string | string[] }>();
   const storeId = useMemo(() => (Array.isArray(id_store) ? id_store[0] : id_store), [id_store]);
-
+  const animationLoading = useRef<LottieView>(null);
   const {
     getStoreById,
     getStoreRatingsAverage,
@@ -1027,7 +1029,13 @@ export default function StoreProfile() {
       <ScreenContainer>
         <HeaderScreen title="Loja" showButtonBack />
         <View style={styles.notFoundContainer}>
-          <ActivityIndicator color={theme.colors.primary} size="large" />
+          <LoadingIcon
+            autoPlay
+            loop
+            source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
           <Text style={[styles.notFoundText, { marginTop: theme.spacing.md }]}>
             Carregando informações da loja...
           </Text>
@@ -1217,7 +1225,13 @@ export default function StoreProfile() {
 
           {isLoadingPromotions && !hasPromotions ? (
             <View style={styles.promoFeedbackContainer}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             </View>
           ) : null}
 

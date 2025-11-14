@@ -1,12 +1,14 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
-import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import LottieView from "lottie-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -364,6 +366,8 @@ export default function ProductDetails() {
     return id_produto ?? null;
   }, [id_produto]);
 
+  const animationLoading = useRef<LottieView>(null);
+
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
@@ -629,7 +633,13 @@ export default function ProductDetails() {
     if (isLoading) {
       return (
         <View style={styles.feedbackWrapper}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <LoadingIcon
+            autoPlay
+            loop
+            // source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
           <Text style={styles.feedbackText}>Carregando produto...</Text>
         </View>
       );

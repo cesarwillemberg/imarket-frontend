@@ -1,20 +1,21 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import LottieView from "lottie-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -363,7 +364,7 @@ export default function ProductStoreDetails() {
     const normalizedIdProduto = Array.isArray(id_produto) ? id_produto[0] : id_produto;
     return normalizedIdProduct ?? normalizedIdProduto ?? null;
   }, [id_product, id_produto]);
-
+  const animationLoading = useRef<LottieView>(null);
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
@@ -629,7 +630,13 @@ export default function ProductStoreDetails() {
     if (isLoading) {
       return (
         <View style={styles.feedbackWrapper}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+          <LoadingIcon
+            autoPlay
+            loop
+            // source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
           <Text style={styles.feedbackText}>Carregando produto...</Text>
         </View>
       );
@@ -815,7 +822,13 @@ export default function ProductStoreDetails() {
             disabled={isAddingToCart}
           >
             {isAddingToCart ? (
-              <ActivityIndicator size="small" color={theme.colors.onPrimary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                // source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             ) : (
               <Icon
                 type="MaterialCommunityIcons"
