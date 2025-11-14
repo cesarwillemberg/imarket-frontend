@@ -14,7 +14,10 @@ const createStyles = (theme: Theme) =>
     headerRow: {
       flexDirection: "row",
       alignItems: "center",
+      borderBottomWidth: 2,
+      padding: theme.spacing.lg,
       marginBottom: theme.spacing.lg,
+      borderBottomColor: theme.colors.primary
     },
     searchBar: {
       flex: 1,

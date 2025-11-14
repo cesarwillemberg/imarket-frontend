@@ -522,6 +522,22 @@ export default function Home() {
 
   return (
     <ScreenContainer style={styles.container}>
+      <View style={styles.headerRow}>
+          <SearchInputBar
+            value={searchTerm}
+            onChangeText={setSearchTerm}
+            placeholder="Pesquisar produtos ou mercados..."
+            containerStyle={styles.searchBar}
+          />
+        <View style={styles.notificationButton}>
+          <Icon type="MaterialCommunityIcons" name="bell-outline" size={22} color={theme.colors.primary} />
+          {notificationCount > 0 ? (
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationText}>{notificationCount}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -534,23 +550,6 @@ export default function Home() {
           />
         }
       >
-        <View style={styles.headerRow}>
-          <SearchInputBar
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-            placeholder="Pesquisar produtos ou mercados..."
-            containerStyle={styles.searchBar}
-          />
-          <View style={styles.notificationButton}>
-            <Icon type="MaterialCommunityIcons" name="bell-outline" size={22} color={theme.colors.primary} />
-            {notificationCount > 0 ? (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{notificationCount}</Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
         {error ? (
           <View style={styles.errorBanner}>
             <Icon
