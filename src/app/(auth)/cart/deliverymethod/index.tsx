@@ -1,18 +1,20 @@
+import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import createTabStyles from "@/src/assets/styles/tabStyles";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -153,6 +155,7 @@ const DeliveryMethod = () => {
     total?: string | string[];
   }>();
 
+  const animationLoading = useRef<LottieView>(null);
   const productTotalParam = Array.isArray(sharedParams.productTotal)
     ? sharedParams.productTotal[0]
     : sharedParams.productTotal;
@@ -449,7 +452,13 @@ const DeliveryMethod = () => {
         <View style={styles.body}>
           {isLoading ? (
             <View style={styles.loadingWrapper}>
-              <ActivityIndicator size="large" color={theme.colors.primary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             </View>
           ) : (
             <ScrollView

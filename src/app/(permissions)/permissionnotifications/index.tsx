@@ -1,6 +1,7 @@
 import PushIllustration from "@/src/assets/images/onboarding/undraw_push-notifications_5z1s.svg";
 import { createTextStyles } from "@/src/assets/styles/textStyles";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
@@ -13,14 +14,14 @@ import {
 import * as Notifications from "expo-notifications";
 import { isRegisteredForRemoteNotificationsAsync } from "expo-notifications";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import LottieView from "lottie-react-native";
+import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -32,6 +33,7 @@ export default function PermissionNotification() {
   const { session } = useSession();
   const [isRequestingPermission, setIsRequestingPermission] = useState(false);
   const [isSkippingPermission, setIsSkippingPermission] = useState(false);
+  const animationLoading = useRef<LottieView>(null);
 
   useEffect(() => {
     if (!session) return router.replace("/signin");
@@ -181,7 +183,13 @@ export default function PermissionNotification() {
             disabled={isRequestingPermission}
           >
             {isRequestingPermission ? (
-              <ActivityIndicator color={theme.colors.onPrimary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                // source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             ) : (
               <>
                 <Text style={styles.buttonText}>Permitir notificações</Text>

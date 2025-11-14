@@ -1,13 +1,14 @@
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import LottieView from "lottie-react-native";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -19,7 +20,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -339,7 +340,7 @@ export default function StoreProductsScreen() {
 
   const { getProductsByStoreId, getImageProduct } = useSession();
   const { storeId, storeName, onlyPromotion } = useLocalSearchParams<LocalSearchParams>();
-
+  const animationLoading = useRef<LottieView>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -810,7 +811,13 @@ export default function StoreProductsScreen() {
 
       {isLoading ? (
         <View style={styles.loadingWrapper}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
+           <LoadingIcon
+              autoPlay
+              loop
+              // source={loadingCart}
+              refAnimationLoading={animationLoading}
+              style={{ width: 150, height: 150 }}
+            />
         </View>
       ) : null}
     </View>

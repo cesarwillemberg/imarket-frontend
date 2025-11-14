@@ -1,6 +1,8 @@
+import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import { Button } from "@/src/components/common/Button";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
 import { useSession } from "@/src/providers/SessionContext/Index";
@@ -12,9 +14,9 @@ import {
   requestForegroundPermissionsAsync,
 } from "expo-location";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   ListRenderItemInfo,
@@ -26,7 +28,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 // Removed dependency on mockStores.ts; define local defaults and lightweight types
@@ -254,6 +256,9 @@ export default function StoreScreen() {
   const [storeLocationMeta, setStoreLocationMeta] = useState<
     Record<string, { city: string | null; state: string | null }>
   >({});
+
+  const animationLoading = useRef<LottieView>(null);
+
   const [favoriteStoreIds, setFavoriteStoreIds] = useState<Record<string, boolean>>({});
 
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
@@ -1176,7 +1181,13 @@ export default function StoreScreen() {
     if (isLoadingStores) {
       return (
         <View style={styles.emptyState}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <LoadingIcon
+            autoPlay
+            loop
+            source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
         </View>
       );
     }

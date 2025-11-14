@@ -22,12 +22,11 @@ import {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -288,48 +287,51 @@ export default function SearchAddressByName() {
                       autoCorrect: false,
                     }}
                   />
-                  {isSearching ? (
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.colors.primary}
-                      style={styles.searchSpinner}
-                    />
-                  ) : null}
                 </View>
 
-                {errorMessage ? (
+                {isSearching ? (
+                  <View style={{ alignItems: "center" }}>
+                    <LoadingIcon
+                      autoPlay
+                      loop
+                      source={loadingCart}
+                      refAnimationLoading={animationLoading}
+                      style={{ width: 100, height: 100 }}
+                    />
+                  </View>
+                ) : errorMessage ? (
                   <Text style={styles.errorText}>{errorMessage}</Text>
                 ) : results.length > 0 ? (
-                  <View style={styles.resultsContainer}>
-                    {results.map((result, index) => (
-                      <TouchableOpacity
-                        key={`${result.coords.latitude}-${result.coords.longitude}-${index}`}
-                        style={[
-                          styles.resultItem,
-                          index === results.length - 1 && styles.resultItemLast,
-                        ]}
-                        onPress={() => handleAddressPress(result)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.resultIconWrapper}>
-                          <Icon
-                            name="map-marker"
-                            type="MaterialCommunityIcons"
-                            size={20}
-                            color={theme.colors.primary}
-                          />
-                        </View>
-                        <View style={styles.resultTextContainer}>
-                          <Text style={styles.resultTitle} numberOfLines={1}>
-                            {buildPrimaryLine(result)}
-                          </Text>
-                          <Text style={styles.resultSubtitle} numberOfLines={1}>
-                            {buildSecondaryLine(result)}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+                    <View style={styles.resultsContainer}>
+                      {results.map((result, index) => (
+                        <TouchableOpacity
+                          key={`${result.coords.latitude}-${result.coords.longitude}-${index}`}
+                          style={[
+                            styles.resultItem,
+                            index === results.length - 1 && styles.resultItemLast,
+                          ]}
+                          onPress={() => handleAddressPress(result)}
+                          activeOpacity={0.7}
+                        >
+                          <View style={styles.resultIconWrapper}>
+                            <Icon
+                              name="map-marker"
+                              type="MaterialCommunityIcons"
+                              size={20}
+                              color={theme.colors.primary}
+                            />
+                          </View>
+                          <View style={styles.resultTextContainer}>
+                            <Text style={styles.resultTitle} numberOfLines={1}>
+                              {buildPrimaryLine(result)}
+                            </Text>
+                            <Text style={styles.resultSubtitle} numberOfLines={1}>
+                              {buildSecondaryLine(result)}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                 ) : !isSearching ? (
                   <View style={styles.emptyState}>
                     <Text style={styles.emptyStateText}>{emptyStateMessage}</Text>

@@ -1,5 +1,7 @@
+import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchInputBar from "@/src/components/common/SearchBar";
 import productService from "@/src/services/products-service";
@@ -7,9 +9,9 @@ import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync, reverseGeocodeAsync } from "expo-location";
 import { useRouter } from "expo-router";
-import { memo, useCallback, useEffect, useMemo, useState } from "react";
+import LottieView from "lottie-react-native";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Image,
   Modal,
@@ -20,7 +22,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -639,6 +641,7 @@ export default function Products() {
   const router = useRouter();
 
   const [products, setProducts] = useState<ProductListItem[]>([]);
+  const animationLoading = useRef<LottieView>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -1313,8 +1316,13 @@ export default function Products() {
     if (isLoading) {
       return (
         <View style={styles.feedbackWrapper}>
-          <ActivityIndicator color={theme.colors.primary} size="large" />
-          <Text style={styles.feedbackText}>Carregando produtos...</Text>
+          <LoadingIcon
+            autoPlay
+            loop
+            source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
         </View>
       );
     }

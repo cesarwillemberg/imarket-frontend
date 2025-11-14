@@ -1,20 +1,22 @@
+import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useFocusEffect, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
@@ -289,6 +291,7 @@ export default function Cart() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
+  const animationLoading = useRef<LottieView>(null);
 
   const {
     user,
@@ -683,7 +686,7 @@ export default function Cart() {
         });
         return accumulator;
       },
-      [] as Array<{ storeId: string; productId: string; checked: boolean }>
+      [] as { storeId: string; productId: string; checked: boolean }[]
     );
 
     if (!updates.length) {
@@ -1077,8 +1080,13 @@ export default function Cart() {
     if (isLoading) {
       return (
         <View style={styles.feedbackWrapper}>
-          <ActivityIndicator size="small" color={theme.colors.primary} />
-          <Text style={styles.feedbackText}>Carregando carrinho...</Text>
+          <LoadingIcon
+            autoPlay
+            loop
+            source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
         </View>
       );
     }
@@ -1097,41 +1105,49 @@ export default function Cart() {
     if (!groups.length) {
       return (
         <View style={styles.feedbackWrapper}>
-          <Icon
-            type="MaterialCommunityIcons"
-            name="cart-off"
-            size={48}
-            color={theme.colors.disabled}
-          />
-          <Text style={styles.feedbackText}>Seu carrinho está vazio.</Text>
-          <TouchableOpacity
-            style={[
-              styles.refreshButton,
-              (isRefreshing || isMutating) && styles.refreshButtonDisabled,
-            ]}
-            activeOpacity={0.7}
-            onPress={handleRefresh}
-            disabled={isRefreshing || isMutating}
-          >
-            {isRefreshing ? (
-              <ActivityIndicator size="small" color={theme.colors.primary} />
-            ) : (
+          {isRefreshing ? (
+            <LoadingIcon
+              autoPlay
+              loop
+              source={loadingCart}
+              refAnimationLoading={animationLoading}
+              style={{ width: 150, height: 150 }}
+            />
+          ) : (
+            <>
               <Icon
                 type="MaterialCommunityIcons"
-                name="refresh"
-                size={18}
-                color={theme.colors.primary}
+                name="cart-off"
+                size={48}
+                color={theme.colors.disabled}
               />
-            )}
-            <Text
-              style={[
-                styles.refreshButtonText,
-                (isRefreshing || isMutating) && styles.refreshButtonTextDisabled,
-              ]}
-            >
-              Recarregar
-            </Text>
-          </TouchableOpacity>
+              <Text style={styles.feedbackText}>Seu carrinho está vazio.</Text>
+              <TouchableOpacity
+                style={[
+                  styles.refreshButton,
+                  (isRefreshing || isMutating) && styles.refreshButtonDisabled,
+                ]}
+                activeOpacity={0.7}
+                onPress={handleRefresh}
+                disabled={isRefreshing || isMutating}
+              >
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="refresh"
+                  size={18}
+                  color={theme.colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.refreshButtonText,
+                    (isRefreshing || isMutating) && styles.refreshButtonTextDisabled,
+                  ]}
+                >
+                  Recarregar
+                </Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       );
     }
