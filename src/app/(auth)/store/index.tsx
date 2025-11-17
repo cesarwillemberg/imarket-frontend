@@ -1,4 +1,3 @@
-import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import { Button } from "@/src/components/common/Button";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
@@ -1352,20 +1351,6 @@ export default function StoreScreen() {
   ]);
 
   const renderEmptyState = () => {
-    if (isLoadingStores) {
-      return (
-        <View style={styles.emptyState}>
-          <LoadingIcon
-            autoPlay
-            loop
-            source={loadingCart}
-            refAnimationLoading={animationLoading}
-            style={{ width: 150, height: 150 }}
-          />
-        </View>
-      );
-    }
-
     if (loadError) {
       return (
         <View style={styles.emptyState}>
@@ -1537,20 +1522,34 @@ export default function StoreScreen() {
       <View style={styles.container}>
         <HeaderScreen title="Lojas" />
         <View style={styles.content}>
-          <FlatList
-            data={filteredStores}
-            keyExtractor={(item) => item.id}
-            renderItem={renderStore}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={listContentStyle}
-            ListHeaderComponent={renderListHeader}
-            ListEmptyComponent={renderEmptyState()}
-            refreshing={isLoadingStores}
-            onRefresh={() => {
-              loadStores();
-              syncFavoriteStores();
-            }}
-          />
+          {isLoadingStores ? (
+            <>
+              {renderListHeader()}
+              <View style={styles.loadingWrapper}>
+                <LoadingIcon
+                  autoPlay
+                  loop
+                  refAnimationLoading={animationLoading}
+                  style={{ width: 150, height: 150 }}
+                />
+              </View>
+            </>
+          ) : (
+            <FlatList
+              data={filteredStores}
+              keyExtractor={(item) => item.id}
+              renderItem={renderStore}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={listContentStyle}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={renderEmptyState()}
+              refreshing={isLoadingStores}
+              onRefresh={() => {
+                loadStores();
+                syncFavoriteStores();
+              }}
+            />
+          )}
         </View>
       </View>
       <FilterModal

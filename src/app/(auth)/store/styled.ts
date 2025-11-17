@@ -16,6 +16,11 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.md,
       paddingBottom: theme.spacing.md,
     },
+    loadingWrapper: {
+      paddingVertical: theme.spacing.lg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     searchRow: {
       flexDirection: "row",
       alignItems: "center",
