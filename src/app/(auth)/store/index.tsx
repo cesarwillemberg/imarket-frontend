@@ -1,4 +1,3 @@
-import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import { Button } from "@/src/components/common/Button";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
@@ -30,18 +29,73 @@ import {
   TouchableWithoutFeedback,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import createStyles from "./styled";
 // Removed dependency on mockStores.ts; define local defaults and lightweight types
+const FALLBACK_CITY = "Ijui";
+const USER_CITY_KEYS = ["city", "cidade", "city_name", "cityName", "locality"] as const;
+const USER_STATE_KEYS = ["state", "estado", "state_acronym", "stateAcronym", "uf"] as const;
+
+const extractNormalizedString = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  return null;
+};
+
+const extractValueFromMetadata = (
+  metadata: Record<string, unknown> | null | undefined,
+  keys: readonly string[]
+): string | null => {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  for (const key of keys) {
+    const extracted = extractNormalizedString(
+      (metadata as Record<string, unknown>)[key]
+    );
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  const nestedAddress = (metadata as Record<string, unknown>).address;
+  if (nestedAddress && typeof nestedAddress === "object") {
+    for (const key of keys) {
+      const extracted = extractNormalizedString(
+        (nestedAddress as Record<string, unknown>)[key]
+      );
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+
+  return null;
+};
+
+const extractCityFromMetadata = (metadata?: Record<string, unknown> | null): string | null => {
+  return extractValueFromMetadata(metadata, USER_CITY_KEYS);
+};
+
+const extractStateFromMetadata = (metadata?: Record<string, unknown> | null): string | null => {
+  return extractValueFromMetadata(metadata, USER_STATE_KEYS);
+};
+
 const DEFAULT_FILTERS = {
   state: "RS",
-  city: "Ijui",
-  radiusKm: 5,
+  city: FALLBACK_CITY,
+  radiusKm: null,
+  favoritesOnly: false,
 } as const;
 
 const EMPTY_FILTERS = {
   state: null,
   city: null,
   radiusKm: null,
+  favoritesOnly: false,
 } as const;
 
 type StoreInfoBlock = { label: string; value: string };
@@ -229,17 +283,54 @@ const pickFallbackBrandColor = (identifier: string): string => {
   return FALLBACK_BRAND_COLORS[paletteIndex];
 };
 
+const FAVORITE_STORE_ID_KEYS = ["store_id", "id_store", "storeId", "idStore", "store"] as const;
+
+const extractFavoriteStoreId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_STORE_ID_KEYS) {
+    const rawValue = row[key];
+    if (typeof rawValue === "string" && rawValue.trim().length) {
+      return rawValue.trim();
+    }
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      return String(rawValue);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
+};
+
 
 type StoreFilters = {
   state: string | null;
   city: string | null;
   radiusKm: number | null;
+  favoritesOnly: boolean;
 };
 
 export default function StoreScreen() {
-  const { getStores, getStoreRatingsAverage, getAddressesStore } = useSession();
+  const {
+    session,
+    getStores,
+    getStoreRatingsAverage,
+    getAddressesStore,
+    getFavoriteStoresByUser,
+    addStoreToFavorites,
+    removeStoreFromFavorites,
+  } = useSession();
+  const userId = session?.user?.id ?? null;
+  const userMetadata = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
+  const resolvedUserCity = extractCityFromMetadata(userMetadata);
+  const resolvedUserState = extractStateFromMetadata(userMetadata);
+  const defaultCity = resolvedUserCity ?? FALLBACK_CITY;
+  const defaultState = resolvedUserState ?? DEFAULT_FILTERS.state;
 
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
   const router = useRouter();
 
@@ -264,9 +355,10 @@ export default function StoreScreen() {
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
 
   const [filters, setFilters] = useState<StoreFilters>({
-    state: EMPTY_FILTERS.state,
-    city: EMPTY_FILTERS.city,
+    state: defaultState,
+    city: defaultCity,
     radiusKm: EMPTY_FILTERS.radiusKm,
+    favoritesOnly: EMPTY_FILTERS.favoritesOnly,
   });
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -282,6 +374,74 @@ export default function StoreScreen() {
   useEffect(() => {
     storeLocationMetaRef.current = storeLocationMeta;
   }, [storeLocationMeta]);
+
+  useEffect(() => {
+    if (!resolvedUserCity) {
+      return;
+    }
+
+    setFilters((current) => {
+      if (!current.city) {
+        return {
+          ...current,
+          city: resolvedUserCity,
+        };
+      }
+
+      const currentNormalized = normalizeForComparison(current.city);
+      const fallbackNormalized = normalizeForComparison(FALLBACK_CITY);
+      const resolvedNormalized = normalizeForComparison(resolvedUserCity);
+
+      if (currentNormalized === resolvedNormalized) {
+        return current;
+      }
+
+      if (currentNormalized === fallbackNormalized) {
+        return {
+          ...current,
+          city: resolvedUserCity,
+        };
+      }
+
+      return current;
+    });
+  }, [resolvedUserCity]);
+
+  useEffect(() => {
+    if (!resolvedUserState) {
+      return;
+    }
+
+    setFilters((current) => {
+      if (!current.state) {
+        return {
+          ...current,
+          state: resolvedUserState,
+        };
+      }
+
+      const currentNormalized = normalizeStateKey(current.state);
+      const fallbackNormalized = normalizeStateKey(DEFAULT_FILTERS.state);
+      const resolvedNormalized = normalizeStateKey(resolvedUserState);
+
+      if (currentNormalized === resolvedNormalized) {
+        return current;
+      }
+
+      if (
+        fallbackNormalized &&
+        currentNormalized &&
+        currentNormalized === fallbackNormalized
+      ) {
+        return {
+          ...current,
+          state: resolvedUserState,
+        };
+      }
+
+      return current;
+    });
+  }, [resolvedUserState]);
 
 
   useEffect(() => {
@@ -302,23 +462,49 @@ export default function StoreScreen() {
         if (!granted) {
           console.warn("StoreScreen: permissao de localizacao nao concedida.");
           setUserLocation(null);
-          setFilters({
-            state: EMPTY_FILTERS.state,
-            city: EMPTY_FILTERS.city,
-            radiusKm: EMPTY_FILTERS.radiusKm,
+          setFilters((current) => {
+            const nextState = current.state ?? defaultState;
+            const nextCity = current.city ?? defaultCity;
+            if (
+              nextState === current.state &&
+              nextCity === current.city &&
+              current.radiusKm === EMPTY_FILTERS.radiusKm
+            ) {
+              return current;
+            }
+            return {
+              ...current,
+              state: nextState,
+              city: nextCity,
+              radiusKm: EMPTY_FILTERS.radiusKm,
+            };
           });
           return;
         }
 
         setFilters((current) => {
-          if (current.state || current.city || current.radiusKm !== null) {
+          const normalizedCurrentCity = current.city
+            ? normalizeForComparison(current.city)
+            : null;
+          const nextCity =
+            !current.city || normalizedCurrentCity === normalizeForComparison(FALLBACK_CITY)
+              ? defaultCity
+              : current.city;
+          const nextState = current.state ?? defaultState;
+
+          if (
+            nextState === current.state &&
+            nextCity === current.city &&
+            current.radiusKm === EMPTY_FILTERS.radiusKm
+          ) {
             return current;
           }
 
           return {
-            state: DEFAULT_FILTERS.state,
-            city: DEFAULT_FILTERS.city,
-            radiusKm: DEFAULT_FILTERS.radiusKm,
+            ...current,
+            state: nextState,
+            city: nextCity,
+            radiusKm: EMPTY_FILTERS.radiusKm,
           };
         });
 
@@ -354,25 +540,28 @@ export default function StoreScreen() {
     : filters.state ?? "Selecionar local";
 
   const hasFilterOverrides = useMemo(() => {
-    const expectedState = hasLocationPermission ? DEFAULT_FILTERS.state : EMPTY_FILTERS.state;
-    const expectedCity = hasLocationPermission ? DEFAULT_FILTERS.city : EMPTY_FILTERS.city;
-    const expectedRadius = hasLocationPermission ? DEFAULT_FILTERS.radiusKm : EMPTY_FILTERS.radiusKm;
+    const expectedState = defaultState;
+    const expectedCity = defaultCity;
+    const expectedRadius = EMPTY_FILTERS.radiusKm;
+    const expectedFavoritesOnly = EMPTY_FILTERS.favoritesOnly;
 
     return (
       (filters.state ?? null) !== expectedState ||
       (filters.city ?? null) !== expectedCity ||
-      (filters.radiusKm ?? null) !== expectedRadius
+      (filters.radiusKm ?? null) !== expectedRadius ||
+      filters.favoritesOnly !== expectedFavoritesOnly
     );
-  }, [filters, hasLocationPermission]);
+  }, [defaultCity, defaultState, filters]);
 
   const hasVisibleFilters = useMemo(
     () =>
       Boolean(
         (filters.state && filters.state.length) ||
           (filters.city && filters.city.length) ||
-          filters.radiusKm !== null
+          filters.radiusKm !== null ||
+          filters.favoritesOnly
       ),
-    [filters.city, filters.radiusKm, filters.state]
+    [filters.city, filters.favoritesOnly, filters.radiusKm, filters.state]
   );
 
   const mapStoreFromApi = useCallback(
@@ -587,38 +776,97 @@ export default function StoreScreen() {
     }
   }, [getStores, mapStoreFromApi]);
 
+  const syncFavoriteStores = useCallback(async () => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    if (!userId) {
+      setFavoriteStoreIds((current) => {
+        if (Object.keys(current).length === 0) {
+          return current;
+        }
+        return {};
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await getFavoriteStoresByUser(userId);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      if (error) {
+        console.warn("StoreScreen: falha ao buscar lojas favoritas:", error);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const favoriteIds = new Set<string>();
+
+      for (const entry of rows) {
+        if (entry && typeof entry === "object") {
+          const storeId = extractFavoriteStoreId(entry);
+          if (storeId) {
+            favoriteIds.add(storeId);
+          }
+        }
+      }
+
+      setFavoriteStoreIds((current) => {
+        const next: Record<string, boolean> = { ...current };
+        let hasChanged = false;
+
+        favoriteIds.forEach((storeId) => {
+          if (next[storeId] !== true) {
+            next[storeId] = true;
+            hasChanged = true;
+          }
+        });
+
+        Object.keys(next).forEach((storeId) => {
+          if (!favoriteIds.has(storeId) && next[storeId]) {
+            next[storeId] = false;
+            hasChanged = true;
+          }
+        });
+
+        return hasChanged ? next : current;
+      });
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error("StoreScreen: erro inesperado ao buscar lojas favoritas:", error);
+      }
+    }
+  }, [getFavoriteStoresByUser, userId]);
+
   useEffect(() => {
     loadStores();
   }, [loadStores]);
 
   useEffect(() => {
+    syncFavoriteStores();
+  }, [syncFavoriteStores]);
+
+  useEffect(() => {
+    if (!stores.length) {
+      return;
+    }
+
     setFavoriteStoreIds((current) => {
-      const next: Record<string, boolean> = {};
+      const next: Record<string, boolean> = { ...current };
+      let hasChanged = false;
+
       for (const store of stores) {
-        next[store.id] = current[store.id] ?? false;
-      }
-
-      const currentKeys = Object.keys(current);
-      const nextKeys = Object.keys(next);
-
-      const hasSameKeys =
-        currentKeys.length === nextKeys.length &&
-        currentKeys.every((key) => key in next);
-
-      if (hasSameKeys) {
-        let allSame = true;
-        for (const key of nextKeys) {
-          if (current[key] !== next[key]) {
-            allSame = false;
-            break;
-          }
-        }
-        if (allSame) {
-          return current;
+        if (!Object.prototype.hasOwnProperty.call(next, store.id)) {
+          next[store.id] = false;
+          hasChanged = true;
         }
       }
 
-      return next;
+      return hasChanged ? next : current;
     });
   }, [stores]);
 
@@ -659,7 +907,7 @@ export default function StoreScreen() {
         try {
           let coordinates = geocodedStoreCoordsRef.current[storeId];
 
-          if (!coordinates) {
+          if (!coordinates && shouldComputeDistances) {
             const { data, error } = await getAddressesStore(storeId);
 
             if (error) {
@@ -702,55 +950,64 @@ export default function StoreScreen() {
                   null,
               };
 
-              if (
-                typeof primaryAddress?.latitude === "number" &&
-                typeof primaryAddress?.longitude === "number"
-              ) {
-                const coords: Coordinates = {
-                  latitude: primaryAddress.latitude,
-                  longitude: primaryAddress.longitude,
-                };
-                coordinates = coords;
-                geocodedStoreCoordsRef.current[storeId] = coords;
-              }
+              if (shouldComputeDistances) {
+                if (
+                  typeof primaryAddress?.latitude === "number" &&
+                  typeof primaryAddress?.longitude === "number"
+                ) {
+                  const coords: Coordinates = {
+                    latitude: primaryAddress.latitude,
+                    longitude: primaryAddress.longitude,
+                  };
+                  coordinates = coords;
+                  geocodedStoreCoordsRef.current[storeId] = coords;
+                }
 
-              if (!coordinates) {
-                const addressParts = [
-                  [primaryAddress.street, primaryAddress.street_number]
-                    .filter(Boolean)
-                    .join(", ")
-                    .trim(),
-                  primaryAddress.neighborhood,
-                  primaryAddress.city,
-                  primaryAddress.state_acronym ?? primaryAddress.state,
-                  primaryAddress.country ?? "Brasil",
-                ]
-                  .filter((part: string | null | undefined) => {
-                    if (typeof part !== "string") return false;
-                    return part.trim().length > 0;
-                  })
-                  .map((part: string) => part.trim());
+                if (!coordinates) {
+                  const addressParts = [
+                    [primaryAddress.street, primaryAddress.street_number]
+                      .filter(Boolean)
+                      .join(", ")
+                      .trim(),
+                    primaryAddress.neighborhood,
+                    primaryAddress.city,
+                    primaryAddress.state_acronym ?? primaryAddress.state,
+                    primaryAddress.country ?? "Brasil",
+                  ]
+                    .filter((part: string | null | undefined) => {
+                      if (typeof part !== "string") return false;
+                      return part.trim().length > 0;
+                    })
+                    .map((part: string) => part.trim());
 
-                if (addressParts.length) {
-                  const formattedAddress = addressParts.join(", ");
+                  if (addressParts.length) {
+                    const formattedAddress = addressParts.join(", ");
 
-                  if (formattedAddress) {
-                    const geocodedResults = await geocodeAsync(formattedAddress);
+                    if (formattedAddress) {
+                      try {
+                        const geocodedResults = await geocodeAsync(formattedAddress);
 
-                    const firstValid = geocodedResults.find(
-                      (entry) =>
-                        typeof entry?.latitude === "number" &&
-                        typeof entry?.longitude === "number"
-                    );
+                        const firstValid = geocodedResults.find(
+                          (entry) =>
+                            typeof entry?.latitude === "number" &&
+                            typeof entry?.longitude === "number"
+                        );
 
-                    if (firstValid) {
-                      const coords: Coordinates = {
-                        latitude: firstValid.latitude,
-                        longitude: firstValid.longitude,
-                      };
+                        if (firstValid) {
+                          const coords: Coordinates = {
+                            latitude: firstValid.latitude,
+                            longitude: firstValid.longitude,
+                          };
 
-                      geocodedStoreCoordsRef.current[storeId] = coords;
-                      coordinates = coords;
+                          geocodedStoreCoordsRef.current[storeId] = coords;
+                          coordinates = coords;
+                        }
+                      } catch (error) {
+                        console.warn(
+                          `StoreScreen: falha ao geocodificar endereco da loja ${storeId}:`,
+                          error
+                        );
+                      }
                     }
                   }
                 }
@@ -953,7 +1210,10 @@ export default function StoreScreen() {
       const stateCandidate = (locationMeta?.state ?? store.state ?? "").trim();
       const cityCandidate = (locationMeta?.city ?? store.city ?? "").trim();
 
-      const normalizedFilterState = normalizeStateKey(filters.state);
+      const shouldApplyStateFilter = Boolean(filters.city && filters.state);
+      const normalizedFilterState = shouldApplyStateFilter
+        ? normalizeStateKey(filters.state)
+        : null;
       const normalizedStoreState = normalizeStateKey(stateCandidate);
 
       if (
@@ -999,10 +1259,16 @@ export default function StoreScreen() {
         }
       }
 
+      if (filters.favoritesOnly && !favoriteStoreIds[store.id]) {
+        return false;
+      }
+
       return true;
     });
   }, [
+    favoriteStoreIds,
     filters.city,
+    filters.favoritesOnly,
     filters.radiusKm,
     filters.state,
     parseDistance,
@@ -1023,12 +1289,50 @@ export default function StoreScreen() {
     });
   };
 
-  const toggleFavorite = (storeId: string) => {
-    setFavoriteStoreIds((current) => ({
-      ...current,
-      [storeId]: !current[storeId],
-    }));
-  };
+  const toggleFavorite = useCallback(
+    async (storeId: string) => {
+      if (!storeId) {
+        return;
+      }
+
+      if (!userId) {
+        console.warn("StoreScreen: usuario nao autenticado ao modificar favoritos de loja.");
+        return;
+      }
+
+      let nextValue = false;
+
+      setFavoriteStoreIds((current) => {
+        const currentValue = Boolean(current[storeId]);
+        nextValue = !currentValue;
+        return {
+          ...current,
+          [storeId]: nextValue,
+        };
+      });
+
+      try {
+        if (nextValue) {
+          const { error } = await addStoreToFavorites(userId, storeId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await removeStoreFromFavorites(userId, storeId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error("StoreScreen: erro ao atualizar favorito da loja:", error);
+        setFavoriteStoreIds((current) => ({
+          ...current,
+          [storeId]: !nextValue,
+        }));
+      }
+    },
+    [addStoreToFavorites, removeStoreFromFavorites, userId]
+  );
 
   const handleApplyFilters = (nextFilters: StoreFilters) => {
     setFilters(nextFilters);
@@ -1054,22 +1358,21 @@ export default function StoreScreen() {
     }));
   };
 
-  const handleResetFilters = useCallback(() => {
-    if (hasLocationPermission) {
-      setFilters({
-        state: DEFAULT_FILTERS.state,
-        city: DEFAULT_FILTERS.city,
-        radiusKm: DEFAULT_FILTERS.radiusKm,
-      });
-      return;
-    }
+  const handleClearFavoritesOnly = () => {
+    setFilters((current) => ({
+      ...current,
+      favoritesOnly: false,
+    }));
+  };
 
+  const handleResetFilters = useCallback(() => {
     setFilters({
       state: EMPTY_FILTERS.state,
       city: EMPTY_FILTERS.city,
       radiusKm: EMPTY_FILTERS.radiusKm,
+      favoritesOnly: EMPTY_FILTERS.favoritesOnly,
     });
-  }, [hasLocationPermission]);
+  }, []);
 
   const renderListHeader = useCallback(() => {
     const filterIconColor = theme.colors.primary;
@@ -1155,15 +1458,43 @@ export default function StoreScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
+
+            {filters.favoritesOnly ? (
+              <View style={styles.filterChip}>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="heart"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.filterChipText}>Favoritas</Text>
+                <TouchableOpacity
+                  onPress={handleClearFavoritesOnly}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar filtro de favoritas"
+                  style={styles.filterChipRemove}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </View>
       </View>
     );
   }, [
     filters.city,
+    filters.favoritesOnly,
     filters.radiusKm,
     filters.state,
     handleClearLocation,
+    handleClearFavoritesOnly,
     handleClearRadius,
     handleOpenFilters,
     handleResetFilters,
@@ -1178,20 +1509,6 @@ export default function StoreScreen() {
   ]);
 
   const renderEmptyState = () => {
-    if (isLoadingStores) {
-      return (
-        <View style={styles.emptyState}>
-          <LoadingIcon
-            autoPlay
-            loop
-            source={loadingCart}
-            refAnimationLoading={animationLoading}
-            style={{ width: 150, height: 150 }}
-          />
-        </View>
-      );
-    }
-
     if (loadError) {
       return (
         <View style={styles.emptyState}>
@@ -1363,19 +1680,34 @@ export default function StoreScreen() {
       <View style={styles.container}>
         <HeaderScreen title="Lojas" />
         <View style={styles.content}>
-          <FlatList
-            data={filteredStores}
-            keyExtractor={(item) => item.id}
-            renderItem={renderStore}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={listContentStyle}
-            ListHeaderComponent={renderListHeader}
-            ListEmptyComponent={renderEmptyState()}
-            refreshing={isLoadingStores}
-            onRefresh={() => {
-              loadStores();
-            }}
-          />
+          {isLoadingStores ? (
+            <>
+              {renderListHeader()}
+              <View style={styles.loadingWrapper}>
+                <LoadingIcon
+                  autoPlay
+                  loop
+                  refAnimationLoading={animationLoading}
+                  style={{ width: 150, height: 150 }}
+                />
+              </View>
+            </>
+          ) : (
+            <FlatList
+              data={filteredStores}
+              keyExtractor={(item) => item.id}
+              renderItem={renderStore}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={listContentStyle}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={renderEmptyState()}
+              refreshing={isLoadingStores}
+              onRefresh={() => {
+                loadStores();
+                syncFavoriteStores();
+              }}
+            />
+          )}
         </View>
       </View>
       <FilterModal
@@ -1385,6 +1717,7 @@ export default function StoreScreen() {
         onCancel={handleCancelFilters}
         theme={theme}
         styles={styles}
+        bottomInset={insets.bottom}
       />
     </ScreenContainer>
   );
@@ -1479,6 +1812,7 @@ type FilterModalProps = {
   onCancel: () => void;
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
+  bottomInset: number;
 };
 
 const FilterModal = ({
@@ -1488,17 +1822,20 @@ const FilterModal = ({
   onCancel,
   theme,
   styles,
+  bottomInset,
 }: FilterModalProps) => {
   const [cityValue, setCityValue] = useState(filters.city ?? "");
   const [radiusValue, setRadiusValue] = useState(filters.radiusKm ?? 5);
   const [radiusEnabled, setRadiusEnabled] = useState(filters.radiusKm !== null);
   const [isCitySelectorVisible, setIsCitySelectorVisible] = useState(false);
   const [citySearch, setCitySearch] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(filters.favoritesOnly ?? false);
 
   useEffect(() => {
     setCityValue(filters.city ?? "");
     setRadiusValue(filters.radiusKm ?? 5);
     setRadiusEnabled(filters.radiusKm !== null);
+    setFavoritesOnly(filters.favoritesOnly ?? false);
   }, [filters]);
 
   useEffect(() => {
@@ -1519,10 +1856,13 @@ const FilterModal = ({
   }, [citySearch]);
 
   const handleApply = () => {
+    const normalizedCity = cityValue?.trim() ? cityValue : null;
+    const shouldApplyState = Boolean(normalizedCity);
     onApply({
-      state: LOCKED_STATE.sigla,
-      city: cityValue ? cityValue : null,
+      state: shouldApplyState ? LOCKED_STATE.sigla : null,
+      city: normalizedCity,
       radiusKm: radiusEnabled ? radiusValue ?? 5 : null,
+      favoritesOnly,
     });
   };
 
@@ -1538,7 +1878,14 @@ const FilterModal = ({
           <TouchableWithoutFeedback onPress={onCancel}>
             <View style={styles.filterModalOverlay} />
           </TouchableWithoutFeedback>
-          <View style={styles.filterModalCard}>
+          <View
+            style={[
+              styles.filterModalCard,
+              {
+                paddingBottom: theme.spacing.sm + Math.max(bottomInset, 0),
+              },
+            ]}
+          >
             <View style={styles.filterModalHandle} />
             <Text style={styles.filterModalTitle}>Filtros</Text>
 
@@ -1546,7 +1893,7 @@ const FilterModal = ({
               <View style={{ gap: theme.spacing.sm }}>
                 <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.filterLabel}>Estado</Text>
+                  <Text style={styles.filterLabel}>Estado:</Text>
                   <View
                     style={{
                       backgroundColor: theme.colors.secondary,
@@ -1600,7 +1947,7 @@ const FilterModal = ({
                 </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.filterLabel}>Cidade</Text>
+                    <Text style={styles.filterLabel}>Cidade:</Text>
                     <View
                       style={{
                         backgroundColor: theme.colors.secondary,
@@ -1680,6 +2027,42 @@ const FilterModal = ({
               </View>
             </View>
 
+            <View style={styles.filterFieldGroup}>
+              <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos:</Text>
+              <TouchableOpacity
+                style={[
+                  styles.favoriteTogglePill,
+                  favoritesOnly && styles.favoriteTogglePillActive,
+                ]}
+                onPress={() => setFavoritesOnly((prev) => !prev)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.favoriteToggleCheckbox,
+                    favoritesOnly && styles.favoriteToggleCheckboxActive,
+                  ]}
+                >
+                  {favoritesOnly ? (
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="check"
+                      size={16}
+                      color={theme.colors.onPrimary}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.favoriteToggleLabel,
+                    favoritesOnly && styles.favoriteToggleLabelActive,
+                  ]}
+                >
+                  Mostrar apenas lojas favoritas
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Button
               title="Aplicar Filtros"
               onPress={handleApply}
@@ -1687,7 +2070,13 @@ const FilterModal = ({
             />
 
             <TouchableOpacity
-              style={styles.cancelFilterButton}
+              style={[
+                styles.cancelFilterButton,
+                {
+                  marginBottom:
+                    bottomInset > 0 ? bottomInset : theme.spacing.sm,
+                },
+              ]}
               onPress={onCancel}
               activeOpacity={0.7}
             >

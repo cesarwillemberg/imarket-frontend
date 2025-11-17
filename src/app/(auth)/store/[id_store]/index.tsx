@@ -4,6 +4,7 @@ import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -12,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -56,6 +58,27 @@ type Store = {
   info: StoreInfoBlock[];
   workingHours: StoreInfoBlock[];
   promotions: StorePromotion[];
+};
+
+const FAVORITE_STORE_ID_KEYS = ["store_id", "id_store", "storeId", "idStore", "store"] as const;
+
+const extractFavoriteStoreId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_STORE_ID_KEYS) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
 };
 
 
@@ -533,6 +556,7 @@ export default function StoreProfile() {
   }, [origin]);
   const animationLoading = useRef<LottieView>(null);
   const {
+    session,
     getStoreById,
     getStoreRatingsAverage,
     getAddressesStore,
@@ -540,6 +564,7 @@ export default function StoreProfile() {
     getImageProduct,
     getItemPromotionByStore,
   } = useSession();
+  const userId = session?.user?.id ?? null;
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
@@ -563,6 +588,33 @@ export default function StoreProfile() {
   const [promotions, setPromotions] = useState<StorePromotion[]>([]);
   const [isLoadingPromotions, setIsLoadingPromotions] = useState(false);
   const [promotionsError, setPromotionsError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const syncFavoriteStatus = useCallback(async () => {
+    if (!storeId || !userId) {
+      setIsFavorite(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await storeService.getFavoriteStoresByProfile(userId);
+      if (error) {
+        console.warn("StoreProfile: falha ao buscar lojas favoritas:", error);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const hasFavorite = rows.some((entry) => {
+        if (!entry || typeof entry !== "object") {
+          return false;
+        }
+        return extractFavoriteStoreId(entry) === storeId;
+      });
+
+      setIsFavorite(hasFavorite);
+    } catch (error) {
+      console.error("StoreProfile: erro inesperado ao buscar favoritos:", error);
+    }
+  }, [storeId, userId]);
   const workingHoursToDisplay = storeWorkingHours.length
     ? storeWorkingHours
     : store?.workingHours ?? [];
@@ -673,25 +725,34 @@ export default function StoreProfile() {
   const handleReloadPromotions = useCallback(() => {
     fetchPromotions();
   }, [fetchPromotions]);
-  useEffect(() => {
-    let cancelled = false;
 
-    const fetchStoreDetails = async () => {
+  useEffect(() => {
+    syncFavoriteStatus();
+  }, [syncFavoriteStatus]);
+
+  const fetchStoreDetails = useCallback(
+    async (isCancelled?: () => boolean) => {
       if (!storeId) {
-        setStore(undefined);
+        if (!isCancelled?.()) {
+          setStore(undefined);
+          setStoreWorkingHours([]);
+        }
         return;
       }
 
-      setIsLoadingStore(true);
-      setStoreLoadError(null);
-      setStoreWorkingHours([]);
+      if (!isCancelled?.()) {
+        setIsLoadingStore(true);
+        setStoreLoadError(null);
+        setStoreWorkingHours([]);
+      }
 
       try {
         const { data, error } = await getStoreById(storeId);
-
         const { data: scheduleData, error: scheduleError } = await getStoreSchedule(storeId);
 
-        if (cancelled) return;
+        if (isCancelled?.()) {
+          return;
+        }
 
         if (scheduleError) {
           console.error("StoreProfile: erro ao buscar horario da loja:", scheduleError);
@@ -702,7 +763,7 @@ export default function StoreProfile() {
 
         if (error) {
           console.error("StoreProfile: erro ao buscar loja:", error);
-          setStoreLoadError("Nao foi possivel carregar as informações da loja.");
+          setStoreLoadError("Nao foi possivel carregar as informacoes da loja.");
           setStore(undefined);
           return;
         }
@@ -718,24 +779,29 @@ export default function StoreProfile() {
           }
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           console.error("StoreProfile: erro inesperado ao buscar loja:", error);
-          setStoreLoadError("Nao foi possivel carregar as informações da loja.");
+          setStoreLoadError("Nao foi possivel carregar as informacoes da loja.");
           setStore(undefined);
         }
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setIsLoadingStore(false);
         }
       }
-    };
+    },
+    [getStoreById, getStoreSchedule, storeId]
+  );
 
-    fetchStoreDetails();
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStoreDetails(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [getStoreById, storeId]);
+  }, [fetchStoreDetails]);
 
   useEffect(() => {
     let cancelled = false;
@@ -778,19 +844,23 @@ export default function StoreProfile() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!storeId) {
-      setAverageRating(null);
-      return;
-    }
+  const fetchStoreRating = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!storeId) {
+        if (!isCancelled?.()) {
+          setAverageRating(null);
+        }
+        return;
+      }
 
-    let cancelled = false;
+      if (!isCancelled?.()) {
+        setIsLoadingRating(true);
+      }
 
-    const fetchRating = async () => {
-      setIsLoadingRating(true);
       try {
         const { data, error } = await getStoreRatingsAverage(storeId);
-        if (cancelled) {
+
+        if (isCancelled?.()) {
           return;
         }
 
@@ -807,50 +877,57 @@ export default function StoreProfile() {
           setAverageRating(null);
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           console.error("StoreProfile: erro inesperado ao buscar avaliacao da loja:", error);
           setAverageRating(null);
         }
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setIsLoadingRating(false);
         }
       }
-    };
+    },
+    [getStoreRatingsAverage, storeId]
+  );
 
-    fetchRating();
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStoreRating(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [getStoreRatingsAverage, storeId]);
+  }, [fetchStoreRating]);
 
-  useEffect(() => {
-    if (!storeId) {
-      setDistanceKm(null);
-      setDistanceError(null);
-      setStoreAddressText(null);
-      setStoreWorkingHours([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fallbackAddressFromStore = () => {
-      if (store?.city || store?.state) {
-        return [store?.city, store?.state].filter(Boolean).join(" - ");
+  const fetchStoreAddressAndDistance = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!storeId) {
+        if (!isCancelled?.()) {
+          setDistanceKm(null);
+          setDistanceError(null);
+          setStoreAddressText(null);
+          setStoreWorkingHours([]);
+        }
+        return;
       }
-      return null;
-    };
 
-    const fetchAddressAndDistance = async () => {
-      setIsLoadingDistance(true);
-      setDistanceError(null);
+      const fallbackAddressFromStore = () => {
+        if (store?.city || store?.state) {
+          return [store?.city, store?.state].filter(Boolean).join(" - ");
+        }
+        return null;
+      };
+
+      if (!isCancelled?.()) {
+        setIsLoadingDistance(true);
+        setDistanceError(null);
+      }
 
       try {
         const { data, error } = await getAddressesStore(storeId);
 
-        if (cancelled) {
+        if (isCancelled?.()) {
           return;
         }
 
@@ -937,6 +1014,11 @@ export default function StoreProfile() {
 
             try {
               const geocodedResults = await geocodeAsync(formattedAddress);
+
+              if (isCancelled?.()) {
+                return;
+              }
+
               const firstValid = geocodedResults.find(
                 (entry) =>
                   typeof entry?.latitude === "number" &&
@@ -952,8 +1034,10 @@ export default function StoreProfile() {
                 setDistanceError("Nao foi possivel geocodificar o endereco da loja.");
               }
             } catch (error) {
-              console.error("StoreProfile: erro ao geocodificar endereco da loja:", error);
-              setDistanceError("Nao foi possivel geocodificar o endereco da loja.");
+              if (!isCancelled?.()) {
+                console.error("StoreProfile: erro ao geocodificar endereco da loja:", error);
+                setDistanceError("Nao foi possivel geocodificar o endereco da loja.");
+              }
             }
           } else {
             setDistanceError("Endereco da loja incompleto.");
@@ -971,27 +1055,104 @@ export default function StoreProfile() {
           setDistanceError((prev) => prev ?? "Nao foi possivel calcular a distancia da loja.");
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           console.error("StoreProfile: erro inesperado ao calcular distancia da loja:", error);
           setDistanceError("Nao foi possivel calcular a distancia da loja.");
           setDistanceKm(null);
           setStoreAddressText(fallbackAddressFromStore());
         }
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setIsLoadingDistance(false);
         }
       }
-    };
+    },
+    [getAddressesStore, storeId, store, userLocation]
+  );
 
-    fetchAddressAndDistance();
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStoreAddressAndDistance(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [getAddressesStore, storeId, userLocation, store]);
+  }, [fetchStoreAddressAndDistance]);
 
-  const handleToggleFavorite = () => setIsFavorite((current) => !current);
+  const handleReloadPage = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      await Promise.all(
+        [
+          fetchStoreDetails(),
+          fetchStoreRating(),
+          fetchStoreAddressAndDistance(),
+          fetchPromotions(),
+          syncFavoriteStatus(),
+        ].map((task) =>
+          task.catch((error) => {
+            console.warn("StoreProfile: erro ao recarregar dados:", error);
+          })
+        )
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [
+    fetchPromotions,
+    fetchStoreAddressAndDistance,
+    fetchStoreDetails,
+    fetchStoreRating,
+    isRefreshing,
+    syncFavoriteStatus,
+  ]);
+
+  const handleToggleFavorite = useCallback(async () => {
+    if (!storeId) {
+      console.warn("StoreProfile: loja sem identificador ao atualizar favoritos.");
+      return;
+    }
+
+    if (!userId) {
+      console.warn("StoreProfile: usuario nao autenticado ao atualizar favoritos de loja.");
+      return;
+    }
+
+    let nextValue = false;
+
+    setIsFavorite((current) => {
+      nextValue = !current;
+      return nextValue;
+    });
+
+    try {
+      if (nextValue) {
+        const { error } = await storeService.addStoreToFavorites(userId, storeId);
+        if (error) {
+          throw error;
+        }
+      } else {
+        const { error } = await storeService.removeStoreFromFavorites(userId, storeId);
+        if (error) {
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error("StoreProfile: erro ao atualizar favorito da loja:", error);
+      setIsFavorite((current) => {
+        if (current !== nextValue) {
+          return current;
+        }
+        return !nextValue;
+      });
+    }
+  }, [storeId, userId]);
 
   const ratingValue = averageRating ?? store?.rating ?? 0;
   const ratingLabel = isLoadingRating ? "..." : ratingValue.toFixed(2);
@@ -1094,6 +1255,14 @@ export default function StoreProfile() {
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleReloadPage}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
       >
         <View style={styles.bannerWrapper}>
           <ImageBackground
@@ -1127,7 +1296,7 @@ export default function StoreProfile() {
             onPress={handleToggleFavorite}
             style={[
               styles.favoriteButton,
-              isFavorite && styles.favoriteButtonActive,
+              // isFavorite && styles.favoriteButtonActive,
             ]}
             accessibilityRole="button"
             accessibilityLabel="Adicionar aos favoritos"
@@ -1137,7 +1306,7 @@ export default function StoreProfile() {
               type="MaterialCommunityIcons"
               name={isFavorite ? "heart" : "heart-outline"}
               size={20}
-              color={isFavorite ? theme.colors.onPrimary : theme.colors.primary}
+              color={theme.colors.primary}
             />
           </TouchableOpacity>
 
@@ -1264,27 +1433,11 @@ export default function StoreProfile() {
 
           {hasPromotions ? (
             <View style={styles.promoCarousel}>
-              <TouchableOpacity
-                onPress={() => handleScrollPromotions("left")}
-                style={[
-                  styles.carouselArrow,
-                  !hasPromotions && styles.carouselArrowDisabled,
-                ]}
-                activeOpacity={0.7}
-                disabled={!hasPromotions}
-              >
-                <Icon
-                  type="MaterialCommunityIcons"
-                  name="chevron-left"
-                  size={26}
-                  color={theme.colors.primary}
-                />
-              </TouchableOpacity>
-
               <ScrollView
                 horizontal
                 ref={promoScrollRef}
                 showsHorizontalScrollIndicator={false}
+                style={styles.promoScroll}
                 contentContainerStyle={styles.promoList}
                 onScroll={(event) => {
                   promoOffsetRef.current = event.nativeEvent.contentOffset.x;
@@ -1333,22 +1486,43 @@ export default function StoreProfile() {
                 })}
               </ScrollView>
 
-              <TouchableOpacity
-                onPress={() => handleScrollPromotions("right")}
-                style={[
-                  styles.carouselArrow,
-                  !hasPromotions && styles.carouselArrowDisabled,
-                ]}
-                activeOpacity={0.7}
-                disabled={!hasPromotions}
-              >
-                <Icon
-                  type="MaterialCommunityIcons"
-                  name="chevron-right"
-                  size={26}
-                  color={theme.colors.primary}
-                />
-              </TouchableOpacity>
+              <View pointerEvents="box-none" style={styles.carouselArrowContainer}>
+                <TouchableOpacity
+                  onPress={() => handleScrollPromotions("left")}
+                  style={[
+                    styles.carouselArrow,
+                    styles.carouselArrowLeft,
+                    !hasPromotions && styles.carouselArrowDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  disabled={!hasPromotions}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="chevron-left"
+                    size={26}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleScrollPromotions("right")}
+                  style={[
+                    styles.carouselArrow,
+                    styles.carouselArrowRight,
+                    !hasPromotions && styles.carouselArrowDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  disabled={!hasPromotions}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="chevron-right"
+                    size={26}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
 

@@ -4,6 +4,7 @@ import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import productService from "@/src/services/products-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
@@ -282,6 +283,7 @@ type Filters = {
   categories: FilterCategory[];
   minPrice: number | null;
   maxPrice: number | null;
+  favoritesOnly: boolean;
 };
 
 const NON_OUTROS_CATEGORIES: FilterCategory[] = FILTER_CATEGORIES.filter(
@@ -293,6 +295,7 @@ const createDefaultFilters = (): Filters => ({
   categories: [],
   minPrice: null,
   maxPrice: null,
+  favoritesOnly: false,
 });
 
 const normalizeText = (value: string) =>
@@ -333,12 +336,44 @@ const parseCurrencyInput = (value: string): number | null => {
 const formatCurrencyFromNumber = (value: number | null) =>
   value !== null ? currencyFormatter.format(value) : "";
 
+const FAVORITE_PRODUCT_ID_KEYS = [
+  "produto_id",
+  "product_id",
+  "produtoId",
+  "productId",
+  "id_produto",
+  "idProduto",
+  "id_product",
+  "idProduct",
+  "product",
+] as const;
+
+const extractFavoriteProductId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_PRODUCT_ID_KEYS) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
+};
+
 export default function StoreProductsScreen() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
 
-  const { getProductsByStoreId, getImageProduct } = useSession();
+  const { session, getProductsByStoreId, getImageProduct } = useSession();
+  const userId = session?.user?.id ?? null;
   const { storeId, storeName, onlyPromotion } = useLocalSearchParams<LocalSearchParams>();
   const animationLoading = useRef<LottieView>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -359,9 +394,44 @@ export default function StoreProductsScreen() {
   const [draftOnlyPromotion, setDraftOnlyPromotion] = useState(
     Boolean(onlyPromotion && ["true", "1"].includes(String(onlyPromotion).toLowerCase()))
   );
+  const [draftFavoritesOnly, setDraftFavoritesOnly] = useState(false);
   const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
+  const [favoriteProductIds, setFavoriteProductIds] = useState<Record<string, boolean>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const syncFavoriteProducts = useCallback(async () => {
+    if (!userId) {
+      setFavoriteProductIds({});
+      return;
+    }
+
+    try {
+      const { data, error } = await productService.getFavoriteProductsByProfile(userId);
+      if (error) {
+        console.warn("StoreProductsScreen: falha ao buscar produtos favoritos:", error);
+        return;
+      }
+
+      const entries = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const nextFavorites: Record<string, boolean> = {};
+
+      for (const entry of entries) {
+        if (!entry || typeof entry !== "object") {
+          continue;
+        }
+        const productId = extractFavoriteProductId(entry);
+        if (productId) {
+          nextFavorites[productId] = true;
+        }
+      }
+
+      setFavoriteProductIds(nextFavorites);
+    } catch (error) {
+      console.error("StoreProductsScreen: erro inesperado ao carregar favoritos:", error);
+    }
+  }, [userId]);
 
   const loadProducts = useCallback(async () => {
     if (!storeId) {
@@ -432,6 +502,27 @@ export default function StoreProductsScreen() {
     loadProducts();
   }, [loadProducts]);
 
+  useEffect(() => {
+    syncFavoriteProducts();
+  }, [syncFavoriteProducts]);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      await loadProducts();
+      await syncFavoriteProducts();
+    } catch (error) {
+      console.warn("StoreProductsScreen: erro ao recarregar dados:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadProducts, syncFavoriteProducts]);
+
   const filteredProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const hasSearch = normalizedSearch.length > 0;
@@ -481,12 +572,23 @@ export default function StoreProductsScreen() {
           ? true
           : priceValue !== null && priceValue <= filters.maxPrice;
 
-      return matchesSearch && matchesPromotion && matchesCategory && matchesMin && matchesMax;
+      const matchesFavorites =
+        !filters.favoritesOnly || Boolean(favoriteProductIds[product.id]);
+
+      return (
+        matchesSearch &&
+        matchesPromotion &&
+        matchesCategory &&
+        matchesMin &&
+        matchesMax &&
+        matchesFavorites
+      );
     });
-  }, [products, searchTerm, filters]);
+  }, [favoriteProductIds, filters, products, searchTerm]);
 
   const hasActiveFilters =
     filters.onlyPromotion ||
+    filters.favoritesOnly ||
     filters.categories.length > 0 ||
     filters.minPrice !== null ||
     filters.maxPrice !== null;
@@ -508,6 +610,7 @@ export default function StoreProductsScreen() {
 
   const handleFilterButtonPress = () => {
     setDraftOnlyPromotion(filters.onlyPromotion);
+    setDraftFavoritesOnly(filters.favoritesOnly);
     setDraftCategories([...filters.categories]);
     setDraftMinPrice(formatCurrencyFromNumber(filters.minPrice));
     setDraftMaxPrice(formatCurrencyFromNumber(filters.maxPrice));
@@ -539,6 +642,7 @@ export default function StoreProductsScreen() {
 
     setFilters({
       onlyPromotion: draftOnlyPromotion,
+      favoritesOnly: draftFavoritesOnly,
       categories: [...draftCategories],
       minPrice: nextMinPrice,
       maxPrice: nextMaxPrice,
@@ -560,6 +664,13 @@ export default function StoreProductsScreen() {
     setFilters((current) => ({
       ...current,
       onlyPromotion: false,
+    }));
+  };
+
+  const handleRemoveFavoritesFilter = () => {
+    setFilters((current) => ({
+      ...current,
+      favoritesOnly: false,
     }));
   };
 
@@ -589,6 +700,51 @@ export default function StoreProductsScreen() {
 
   const priceKeyboardType = Platform.OS === "ios" ? "number-pad" : "numeric";
 
+  const toggleFavoriteProduct = useCallback(
+    async (productId: string) => {
+      if (!productId) {
+        return;
+      }
+
+      if (!userId) {
+        Alert.alert("Conta necessaria", "Entre na sua conta para favoritar produtos.");
+        return;
+      }
+
+      let nextValue = false;
+
+      setFavoriteProductIds((current) => {
+        const currentValue = Boolean(current[productId]);
+        nextValue = !currentValue;
+        return {
+          ...current,
+          [productId]: nextValue,
+        };
+      });
+
+      try {
+        if (nextValue) {
+          const { error } = await productService.addProductToFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await productService.removeProductFromFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error("StoreProductsScreen: erro ao atualizar favorito do produto:", error);
+        setFavoriteProductIds((current) => ({
+          ...current,
+          [productId]: !nextValue,
+        }));
+      }
+    },
+    [userId]
+  );
+
   const renderProduct = ({ item }: ListRenderItemInfo<Product>) => {
     const showDiscount =
       item.originalPrice !== null &&
@@ -600,6 +756,8 @@ export default function StoreProductsScreen() {
         params: { id_product: item.id },
       });
     };
+
+    const isFavorite = Boolean(favoriteProductIds[item.id]);
 
     return (
       <TouchableOpacity
@@ -627,9 +785,29 @@ export default function StoreProductsScreen() {
         </View>
 
         <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
-          </Text>
+          <View style={styles.productInfoHeader}>
+            <Text style={styles.productName} numberOfLines={2}>
+              {item.name}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => toggleFavoriteProduct(item.id)}
+              style={styles.productFavoriteButton}
+              accessibilityRole="button"
+              accessibilityLabel={`${
+                isFavorite ? "Remover" : "Adicionar"
+              } ${item.name} aos favoritos`}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              <Icon
+                type="MaterialCommunityIcons"
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={20}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
 
           {showDiscount ? (
             <Text style={styles.productOriginalPrice}>
@@ -661,7 +839,7 @@ export default function StoreProductsScreen() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>{hasError}</Text>
           <TouchableOpacity
-            onPress={loadProducts}
+            onPress={handleRefresh}
             style={styles.retryButton}
             activeOpacity={0.7}
           >
@@ -768,6 +946,32 @@ export default function StoreProductsScreen() {
               </View>
             ) : null}
 
+            {filters.favoritesOnly ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}> 
+                  <Icon 
+                    name={"heart"} 
+                    type="fontawesome" 
+                    color={theme.colors.primary} 
+                    size={14}
+                  /> Favoritos
+                </Text>
+                <TouchableOpacity
+                  onPress={handleRemoveFavoritesFilter}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             {filters.categories.map((category) => (
               <View key={category} style={styles.filterChip}>
                 <Text style={styles.filterChipText}>{category}</Text>
@@ -808,29 +1012,18 @@ export default function StoreProductsScreen() {
           </View>
         ) : null}
       </View>
-
-      {isLoading ? (
-        <View style={styles.loadingWrapper}>
-           <LoadingIcon
-              autoPlay
-              loop
-              // source={loadingCart}
-              refAnimationLoading={animationLoading}
-              style={{ width: 150, height: 150 }}
-            />
-        </View>
-      ) : null}
     </View>
   ), [
     filters.categories,
+    filters.favoritesOnly,
     filters.onlyPromotion,
     hasActiveFilters,
     handleClearFilters,
     handleFilterButtonPress,
     handleRemoveCategoryFilter,
+    handleRemoveFavoritesFilter,
     handleRemovePriceFilter,
     handleRemovePromotionFilter,
-    isLoading,
     priceRangeLabel,
     searchTerm,
     styles,
@@ -848,17 +1041,34 @@ export default function StoreProductsScreen() {
       <ScreenContainer style={styles.container}>
         <HeaderScreen title={resolvedTitle} showButtonBack styleTitle={{ textAlign: "center" }} />
         <View style={styles.content}>
-          <FlatList
-            data={filteredProducts}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProduct}
-            style={styles.productsList}
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={renderListHeader}
-            ListEmptyComponent={listEmptyComponent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          />
+          {isLoading ? (
+            <>
+              {renderListHeader()}
+              <View style={styles.loadingWrapper}>
+                <LoadingIcon
+                  autoPlay
+                  loop
+                  refAnimationLoading={animationLoading}
+                  style={{ width: 150, height: 150 }}
+                />
+              </View>
+            </>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProduct}
+              extraData={favoriteProductIds}
+              style={styles.productsList}
+              contentContainerStyle={styles.listContent}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={listEmptyComponent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
+          )}
         </View>
       </ScreenContainer>
 
@@ -878,42 +1088,80 @@ export default function StoreProductsScreen() {
             >
               <Text style={styles.filterModalTitle}>Filtros</Text>
 
-              <TouchableOpacity
-                onPress={() => setDraftOnlyPromotion((current) => !current)}
-                style={[
-                  styles.filterCheckboxRow,
-                  draftOnlyPromotion && styles.filterCheckboxRowActive,
-                ]}
-                activeOpacity={0.7}
-              >
-                <View
+              <View>
+                <Text style={styles.filterSectionTitle}>Promoção</Text>
+                <TouchableOpacity
+                  onPress={() => setDraftOnlyPromotion((current) => !current)}
                   style={[
-                    styles.filterCheckbox,
-                    draftOnlyPromotion && styles.filterCheckboxSelected,
+                    styles.filterCheckboxRow,
+                    draftOnlyPromotion && styles.filterCheckboxRowActive,
                   ]}
+                  activeOpacity={0.7}
                 >
-                  {draftOnlyPromotion ? (
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="check"
-                      size={16}
-                      color={theme.colors.onPrimary}
-                    />
-                  ) : null}
-                </View>
-                <Text
+                  <View
+                    style={[
+                      styles.filterCheckbox,
+                      draftOnlyPromotion && styles.filterCheckboxSelected,
+                    ]}
+                  >
+                    {draftOnlyPromotion ? (
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="check"
+                        size={16}
+                        color={theme.colors.onPrimary}
+                      />
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.filterCheckboxLabel,
+                      draftOnlyPromotion && styles.filterCheckboxLabelActive,
+                    ]}
+                  >
+                    Em Promoção
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.favoriteFilterWrapper}>
+                <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos</Text>
+                <TouchableOpacity
                   style={[
-                    styles.filterCheckboxLabel,
-                    draftOnlyPromotion && styles.filterCheckboxLabelActive,
+                    styles.favoriteTogglePill,
+                    draftFavoritesOnly && styles.favoriteTogglePillActive,
                   ]}
+                  onPress={() => setDraftFavoritesOnly((prev) => !prev)}
+                  activeOpacity={0.7}
                 >
-                  Em Promoção
-                </Text>
-              </TouchableOpacity>
+                  <View
+                    style={[
+                      styles.favoriteToggleCheckbox,
+                      draftFavoritesOnly && styles.favoriteToggleCheckboxActive,
+                    ]}
+                  >
+                    {draftFavoritesOnly ? (
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="check"
+                        size={16}
+                        color={theme.colors.onPrimary}
+                      />
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.favoriteToggleLabel,
+                      draftFavoritesOnly && styles.favoriteToggleLabelActive,
+                    ]}
+                  >
+                    Mostrar apenas favoritos
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>Categorias</Text>
-
                 <View style={styles.categoriesGrid}>
                   {FILTER_CATEGORIES.map((category) => {
                     const isSelected = draftCategories.includes(category);

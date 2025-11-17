@@ -16,6 +16,11 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.md,
       paddingBottom: theme.spacing.md,
     },
+    loadingWrapper: {
+      paddingVertical: theme.spacing.lg,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     searchRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -164,7 +169,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       marginRight: theme.spacing.sm,
       fontFamily: theme.fonts.regular,
-      fontWeight: "700",
+      fontWeight: "light",
       fontSize: theme.fontSizes.lg,
       color: theme.colors.text,
     },
@@ -372,6 +377,8 @@ const createStyles = (theme: Theme) =>
     filterLabel: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
+      fontWeight: "normal",
+      textDecorationLine: "underline",
       color: theme.colors.text,
       marginBottom: theme.spacing.xs,
     },
@@ -406,6 +413,49 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
     },
     filterOptionTextActive: {
+      color: theme.colors.onPrimary,
+    },
+    favoriteFilterTitle: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+      fontWeight: "normal",
+      marginBottom: theme.spacing.sm,
+      textDecorationLine: "underline",
+    },
+    favoriteTogglePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      borderRadius: theme.radius.full,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+    },
+    favoriteTogglePillActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    favoriteToggleCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: theme.radius.sm,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      marginRight: theme.spacing.sm,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.surface,
+    },
+    favoriteToggleCheckboxActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    favoriteToggleLabel: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+    },
+    favoriteToggleLabelActive: {
       color: theme.colors.onPrimary,
     },
     radiusToggle: {
