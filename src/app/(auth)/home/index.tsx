@@ -505,6 +505,8 @@ export default function Home() {
     getStoreById,
     getStoreRatingsAverage,
     getAddressesStore,
+    getFavoriteStoresByUser,
+    getFavoriteProductsByUser,
     addStoreToFavorites,
     removeStoreFromFavorites,
     addProductToFavorites,
@@ -610,10 +612,15 @@ export default function Home() {
       }
       setError(null);
       try {
-        const [storesResponse, productsResponse] = await Promise.all([
-          storeService.getStores(),
-          productService.getProducts(),
-        ]);
+        const [storesResponse, productsResponse, storeFavoritesResponse, productFavoritesResponse] =
+          await Promise.all([
+            storeService.getStores(),
+            productService.getProducts(),
+            userId ? getFavoriteStoresByUser(userId) : Promise.resolve({ data: null, error: null }),
+            userId
+              ? getFavoriteProductsByUser(userId)
+              : Promise.resolve({ data: null, error: null }),
+          ]);
 
         if (storesResponse.error) {
           throw storesResponse.error;
@@ -752,6 +759,49 @@ export default function Home() {
 
         setStores(storesWithRatings);
         setProducts(productsWithSeller);
+
+        if (userId) {
+          if (storeFavoritesResponse?.error) {
+            console.warn("Home: falha ao carregar lojas favoritas:", storeFavoritesResponse.error);
+          } else if (Array.isArray(storeFavoritesResponse?.data)) {
+            const favoriteStoreIds = storeFavoritesResponse.data
+              .map((row) =>
+                coerceString(
+                  pickFirstValue(row as GenericRecord, [
+                    "store_id",
+                    "id_store",
+                    "storeId",
+                    "idStore",
+                    "store",
+                  ])
+                )
+              )
+              .filter((value): value is string => Boolean(value));
+            setFavoriteStores(new Set(favoriteStoreIds));
+          }
+
+          if (productFavoritesResponse?.error) {
+            console.warn("Home: falha ao carregar produtos favoritos:", productFavoritesResponse.error);
+          } else if (Array.isArray(productFavoritesResponse?.data)) {
+            const favoriteProductIds = productFavoritesResponse.data
+              .map((row) =>
+                coerceString(
+                  pickFirstValue(row as GenericRecord, [
+                    "produto_id",
+                    "product_id",
+                    "produtoId",
+                    "productId",
+                    "produto",
+                  ])
+                )
+              )
+              .filter((value): value is string => Boolean(value));
+            setFavoritePromotionProducts(new Set(favoriteProductIds));
+          }
+        } else {
+          setFavoriteStores(new Set());
+          setFavoritePromotionProducts(new Set());
+        }
       } catch (fetchError) {
         console.error("Home: failed to load highlights", fetchError);
         setError("Não foi possível carregar os destaques. Deslize para atualizar.");
@@ -762,7 +812,7 @@ export default function Home() {
         setIsRefreshing(false);
       }
     },
-    [getImageProduct, getStoreById, getStoreRatingsAverage]
+    [getImageProduct, getStoreById, getStoreRatingsAverage, getFavoriteStoresByUser, getFavoriteProductsByUser, userId]
   );
 
   useEffect(() => {
@@ -1356,7 +1406,6 @@ export default function Home() {
                       <TouchableOpacity
                         style={[
                           styles.storeFavoriteButton,
-                          isFavorite ? styles.storeFavoriteButtonActive : null,
                         ]}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -1369,7 +1418,7 @@ export default function Home() {
                           type="MaterialCommunityIcons"
                           name={isFavorite ? "heart" : "heart-outline"}
                           size={20}
-                          color={isFavorite ? theme.colors.onPrimary : theme.colors.primary}
+                          color={theme.colors.primary}
                         />
                       </TouchableOpacity>
                     </View>

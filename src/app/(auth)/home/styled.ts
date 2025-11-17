@@ -304,9 +304,6 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    storeFavoriteButtonActive: {
-      backgroundColor: theme.colors.primary,
-    },
     storeMetaRow: {
       flexDirection: "row",
       alignItems: "center",

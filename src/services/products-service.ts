@@ -137,6 +137,25 @@ const productService = {
             console.error("Error removing product from favorites:", error);
             return { data: null, error };
         }
+    },
+
+    getFavoriteProductsByProfile: async (profileId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from("favorite_products")
+                .select("produto_id")
+                .eq("profile_id", profileId);
+
+            if (error) {
+                console.error("Error fetching favorite products:", error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+        } catch (error) {
+            console.error("Error fetching favorite products:", error);
+            return { data: null, error };
+        }
     }
 
 

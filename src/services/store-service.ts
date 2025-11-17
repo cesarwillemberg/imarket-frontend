@@ -173,6 +173,25 @@ const storeService = {
         }
     },
 
+    getFavoriteStoresByProfile: async (profileId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from("favorite_stores")
+                .select("store_id")
+                .eq("profile_id", profileId);
+
+            if (error) {
+                console.error("Error fetching favorite stores:", error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+        } catch (error) {
+            console.error("Error fetching favorite stores:", error);
+            return { data: null, error };
+        }
+    },
+
 };
 
 export default storeService;

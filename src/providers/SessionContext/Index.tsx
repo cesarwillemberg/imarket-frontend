@@ -104,6 +104,8 @@ interface SessionContextProps {
   getProductsByStoreId: (storeId: string) => Promise<{ data: any; error: any }>;
   getImageProduct: (productId: string) => Promise<{ data: any; error: any }>;
   getItemPromotionByStore: (storeId: string) => Promise<{ data: any; error: any }>;
+  getFavoriteStoresByUser: (userId: string) => Promise<{ data: any; error: any }>;
+  getFavoriteProductsByUser: (userId: string) => Promise<{ data: any; error: any }>;
   getCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
   createCartByUserId: (userId: string) => Promise<{ data: any; error: any }>;
   getOrCreateActiveCart: (userId: string) => Promise<{ data: any; error: any }>;
@@ -256,6 +258,12 @@ const SessionContext = createContext<SessionContextProps>({
   },
   getItemPromotionByStore: async (_storeId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getItemPromotionByStore not implemented.");
+  },
+  getFavoriteStoresByUser: async (_userId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("getFavoriteStoresByUser not implemented.");
+  },
+  getFavoriteProductsByUser: async (_userId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("getFavoriteProductsByUser not implemented.");
   },
   getCartByUserId: async (_userId: string): Promise<{ data: any; error: any }> => {
     throw new Error("getCartByUserId not implemented.");
@@ -667,6 +675,26 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   }
 
+  const getFavoriteStoresByUser = async (userId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.getFavoriteStoresByProfile(userId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar lojas favoritas:", error);
+      return { data: null, error };
+    }
+  };
+
+  const getFavoriteProductsByUser = async (userId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await productService.getFavoriteProductsByProfile(userId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao buscar produtos favoritos:", error);
+      return { data: null, error };
+    }
+  };
+
   const getCartByUserId = async (userId: string): Promise<{ data: any; error: any }> => {
     try {
       const { data, error } = await cartService.getCartByUserId(userId);
@@ -845,6 +873,8 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         getProductsByStoreId,
         getImageProduct,
         getItemPromotionByStore,
+        getFavoriteStoresByUser,
+        getFavoriteProductsByUser,
         getCartByUserId,
         createCartByUserId,
         getOrCreateActiveCart,
