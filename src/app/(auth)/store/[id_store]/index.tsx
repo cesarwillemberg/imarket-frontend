@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Image,
   ImageBackground,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -587,6 +588,7 @@ export default function StoreProfile() {
   const [promotions, setPromotions] = useState<StorePromotion[]>([]);
   const [isLoadingPromotions, setIsLoadingPromotions] = useState(false);
   const [promotionsError, setPromotionsError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const syncFavoriteStatus = useCallback(async () => {
     if (!storeId || !userId) {
       setIsFavorite(false);
@@ -728,25 +730,29 @@ export default function StoreProfile() {
     syncFavoriteStatus();
   }, [syncFavoriteStatus]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchStoreDetails = async () => {
+  const fetchStoreDetails = useCallback(
+    async (isCancelled?: () => boolean) => {
       if (!storeId) {
-        setStore(undefined);
+        if (!isCancelled?.()) {
+          setStore(undefined);
+          setStoreWorkingHours([]);
+        }
         return;
       }
 
-      setIsLoadingStore(true);
-      setStoreLoadError(null);
-      setStoreWorkingHours([]);
+      if (!isCancelled?.()) {
+        setIsLoadingStore(true);
+        setStoreLoadError(null);
+        setStoreWorkingHours([]);
+      }
 
       try {
         const { data, error } = await getStoreById(storeId);
-
         const { data: scheduleData, error: scheduleError } = await getStoreSchedule(storeId);
 
-        if (cancelled) return;
+        if (isCancelled?.()) {
+          return;
+        }
 
         if (scheduleError) {
           console.error("StoreProfile: erro ao buscar horario da loja:", scheduleError);
@@ -757,7 +763,7 @@ export default function StoreProfile() {
 
         if (error) {
           console.error("StoreProfile: erro ao buscar loja:", error);
-          setStoreLoadError("Nao foi possivel carregar as informações da loja.");
+          setStoreLoadError("Nao foi possivel carregar as informacoes da loja.");
           setStore(undefined);
           return;
         }
@@ -773,24 +779,29 @@ export default function StoreProfile() {
           }
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           console.error("StoreProfile: erro inesperado ao buscar loja:", error);
-          setStoreLoadError("Nao foi possivel carregar as informações da loja.");
+          setStoreLoadError("Nao foi possivel carregar as informacoes da loja.");
           setStore(undefined);
         }
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setIsLoadingStore(false);
         }
       }
-    };
+    },
+    [getStoreById, getStoreSchedule, storeId]
+  );
 
-    fetchStoreDetails();
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStoreDetails(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [getStoreById, storeId]);
+  }, [fetchStoreDetails]);
 
   useEffect(() => {
     let cancelled = false;
@@ -833,19 +844,23 @@ export default function StoreProfile() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!storeId) {
-      setAverageRating(null);
-      return;
-    }
+  const fetchStoreRating = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!storeId) {
+        if (!isCancelled?.()) {
+          setAverageRating(null);
+        }
+        return;
+      }
 
-    let cancelled = false;
+      if (!isCancelled?.()) {
+        setIsLoadingRating(true);
+      }
 
-    const fetchRating = async () => {
-      setIsLoadingRating(true);
       try {
         const { data, error } = await getStoreRatingsAverage(storeId);
-        if (cancelled) {
+
+        if (isCancelled?.()) {
           return;
         }
 
@@ -862,50 +877,57 @@ export default function StoreProfile() {
           setAverageRating(null);
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           console.error("StoreProfile: erro inesperado ao buscar avaliacao da loja:", error);
           setAverageRating(null);
         }
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setIsLoadingRating(false);
         }
       }
-    };
+    },
+    [getStoreRatingsAverage, storeId]
+  );
 
-    fetchRating();
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStoreRating(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [getStoreRatingsAverage, storeId]);
+  }, [fetchStoreRating]);
 
-  useEffect(() => {
-    if (!storeId) {
-      setDistanceKm(null);
-      setDistanceError(null);
-      setStoreAddressText(null);
-      setStoreWorkingHours([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    const fallbackAddressFromStore = () => {
-      if (store?.city || store?.state) {
-        return [store?.city, store?.state].filter(Boolean).join(" - ");
+  const fetchStoreAddressAndDistance = useCallback(
+    async (isCancelled?: () => boolean) => {
+      if (!storeId) {
+        if (!isCancelled?.()) {
+          setDistanceKm(null);
+          setDistanceError(null);
+          setStoreAddressText(null);
+          setStoreWorkingHours([]);
+        }
+        return;
       }
-      return null;
-    };
 
-    const fetchAddressAndDistance = async () => {
-      setIsLoadingDistance(true);
-      setDistanceError(null);
+      const fallbackAddressFromStore = () => {
+        if (store?.city || store?.state) {
+          return [store?.city, store?.state].filter(Boolean).join(" - ");
+        }
+        return null;
+      };
+
+      if (!isCancelled?.()) {
+        setIsLoadingDistance(true);
+        setDistanceError(null);
+      }
 
       try {
         const { data, error } = await getAddressesStore(storeId);
 
-        if (cancelled) {
+        if (isCancelled?.()) {
           return;
         }
 
@@ -992,6 +1014,11 @@ export default function StoreProfile() {
 
             try {
               const geocodedResults = await geocodeAsync(formattedAddress);
+
+              if (isCancelled?.()) {
+                return;
+              }
+
               const firstValid = geocodedResults.find(
                 (entry) =>
                   typeof entry?.latitude === "number" &&
@@ -1007,8 +1034,10 @@ export default function StoreProfile() {
                 setDistanceError("Nao foi possivel geocodificar o endereco da loja.");
               }
             } catch (error) {
-              console.error("StoreProfile: erro ao geocodificar endereco da loja:", error);
-              setDistanceError("Nao foi possivel geocodificar o endereco da loja.");
+              if (!isCancelled?.()) {
+                console.error("StoreProfile: erro ao geocodificar endereco da loja:", error);
+                setDistanceError("Nao foi possivel geocodificar o endereco da loja.");
+              }
             }
           } else {
             setDistanceError("Endereco da loja incompleto.");
@@ -1026,25 +1055,63 @@ export default function StoreProfile() {
           setDistanceError((prev) => prev ?? "Nao foi possivel calcular a distancia da loja.");
         }
       } catch (error) {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           console.error("StoreProfile: erro inesperado ao calcular distancia da loja:", error);
           setDistanceError("Nao foi possivel calcular a distancia da loja.");
           setDistanceKm(null);
           setStoreAddressText(fallbackAddressFromStore());
         }
       } finally {
-        if (!cancelled) {
+        if (!isCancelled?.()) {
           setIsLoadingDistance(false);
         }
       }
-    };
+    },
+    [getAddressesStore, storeId, store, userLocation]
+  );
 
-    fetchAddressAndDistance();
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchStoreAddressAndDistance(() => cancelled);
 
     return () => {
       cancelled = true;
     };
-  }, [getAddressesStore, storeId, userLocation, store]);
+  }, [fetchStoreAddressAndDistance]);
+
+  const handleReloadPage = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      await Promise.all(
+        [
+          fetchStoreDetails(),
+          fetchStoreRating(),
+          fetchStoreAddressAndDistance(),
+          fetchPromotions(),
+          syncFavoriteStatus(),
+        ].map((task) =>
+          task.catch((error) => {
+            console.warn("StoreProfile: erro ao recarregar dados:", error);
+          })
+        )
+      );
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [
+    fetchPromotions,
+    fetchStoreAddressAndDistance,
+    fetchStoreDetails,
+    fetchStoreRating,
+    isRefreshing,
+    syncFavoriteStatus,
+  ]);
 
   const handleToggleFavorite = useCallback(async () => {
     if (!storeId) {
@@ -1188,6 +1255,14 @@ export default function StoreProfile() {
         style={styles.container}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleReloadPage}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+          />
+        }
       >
         <View style={styles.bannerWrapper}>
           <ImageBackground

@@ -399,6 +399,7 @@ export default function StoreProductsScreen() {
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
   const [favoriteProductIds, setFavoriteProductIds] = useState<Record<string, boolean>>({});
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const syncFavoriteProducts = useCallback(async () => {
     if (!userId) {
@@ -504,6 +505,23 @@ export default function StoreProductsScreen() {
   useEffect(() => {
     syncFavoriteProducts();
   }, [syncFavoriteProducts]);
+
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      await loadProducts();
+      await syncFavoriteProducts();
+    } catch (error) {
+      console.warn("StoreProductsScreen: erro ao recarregar dados:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadProducts, syncFavoriteProducts]);
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -821,7 +839,7 @@ export default function StoreProductsScreen() {
         <View style={styles.emptyState}>
           <Text style={styles.emptyStateText}>{hasError}</Text>
           <TouchableOpacity
-            onPress={loadProducts}
+            onPress={handleRefresh}
             style={styles.retryButton}
             activeOpacity={0.7}
           >
@@ -930,7 +948,14 @@ export default function StoreProductsScreen() {
 
             {filters.favoritesOnly ? (
               <View style={styles.filterChip}>
-                <Text style={styles.filterChipText}>Favoritos</Text>
+                <Text style={styles.filterChipText}> 
+                  <Icon 
+                    name={"heart"} 
+                    type="fontawesome" 
+                    color={theme.colors.primary} 
+                    size={14}
+                  /> Favoritos
+                </Text>
                 <TouchableOpacity
                   onPress={handleRemoveFavoritesFilter}
                   style={styles.filterChipRemove}
@@ -987,18 +1012,6 @@ export default function StoreProductsScreen() {
           </View>
         ) : null}
       </View>
-
-      {isLoading ? (
-        <View style={styles.loadingWrapper}>
-           <LoadingIcon
-              autoPlay
-              loop
-              // source={loadingCart}
-              refAnimationLoading={animationLoading}
-              style={{ width: 150, height: 150 }}
-            />
-        </View>
-      ) : null}
     </View>
   ), [
     filters.categories,
@@ -1011,7 +1024,6 @@ export default function StoreProductsScreen() {
     handleRemoveFavoritesFilter,
     handleRemovePriceFilter,
     handleRemovePromotionFilter,
-    isLoading,
     priceRangeLabel,
     searchTerm,
     styles,
@@ -1029,18 +1041,34 @@ export default function StoreProductsScreen() {
       <ScreenContainer style={styles.container}>
         <HeaderScreen title={resolvedTitle} showButtonBack styleTitle={{ textAlign: "center" }} />
         <View style={styles.content}>
-          <FlatList
-            data={filteredProducts}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProduct}
-            extraData={favoriteProductIds}
-            style={styles.productsList}
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={renderListHeader}
-            ListEmptyComponent={listEmptyComponent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          />
+          {isLoading ? (
+            <>
+              {renderListHeader()}
+              <View style={styles.loadingWrapper}>
+                <LoadingIcon
+                  autoPlay
+                  loop
+                  refAnimationLoading={animationLoading}
+                  style={{ width: 150, height: 150 }}
+                />
+              </View>
+            </>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProduct}
+              extraData={favoriteProductIds}
+              style={styles.productsList}
+              contentContainerStyle={styles.listContent}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={listEmptyComponent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+            />
+          )}
         </View>
       </ScreenContainer>
 

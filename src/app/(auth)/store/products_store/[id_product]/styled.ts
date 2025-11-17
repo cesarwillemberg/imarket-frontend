@@ -112,6 +112,7 @@ const createStyles = (theme: Theme) =>
       gap: theme.spacing.sm,
     },
     productName: {
+      width: "80%",
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.xl,
       color: theme.colors.text,
