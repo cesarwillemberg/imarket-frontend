@@ -22,6 +22,7 @@ import createStyles from "./styled";
 
 type LocalSearchParams = {
   id_produto?: string | string[];
+  origin?: string | string[];
 };
 
 type RawProduct = Record<string, unknown> & { id?: string };
@@ -358,13 +359,19 @@ const extractStoreName = (store: Record<string, unknown> | null | undefined): st
 };
 
 export default function ProductDetails() {
-  const { id_produto } = useLocalSearchParams<LocalSearchParams>();
+  const { id_produto, origin } = useLocalSearchParams<LocalSearchParams>();
   const productId = useMemo(() => {
     if (Array.isArray(id_produto)) {
       return id_produto[0] ?? null;
     }
     return id_produto ?? null;
   }, [id_produto]);
+  const originSource = useMemo(() => {
+    if (Array.isArray(origin)) {
+      return origin[0] ?? null;
+    }
+    return origin ?? null;
+  }, [origin]);
 
   const animationLoading = useRef<LottieView>(null);
 
@@ -629,6 +636,14 @@ export default function ProductDetails() {
     Alert.alert("Comprar Agora", "Fluxo de compra ainda nao implementado.");
   };
 
+  const handleNavigateBack = useCallback(() => {
+    if (originSource === "home") {
+      router.replace("/(auth)/home");
+      return;
+    }
+    router.back();
+  }, [originSource, router]);
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -860,7 +875,7 @@ export default function ProductDetails() {
 
   return (
     <ScreenContainer style={styles.container}>
-      <HeaderScreen title="Detalhes do produto" showButtonBack />
+      <HeaderScreen title="Detalhes do produto" showButtonBack onPressBack={handleNavigateBack} />
       {renderContent()}
     </ScreenContainer>
   );

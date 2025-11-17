@@ -4,11 +4,19 @@ import { FC } from "react";
 import { TouchableOpacity, View } from "react-native";
 import { Icon } from "../Icon";
 
-const BackButton: FC = () => {
+interface BackButtonProps {
+    onPress?: () => void;
+}
+
+const BackButton: FC<BackButtonProps> = ({ onPress }) => {
     const { theme } = useTheme();
     const router = useRouter();
 
     const handleBack = () => {
+        if (typeof onPress === "function") {
+            onPress();
+            return;
+        }
         router.back()
     }
 

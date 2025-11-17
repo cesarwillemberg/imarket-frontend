@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Dimensions,
   GestureResponderEvent,
   Image,
   LayoutChangeEvent,
@@ -127,6 +128,8 @@ const STORE_DISTANCE_KEYS = [
   "distanceKm",
   "km",
 ] as const;
+
+const SEARCH_RESULTS_MAX_HEIGHT = Math.round(Dimensions.get("window").height * 0.45);
 
 const STORE_CATEGORY_KEYS = [
   "category",
@@ -836,7 +839,7 @@ export default function Home() {
     (productId: string) => {
       router.push({
         pathname: "/(auth)/products/[id_produto]",
-        params: { id_produto: productId },
+        params: { id_produto: productId, origin: "home" },
       });
     },
     [router]
@@ -1207,66 +1210,78 @@ export default function Home() {
         </View>
 
         {trimmedSearchTerm.length && overlayTop !== null ? (
-          <View style={[styles.searchResultsWrapper, { top: overlayTop }]}>
+          <View
+            style={[
+              styles.searchResultsWrapper,
+              { top: overlayTop, maxHeight: SEARCH_RESULTS_MAX_HEIGHT },
+            ]}
+          >
             {searchResults.length ? (
-              searchResults.map((item, index) => (
-                <TouchableOpacity
-                  key={`${item.type}-${item.id}`}
-                  style={[
-                    styles.searchResultCard,
-                    index < searchResults.length - 1 ? styles.searchResultCardSpacing : null,
-                  ]}
-                  activeOpacity={0.85}
-                  onPress={() => handleSearchResultPress(item)}
-                >
-                  <View style={styles.searchResultImageWrapper}>
-                    {item.imageUrl ? (
-                      <Image
-                        source={{ uri: item.imageUrl }}
-                        style={styles.searchResultImage}
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <View style={styles.searchResultFallback}>
-                        <Icon
-                          type="MaterialCommunityIcons"
-                          name={item.type === "store" ? "storefront-outline" : "package-variant"}
-                          size={24}
-                          color={theme.colors.primary}
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator
+                contentContainerStyle={styles.searchResultsListContent}
+              >
+                {searchResults.map((item, index) => (
+                  <TouchableOpacity
+                    key={`${item.type}-${item.id}`}
+                    style={[
+                      styles.searchResultCard,
+                      index < searchResults.length - 1 ? styles.searchResultCardSpacing : null,
+                    ]}
+                    activeOpacity={0.85}
+                    onPress={() => handleSearchResultPress(item)}
+                  >
+                    <View style={styles.searchResultImageWrapper}>
+                      {item.imageUrl ? (
+                        <Image
+                          source={{ uri: item.imageUrl }}
+                          style={styles.searchResultImage}
+                          resizeMode="contain"
                         />
-                      </View>
-                    )}
-                  </View>
-                  <View style={styles.searchResultInfo}>
-                    <View style={styles.searchResultTitleRow}>
-                      <Text style={styles.searchResultTitle} numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      <View style={styles.searchResultTag}>
-                        <Text style={styles.searchResultTagText}>
-                          {item.type === "store" ? "Loja" : "Produto"}
-                        </Text>
-                      </View>
+                      ) : (
+                        <View style={styles.searchResultFallback}>
+                          <Icon
+                            type="MaterialCommunityIcons"
+                            name={item.type === "store" ? "storefront-outline" : "package-variant"}
+                            size={24}
+                            color={theme.colors.primary}
+                          />
+                        </View>
+                      )}
                     </View>
-                    {item.subtitle ? (
-                      <Text style={styles.searchResultSubtitle} numberOfLines={1}>
-                        {item.subtitle}
-                      </Text>
-                    ) : null}
-                    {item.extra ? (
-                      <Text style={styles.searchResultExtra} numberOfLines={1}>
-                        {item.extra}
-                      </Text>
-                    ) : null}
-                  </View>
-                  <Icon type="MaterialIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
-                </TouchableOpacity>
-              ))
+                    <View style={styles.searchResultInfo}>
+                      <View style={styles.searchResultTitleRow}>
+                        <Text style={styles.searchResultTitle} numberOfLines={1}>
+                          {item.title}
+                        </Text>
+                        <View style={styles.searchResultTag}>
+                          <Text style={styles.searchResultTagText}>
+                            {item.type === "store" ? "Loja" : "Produto"}
+                          </Text>
+                        </View>
+                      </View>
+                      {item.subtitle ? (
+                        <Text style={styles.searchResultSubtitle} numberOfLines={1}>
+                          {item.subtitle}
+                        </Text>
+                      ) : null}
+                      {item.extra ? (
+                        <Text style={styles.searchResultExtra} numberOfLines={1}>
+                          {item.extra}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Icon type="MaterialIcons" name="chevron-right" size={20} color={theme.colors.disabled} />
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
             ) : (
-              <Text style={styles.emptyText}>Nenhum resultado para “{trimmedSearchTerm}”.</Text>
+              <Text style={styles.emptyText}>Nenhum resultado para {trimmedSearchTerm}.</Text>
             )}
           </View>
         ) : null}
+
         <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -1513,5 +1528,6 @@ export default function Home() {
     </ScreenContainer>
   );
 }
+
 
 

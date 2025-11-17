@@ -67,6 +67,9 @@ const createStyles = (theme: Theme) =>
       shadowOpacity: 0.2,
       shadowRadius: 6,
     },
+    searchResultsListContent: {
+      paddingBottom: theme.spacing.sx,
+    },
     searchResultCard: {
       flexDirection: "row",
       alignItems: "center",
