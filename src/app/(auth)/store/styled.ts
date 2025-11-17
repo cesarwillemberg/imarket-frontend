@@ -372,7 +372,7 @@ const createStyles = (theme: Theme) =>
     filterLabel: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
-      fontWeight: "700",
+      fontWeight: "normal",
       textDecorationLine: "underline",
       color: theme.colors.text,
       marginBottom: theme.spacing.xs,
@@ -414,7 +414,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
-      fontWeight: "700",
+      fontWeight: "normal",
       marginBottom: theme.spacing.sm,
       textDecorationLine: "underline",
     },
@@ -448,7 +448,7 @@ const createStyles = (theme: Theme) =>
     favoriteToggleLabel: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
+      color: theme.colors.primary,
     },
     favoriteToggleLabelActive: {
       color: theme.colors.onPrimary,

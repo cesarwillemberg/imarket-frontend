@@ -1736,7 +1736,7 @@ const FilterModal = ({
               <View style={{ gap: theme.spacing.sm }}>
                 <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.filterLabel}>Estado</Text>
+                  <Text style={styles.filterLabel}>Estado:</Text>
                   <View
                     style={{
                       backgroundColor: theme.colors.secondary,
@@ -1790,7 +1790,7 @@ const FilterModal = ({
                 </View>
 
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.filterLabel}>Cidade</Text>
+                    <Text style={styles.filterLabel}>Cidade:</Text>
                     <View
                       style={{
                         backgroundColor: theme.colors.secondary,
@@ -1871,7 +1871,7 @@ const FilterModal = ({
             </View>
 
             <View style={styles.filterFieldGroup}>
-              <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos</Text>
+              <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos:</Text>
               <TouchableOpacity
                 style={[
                   styles.favoriteTogglePill,
