@@ -1182,21 +1182,12 @@ export default function StoreScreen() {
   };
 
   const handleResetFilters = useCallback(() => {
-    if (hasLocationPermission) {
-      setFilters({
-        state: DEFAULT_FILTERS.state,
-        city: DEFAULT_FILTERS.city,
-        radiusKm: DEFAULT_FILTERS.radiusKm,
-      });
-      return;
-    }
-
     setFilters({
       state: EMPTY_FILTERS.state,
       city: EMPTY_FILTERS.city,
       radiusKm: EMPTY_FILTERS.radiusKm,
     });
-  }, [hasLocationPermission]);
+  }, []);
 
   const renderListHeader = useCallback(() => {
     const filterIconColor = theme.colors.primary;

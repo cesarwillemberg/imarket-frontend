@@ -79,14 +79,11 @@ const createStyles = (theme: Theme) =>
       width: 42,
       height: 42,
       borderRadius: theme.radius.full,
-      borderWidth: theme.size.xs,
-      borderColor: theme.colors.primary,
+      // borderWidth: theme.size.xs,
+      // borderColor: theme.colors.primary,
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.colors.surface,
-    },
-    favoriteButtonActive: {
-      backgroundColor: theme.colors.primary,
     },
     storeName: {
       marginTop: theme.spacing.xl,

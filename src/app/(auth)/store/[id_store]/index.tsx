@@ -4,6 +4,7 @@ import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -56,6 +57,27 @@ type Store = {
   info: StoreInfoBlock[];
   workingHours: StoreInfoBlock[];
   promotions: StorePromotion[];
+};
+
+const FAVORITE_STORE_ID_KEYS = ["store_id", "id_store", "storeId", "idStore", "store"] as const;
+
+const extractFavoriteStoreId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_STORE_ID_KEYS) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
 };
 
 
@@ -533,6 +555,7 @@ export default function StoreProfile() {
   }, [origin]);
   const animationLoading = useRef<LottieView>(null);
   const {
+    session,
     getStoreById,
     getStoreRatingsAverage,
     getAddressesStore,
@@ -540,6 +563,7 @@ export default function StoreProfile() {
     getImageProduct,
     getItemPromotionByStore,
   } = useSession();
+  const userId = session?.user?.id ?? null;
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
@@ -563,6 +587,32 @@ export default function StoreProfile() {
   const [promotions, setPromotions] = useState<StorePromotion[]>([]);
   const [isLoadingPromotions, setIsLoadingPromotions] = useState(false);
   const [promotionsError, setPromotionsError] = useState<string | null>(null);
+  const syncFavoriteStatus = useCallback(async () => {
+    if (!storeId || !userId) {
+      setIsFavorite(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await storeService.getFavoriteStoresByProfile(userId);
+      if (error) {
+        console.warn("StoreProfile: falha ao buscar lojas favoritas:", error);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const hasFavorite = rows.some((entry) => {
+        if (!entry || typeof entry !== "object") {
+          return false;
+        }
+        return extractFavoriteStoreId(entry) === storeId;
+      });
+
+      setIsFavorite(hasFavorite);
+    } catch (error) {
+      console.error("StoreProfile: erro inesperado ao buscar favoritos:", error);
+    }
+  }, [storeId, userId]);
   const workingHoursToDisplay = storeWorkingHours.length
     ? storeWorkingHours
     : store?.workingHours ?? [];
@@ -673,6 +723,11 @@ export default function StoreProfile() {
   const handleReloadPromotions = useCallback(() => {
     fetchPromotions();
   }, [fetchPromotions]);
+
+  useEffect(() => {
+    syncFavoriteStatus();
+  }, [syncFavoriteStatus]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -991,7 +1046,46 @@ export default function StoreProfile() {
     };
   }, [getAddressesStore, storeId, userLocation, store]);
 
-  const handleToggleFavorite = () => setIsFavorite((current) => !current);
+  const handleToggleFavorite = useCallback(async () => {
+    if (!storeId) {
+      console.warn("StoreProfile: loja sem identificador ao atualizar favoritos.");
+      return;
+    }
+
+    if (!userId) {
+      console.warn("StoreProfile: usuario nao autenticado ao atualizar favoritos de loja.");
+      return;
+    }
+
+    let nextValue = false;
+
+    setIsFavorite((current) => {
+      nextValue = !current;
+      return nextValue;
+    });
+
+    try {
+      if (nextValue) {
+        const { error } = await storeService.addStoreToFavorites(userId, storeId);
+        if (error) {
+          throw error;
+        }
+      } else {
+        const { error } = await storeService.removeStoreFromFavorites(userId, storeId);
+        if (error) {
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error("StoreProfile: erro ao atualizar favorito da loja:", error);
+      setIsFavorite((current) => {
+        if (current !== nextValue) {
+          return current;
+        }
+        return !nextValue;
+      });
+    }
+  }, [storeId, userId]);
 
   const ratingValue = averageRating ?? store?.rating ?? 0;
   const ratingLabel = isLoadingRating ? "..." : ratingValue.toFixed(2);
@@ -1127,7 +1221,7 @@ export default function StoreProfile() {
             onPress={handleToggleFavorite}
             style={[
               styles.favoriteButton,
-              isFavorite && styles.favoriteButtonActive,
+              // isFavorite && styles.favoriteButtonActive,
             ]}
             accessibilityRole="button"
             accessibilityLabel="Adicionar aos favoritos"
@@ -1137,7 +1231,7 @@ export default function StoreProfile() {
               type="MaterialCommunityIcons"
               name={isFavorite ? "heart" : "heart-outline"}
               size={20}
-              color={isFavorite ? theme.colors.onPrimary : theme.colors.primary}
+              color={theme.colors.primary}
             />
           </TouchableOpacity>
 
