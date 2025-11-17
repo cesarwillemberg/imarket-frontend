@@ -53,8 +53,8 @@ const createStyles = (theme: Theme) =>
     },
     searchResultsWrapper: {
       position: "absolute",
-      left: theme.spacing.lg,
-      right: theme.spacing.lg,
+      width: "98%",
+      alignSelf: "center",
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.xxl,
       borderWidth: 1,
