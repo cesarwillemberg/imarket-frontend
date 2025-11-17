@@ -1358,27 +1358,11 @@ export default function StoreProfile() {
 
           {hasPromotions ? (
             <View style={styles.promoCarousel}>
-              <TouchableOpacity
-                onPress={() => handleScrollPromotions("left")}
-                style={[
-                  styles.carouselArrow,
-                  !hasPromotions && styles.carouselArrowDisabled,
-                ]}
-                activeOpacity={0.7}
-                disabled={!hasPromotions}
-              >
-                <Icon
-                  type="MaterialCommunityIcons"
-                  name="chevron-left"
-                  size={26}
-                  color={theme.colors.primary}
-                />
-              </TouchableOpacity>
-
               <ScrollView
                 horizontal
                 ref={promoScrollRef}
                 showsHorizontalScrollIndicator={false}
+                style={styles.promoScroll}
                 contentContainerStyle={styles.promoList}
                 onScroll={(event) => {
                   promoOffsetRef.current = event.nativeEvent.contentOffset.x;
@@ -1427,22 +1411,43 @@ export default function StoreProfile() {
                 })}
               </ScrollView>
 
-              <TouchableOpacity
-                onPress={() => handleScrollPromotions("right")}
-                style={[
-                  styles.carouselArrow,
-                  !hasPromotions && styles.carouselArrowDisabled,
-                ]}
-                activeOpacity={0.7}
-                disabled={!hasPromotions}
-              >
-                <Icon
-                  type="MaterialCommunityIcons"
-                  name="chevron-right"
-                  size={26}
-                  color={theme.colors.primary}
-                />
-              </TouchableOpacity>
+              <View pointerEvents="box-none" style={styles.carouselArrowContainer}>
+                <TouchableOpacity
+                  onPress={() => handleScrollPromotions("left")}
+                  style={[
+                    styles.carouselArrow,
+                    styles.carouselArrowLeft,
+                    !hasPromotions && styles.carouselArrowDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  disabled={!hasPromotions}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="chevron-left"
+                    size={26}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleScrollPromotions("right")}
+                  style={[
+                    styles.carouselArrow,
+                    styles.carouselArrowRight,
+                    !hasPromotions && styles.carouselArrowDisabled,
+                  ]}
+                  activeOpacity={0.7}
+                  disabled={!hasPromotions}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="chevron-right"
+                    size={26}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
           ) : null}
 

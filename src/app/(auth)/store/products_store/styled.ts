@@ -248,7 +248,6 @@ const createStyles = (theme: Theme) =>
       textAlign: "center",
     },
     filterCheckboxRow: {
-      marginTop: theme.spacing.md,
       flexDirection: "row",
       alignItems: "center",
       backgroundColor: theme.colors.surface,
@@ -283,6 +282,54 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
     },
     filterCheckboxLabelActive: {
+      color: theme.colors.onPrimary,
+    },
+    favoriteFilterTitle: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+      fontWeight: "normal",
+      marginBottom: theme.spacing.sm,
+      textDecorationLine: "underline",
+    },
+    favoriteFilterWrapper: {
+      marginTop: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
+      gap: theme.spacing.sm,
+    },
+    favoriteTogglePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      borderRadius: theme.radius.full,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+    },
+    favoriteTogglePillActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    favoriteToggleCheckbox: {
+      width: 24,
+      height: 24,
+      borderRadius: theme.radius.sm,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      marginRight: theme.spacing.sm,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: theme.colors.surface,
+    },
+    favoriteToggleCheckboxActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    favoriteToggleLabel: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+    },
+    favoriteToggleLabelActive: {
       color: theme.colors.onPrimary,
     },
     filterSection: {

@@ -203,9 +203,9 @@ const createStyles = (theme: Theme) =>
       lineHeight: 18,
     },
     promoCarousel: {
-      flexDirection: "row",
-      alignItems: "center",
+      position: "relative",
       marginTop: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
     },
     promoFeedbackContainer: {
       paddingVertical: theme.spacing.lg,
@@ -234,6 +234,16 @@ const createStyles = (theme: Theme) =>
       fontSize: theme.fontSizes.sm,
       color: theme.colors.primary,
     },
+    promoScroll: {
+      width: "100%",
+    },
+    carouselArrowContainer: {
+      ...StyleSheet.absoluteFillObject,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: theme.spacing.sm,
+    },
     carouselArrow: {
       width: 38,
       height: 38,
@@ -244,15 +254,21 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: theme.colors.surface,
     },
+    carouselArrowLeft: {
+      marginRight: theme.spacing.sm,
+    },
+    carouselArrowRight: {
+      marginLeft: theme.spacing.sm,
+    },
     carouselArrowDisabled: {
       opacity: theme.opacity.disabled,
     },
     promoList: {
-      paddingHorizontal: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.xxl,
       gap: theme.spacing.sm,
     },
     promoCard: {
-      width: 170,
+      width: 200,
       borderRadius: theme.radius.lg,
       borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,

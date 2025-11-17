@@ -30,18 +30,21 @@ import {
   TouchableWithoutFeedback,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import createStyles from "./styled";
 // Removed dependency on mockStores.ts; define local defaults and lightweight types
 const DEFAULT_FILTERS = {
   state: "RS",
   city: "Ijui",
   radiusKm: 5,
+  favoritesOnly: false,
 } as const;
 
 const EMPTY_FILTERS = {
   state: null,
   city: null,
   radiusKm: null,
+  favoritesOnly: false,
 } as const;
 
 type StoreInfoBlock = { label: string; value: string };
@@ -255,6 +258,7 @@ type StoreFilters = {
   state: string | null;
   city: string | null;
   radiusKm: number | null;
+  favoritesOnly: boolean;
 };
 
 export default function StoreScreen() {
@@ -270,6 +274,7 @@ export default function StoreScreen() {
   const userId = session?.user?.id ?? null;
 
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = createStyles(theme);
   const router = useRouter();
 
@@ -297,6 +302,7 @@ export default function StoreScreen() {
     state: EMPTY_FILTERS.state,
     city: EMPTY_FILTERS.city,
     radiusKm: EMPTY_FILTERS.radiusKm,
+    favoritesOnly: EMPTY_FILTERS.favoritesOnly,
   });
 
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
@@ -332,11 +338,12 @@ export default function StoreScreen() {
         if (!granted) {
           console.warn("StoreScreen: permissao de localizacao nao concedida.");
           setUserLocation(null);
-          setFilters({
+          setFilters((current) => ({
             state: EMPTY_FILTERS.state,
             city: EMPTY_FILTERS.city,
             radiusKm: EMPTY_FILTERS.radiusKm,
-          });
+            favoritesOnly: current.favoritesOnly,
+          }));
           return;
         }
 
@@ -349,6 +356,7 @@ export default function StoreScreen() {
             state: DEFAULT_FILTERS.state,
             city: DEFAULT_FILTERS.city,
             radiusKm: DEFAULT_FILTERS.radiusKm,
+            favoritesOnly: current.favoritesOnly,
           };
         });
 
@@ -387,11 +395,13 @@ export default function StoreScreen() {
     const expectedState = hasLocationPermission ? DEFAULT_FILTERS.state : EMPTY_FILTERS.state;
     const expectedCity = hasLocationPermission ? DEFAULT_FILTERS.city : EMPTY_FILTERS.city;
     const expectedRadius = hasLocationPermission ? DEFAULT_FILTERS.radiusKm : EMPTY_FILTERS.radiusKm;
+    const expectedFavoritesOnly = EMPTY_FILTERS.favoritesOnly;
 
     return (
       (filters.state ?? null) !== expectedState ||
       (filters.city ?? null) !== expectedCity ||
-      (filters.radiusKm ?? null) !== expectedRadius
+      (filters.radiusKm ?? null) !== expectedRadius ||
+      filters.favoritesOnly !== expectedFavoritesOnly
     );
   }, [filters, hasLocationPermission]);
 
@@ -400,9 +410,10 @@ export default function StoreScreen() {
       Boolean(
         (filters.state && filters.state.length) ||
           (filters.city && filters.city.length) ||
-          filters.radiusKm !== null
+          filters.radiusKm !== null ||
+          filters.favoritesOnly
       ),
-    [filters.city, filters.radiusKm, filters.state]
+    [filters.city, filters.favoritesOnly, filters.radiusKm, filters.state]
   );
 
   const mapStoreFromApi = useCallback(
@@ -1042,7 +1053,10 @@ export default function StoreScreen() {
       const stateCandidate = (locationMeta?.state ?? store.state ?? "").trim();
       const cityCandidate = (locationMeta?.city ?? store.city ?? "").trim();
 
-      const normalizedFilterState = normalizeStateKey(filters.state);
+      const shouldApplyStateFilter = Boolean(filters.city && filters.state);
+      const normalizedFilterState = shouldApplyStateFilter
+        ? normalizeStateKey(filters.state)
+        : null;
       const normalizedStoreState = normalizeStateKey(stateCandidate);
 
       if (
@@ -1088,10 +1102,16 @@ export default function StoreScreen() {
         }
       }
 
+      if (filters.favoritesOnly && !favoriteStoreIds[store.id]) {
+        return false;
+      }
+
       return true;
     });
   }, [
+    favoriteStoreIds,
     filters.city,
+    filters.favoritesOnly,
     filters.radiusKm,
     filters.state,
     parseDistance,
@@ -1181,11 +1201,19 @@ export default function StoreScreen() {
     }));
   };
 
+  const handleClearFavoritesOnly = () => {
+    setFilters((current) => ({
+      ...current,
+      favoritesOnly: false,
+    }));
+  };
+
   const handleResetFilters = useCallback(() => {
     setFilters({
       state: EMPTY_FILTERS.state,
       city: EMPTY_FILTERS.city,
       radiusKm: EMPTY_FILTERS.radiusKm,
+      favoritesOnly: EMPTY_FILTERS.favoritesOnly,
     });
   }, []);
 
@@ -1273,15 +1301,43 @@ export default function StoreScreen() {
                 </TouchableOpacity>
               </View>
             ) : null}
+
+            {filters.favoritesOnly ? (
+              <View style={styles.filterChip}>
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name="heart"
+                  size={16}
+                  color={theme.colors.primary}
+                />
+                <Text style={styles.filterChipText}>Favoritas</Text>
+                <TouchableOpacity
+                  onPress={handleClearFavoritesOnly}
+                  accessibilityRole="button"
+                  accessibilityLabel="Limpar filtro de favoritas"
+                  style={styles.filterChipRemove}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </View>
         </View>
       </View>
     );
   }, [
     filters.city,
+    filters.favoritesOnly,
     filters.radiusKm,
     filters.state,
     handleClearLocation,
+    handleClearFavoritesOnly,
     handleClearRadius,
     handleOpenFilters,
     handleResetFilters,
@@ -1504,6 +1560,7 @@ export default function StoreScreen() {
         onCancel={handleCancelFilters}
         theme={theme}
         styles={styles}
+        bottomInset={insets.bottom}
       />
     </ScreenContainer>
   );
@@ -1598,6 +1655,7 @@ type FilterModalProps = {
   onCancel: () => void;
   theme: Theme;
   styles: ReturnType<typeof createStyles>;
+  bottomInset: number;
 };
 
 const FilterModal = ({
@@ -1607,17 +1665,20 @@ const FilterModal = ({
   onCancel,
   theme,
   styles,
+  bottomInset,
 }: FilterModalProps) => {
   const [cityValue, setCityValue] = useState(filters.city ?? "");
   const [radiusValue, setRadiusValue] = useState(filters.radiusKm ?? 5);
   const [radiusEnabled, setRadiusEnabled] = useState(filters.radiusKm !== null);
   const [isCitySelectorVisible, setIsCitySelectorVisible] = useState(false);
   const [citySearch, setCitySearch] = useState("");
+  const [favoritesOnly, setFavoritesOnly] = useState(filters.favoritesOnly ?? false);
 
   useEffect(() => {
     setCityValue(filters.city ?? "");
     setRadiusValue(filters.radiusKm ?? 5);
     setRadiusEnabled(filters.radiusKm !== null);
+    setFavoritesOnly(filters.favoritesOnly ?? false);
   }, [filters]);
 
   useEffect(() => {
@@ -1638,10 +1699,13 @@ const FilterModal = ({
   }, [citySearch]);
 
   const handleApply = () => {
+    const normalizedCity = cityValue?.trim() ? cityValue : null;
+    const shouldApplyState = Boolean(normalizedCity);
     onApply({
-      state: LOCKED_STATE.sigla,
-      city: cityValue ? cityValue : null,
+      state: shouldApplyState ? LOCKED_STATE.sigla : null,
+      city: normalizedCity,
       radiusKm: radiusEnabled ? radiusValue ?? 5 : null,
+      favoritesOnly,
     });
   };
 
@@ -1657,7 +1721,14 @@ const FilterModal = ({
           <TouchableWithoutFeedback onPress={onCancel}>
             <View style={styles.filterModalOverlay} />
           </TouchableWithoutFeedback>
-          <View style={styles.filterModalCard}>
+          <View
+            style={[
+              styles.filterModalCard,
+              {
+                paddingBottom: theme.spacing.sm + Math.max(bottomInset, 0),
+              },
+            ]}
+          >
             <View style={styles.filterModalHandle} />
             <Text style={styles.filterModalTitle}>Filtros</Text>
 
@@ -1799,6 +1870,42 @@ const FilterModal = ({
               </View>
             </View>
 
+            <View style={styles.filterFieldGroup}>
+              <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos</Text>
+              <TouchableOpacity
+                style={[
+                  styles.favoriteTogglePill,
+                  favoritesOnly && styles.favoriteTogglePillActive,
+                ]}
+                onPress={() => setFavoritesOnly((prev) => !prev)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.favoriteToggleCheckbox,
+                    favoritesOnly && styles.favoriteToggleCheckboxActive,
+                  ]}
+                >
+                  {favoritesOnly ? (
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="check"
+                      size={16}
+                      color={theme.colors.onPrimary}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.favoriteToggleLabel,
+                    favoritesOnly && styles.favoriteToggleLabelActive,
+                  ]}
+                >
+                  Mostrar apenas lojas favoritas
+                </Text>
+              </TouchableOpacity>
+            </View>
+
             <Button
               title="Aplicar Filtros"
               onPress={handleApply}
@@ -1806,7 +1913,13 @@ const FilterModal = ({
             />
 
             <TouchableOpacity
-              style={styles.cancelFilterButton}
+              style={[
+                styles.cancelFilterButton,
+                {
+                  marginBottom:
+                    bottomInset > 0 ? bottomInset : theme.spacing.sm,
+                },
+              ]}
               onPress={onCancel}
               activeOpacity={0.7}
             >

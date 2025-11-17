@@ -283,6 +283,7 @@ type Filters = {
   categories: FilterCategory[];
   minPrice: number | null;
   maxPrice: number | null;
+  favoritesOnly: boolean;
 };
 
 const NON_OUTROS_CATEGORIES: FilterCategory[] = FILTER_CATEGORIES.filter(
@@ -294,6 +295,7 @@ const createDefaultFilters = (): Filters => ({
   categories: [],
   minPrice: null,
   maxPrice: null,
+  favoritesOnly: false,
 });
 
 const normalizeText = (value: string) =>
@@ -392,6 +394,7 @@ export default function StoreProductsScreen() {
   const [draftOnlyPromotion, setDraftOnlyPromotion] = useState(
     Boolean(onlyPromotion && ["true", "1"].includes(String(onlyPromotion).toLowerCase()))
   );
+  const [draftFavoritesOnly, setDraftFavoritesOnly] = useState(false);
   const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
@@ -551,12 +554,23 @@ export default function StoreProductsScreen() {
           ? true
           : priceValue !== null && priceValue <= filters.maxPrice;
 
-      return matchesSearch && matchesPromotion && matchesCategory && matchesMin && matchesMax;
+      const matchesFavorites =
+        !filters.favoritesOnly || Boolean(favoriteProductIds[product.id]);
+
+      return (
+        matchesSearch &&
+        matchesPromotion &&
+        matchesCategory &&
+        matchesMin &&
+        matchesMax &&
+        matchesFavorites
+      );
     });
-  }, [products, searchTerm, filters]);
+  }, [favoriteProductIds, filters, products, searchTerm]);
 
   const hasActiveFilters =
     filters.onlyPromotion ||
+    filters.favoritesOnly ||
     filters.categories.length > 0 ||
     filters.minPrice !== null ||
     filters.maxPrice !== null;
@@ -578,6 +592,7 @@ export default function StoreProductsScreen() {
 
   const handleFilterButtonPress = () => {
     setDraftOnlyPromotion(filters.onlyPromotion);
+    setDraftFavoritesOnly(filters.favoritesOnly);
     setDraftCategories([...filters.categories]);
     setDraftMinPrice(formatCurrencyFromNumber(filters.minPrice));
     setDraftMaxPrice(formatCurrencyFromNumber(filters.maxPrice));
@@ -609,6 +624,7 @@ export default function StoreProductsScreen() {
 
     setFilters({
       onlyPromotion: draftOnlyPromotion,
+      favoritesOnly: draftFavoritesOnly,
       categories: [...draftCategories],
       minPrice: nextMinPrice,
       maxPrice: nextMaxPrice,
@@ -630,6 +646,13 @@ export default function StoreProductsScreen() {
     setFilters((current) => ({
       ...current,
       onlyPromotion: false,
+    }));
+  };
+
+  const handleRemoveFavoritesFilter = () => {
+    setFilters((current) => ({
+      ...current,
+      favoritesOnly: false,
     }));
   };
 
@@ -905,6 +928,25 @@ export default function StoreProductsScreen() {
               </View>
             ) : null}
 
+            {filters.favoritesOnly ? (
+              <View style={styles.filterChip}>
+                <Text style={styles.filterChipText}>Favoritos</Text>
+                <TouchableOpacity
+                  onPress={handleRemoveFavoritesFilter}
+                  style={styles.filterChipRemove}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                >
+                  <Icon
+                    type="MaterialCommunityIcons"
+                    name="close-circle"
+                    size={16}
+                    color={theme.colors.primary}
+                  />
+                </TouchableOpacity>
+              </View>
+            ) : null}
+
             {filters.categories.map((category) => (
               <View key={category} style={styles.filterChip}>
                 <Text style={styles.filterChipText}>{category}</Text>
@@ -960,11 +1002,13 @@ export default function StoreProductsScreen() {
     </View>
   ), [
     filters.categories,
+    filters.favoritesOnly,
     filters.onlyPromotion,
     hasActiveFilters,
     handleClearFilters,
     handleFilterButtonPress,
     handleRemoveCategoryFilter,
+    handleRemoveFavoritesFilter,
     handleRemovePriceFilter,
     handleRemovePromotionFilter,
     isLoading,
@@ -1016,42 +1060,80 @@ export default function StoreProductsScreen() {
             >
               <Text style={styles.filterModalTitle}>Filtros</Text>
 
-              <TouchableOpacity
-                onPress={() => setDraftOnlyPromotion((current) => !current)}
-                style={[
-                  styles.filterCheckboxRow,
-                  draftOnlyPromotion && styles.filterCheckboxRowActive,
-                ]}
-                activeOpacity={0.7}
-              >
-                <View
+              <View>
+                <Text style={styles.filterSectionTitle}>Promoção</Text>
+                <TouchableOpacity
+                  onPress={() => setDraftOnlyPromotion((current) => !current)}
                   style={[
-                    styles.filterCheckbox,
-                    draftOnlyPromotion && styles.filterCheckboxSelected,
+                    styles.filterCheckboxRow,
+                    draftOnlyPromotion && styles.filterCheckboxRowActive,
                   ]}
+                  activeOpacity={0.7}
                 >
-                  {draftOnlyPromotion ? (
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="check"
-                      size={16}
-                      color={theme.colors.onPrimary}
-                    />
-                  ) : null}
-                </View>
-                <Text
+                  <View
+                    style={[
+                      styles.filterCheckbox,
+                      draftOnlyPromotion && styles.filterCheckboxSelected,
+                    ]}
+                  >
+                    {draftOnlyPromotion ? (
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="check"
+                        size={16}
+                        color={theme.colors.onPrimary}
+                      />
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.filterCheckboxLabel,
+                      draftOnlyPromotion && styles.filterCheckboxLabelActive,
+                    ]}
+                  >
+                    Em Promoção
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.favoriteFilterWrapper}>
+                <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos</Text>
+                <TouchableOpacity
                   style={[
-                    styles.filterCheckboxLabel,
-                    draftOnlyPromotion && styles.filterCheckboxLabelActive,
+                    styles.favoriteTogglePill,
+                    draftFavoritesOnly && styles.favoriteTogglePillActive,
                   ]}
+                  onPress={() => setDraftFavoritesOnly((prev) => !prev)}
+                  activeOpacity={0.7}
                 >
-                  Em Promoção
-                </Text>
-              </TouchableOpacity>
+                  <View
+                    style={[
+                      styles.favoriteToggleCheckbox,
+                      draftFavoritesOnly && styles.favoriteToggleCheckboxActive,
+                    ]}
+                  >
+                    {draftFavoritesOnly ? (
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="check"
+                        size={16}
+                        color={theme.colors.onPrimary}
+                      />
+                    ) : null}
+                  </View>
+                  <Text
+                    style={[
+                      styles.favoriteToggleLabel,
+                      draftFavoritesOnly && styles.favoriteToggleLabelActive,
+                    ]}
+                  >
+                    Mostrar apenas favoritos
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
               <View style={styles.filterSection}>
                 <Text style={styles.filterSectionTitle}>Categorias</Text>
-
                 <View style={styles.categoriesGrid}>
                   {FILTER_CATEGORIES.map((category) => {
                     const isSelected = draftCategories.includes(category);
