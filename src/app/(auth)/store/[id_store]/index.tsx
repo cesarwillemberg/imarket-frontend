@@ -523,8 +523,14 @@ const mapScheduleResponseToWorkingHours = (raw: unknown): Store["workingHours"] 
 };
 
 export default function StoreProfile() {
-  const { id_store } = useLocalSearchParams<{ id_store?: string | string[] }>();
+  const { id_store, origin } = useLocalSearchParams<{ id_store?: string | string[]; origin?: string | string[] }>();
   const storeId = useMemo(() => (Array.isArray(id_store) ? id_store[0] : id_store), [id_store]);
+  const originSource = useMemo(() => {
+    if (Array.isArray(origin)) {
+      return origin[0] ?? null;
+    }
+    return origin ?? null;
+  }, [origin]);
   const animationLoading = useRef<LottieView>(null);
   const {
     getStoreById,
@@ -1024,10 +1030,18 @@ export default function StoreProfile() {
     });
   };
 
+  const handleNavigateBack = useCallback(() => {
+    if (originSource === "home") {
+      router.replace("/(auth)/home");
+      return;
+    }
+    router.back();
+  }, [originSource, router]);
+
   if (isLoadingStore) {
     return (
       <ScreenContainer>
-        <HeaderScreen title="Loja" showButtonBack />
+        <HeaderScreen title="Loja" showButtonBack onPressBack={handleNavigateBack} />
         <View style={styles.notFoundContainer}>
           <LoadingIcon
             autoPlay
@@ -1048,7 +1062,7 @@ export default function StoreProfile() {
   if (!store) {
     return (
       <ScreenContainer>
-        <HeaderScreen title="Loja nao encontrada" showButtonBack />
+        <HeaderScreen title="Loja nao encontrada" showButtonBack onPressBack={handleNavigateBack} />
         <View style={styles.notFoundContainer}>
           <Text style={styles.notFoundText}>
             {storeLoadError ?? "Nao encontramos informações para esta loja."}
@@ -1089,7 +1103,7 @@ export default function StoreProfile() {
             <View style={styles.bannerOverlay} />
           </ImageBackground>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleNavigateBack}
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Voltar"

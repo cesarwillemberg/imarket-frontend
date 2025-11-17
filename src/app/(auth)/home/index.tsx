@@ -847,7 +847,7 @@ export default function Home() {
 
   const handleStorePress = useCallback(
     (storeId: string) => {
-      router.push({ pathname: "/(auth)/store/[id_store]", params: { id_store: storeId } });
+      router.push({ pathname: "/(auth)/store/[id_store]", params: { id_store: storeId, origin: "home" } });
     },
     [router]
   );
