@@ -32,10 +32,62 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import createStyles from "./styled";
 // Removed dependency on mockStores.ts; define local defaults and lightweight types
+const FALLBACK_CITY = "Ijui";
+const USER_CITY_KEYS = ["city", "cidade", "city_name", "cityName", "locality"] as const;
+const USER_STATE_KEYS = ["state", "estado", "state_acronym", "stateAcronym", "uf"] as const;
+
+const extractNormalizedString = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length ? trimmed : null;
+  }
+  return null;
+};
+
+const extractValueFromMetadata = (
+  metadata: Record<string, unknown> | null | undefined,
+  keys: readonly string[]
+): string | null => {
+  if (!metadata || typeof metadata !== "object") {
+    return null;
+  }
+
+  for (const key of keys) {
+    const extracted = extractNormalizedString(
+      (metadata as Record<string, unknown>)[key]
+    );
+    if (extracted) {
+      return extracted;
+    }
+  }
+
+  const nestedAddress = (metadata as Record<string, unknown>).address;
+  if (nestedAddress && typeof nestedAddress === "object") {
+    for (const key of keys) {
+      const extracted = extractNormalizedString(
+        (nestedAddress as Record<string, unknown>)[key]
+      );
+      if (extracted) {
+        return extracted;
+      }
+    }
+  }
+
+  return null;
+};
+
+const extractCityFromMetadata = (metadata?: Record<string, unknown> | null): string | null => {
+  return extractValueFromMetadata(metadata, USER_CITY_KEYS);
+};
+
+const extractStateFromMetadata = (metadata?: Record<string, unknown> | null): string | null => {
+  return extractValueFromMetadata(metadata, USER_STATE_KEYS);
+};
+
 const DEFAULT_FILTERS = {
   state: "RS",
-  city: "Ijui",
-  radiusKm: 5,
+  city: FALLBACK_CITY,
+  radiusKm: null,
   favoritesOnly: false,
 } as const;
 
@@ -271,6 +323,11 @@ export default function StoreScreen() {
     removeStoreFromFavorites,
   } = useSession();
   const userId = session?.user?.id ?? null;
+  const userMetadata = (session?.user?.user_metadata ?? {}) as Record<string, unknown>;
+  const resolvedUserCity = extractCityFromMetadata(userMetadata);
+  const resolvedUserState = extractStateFromMetadata(userMetadata);
+  const defaultCity = resolvedUserCity ?? FALLBACK_CITY;
+  const defaultState = resolvedUserState ?? DEFAULT_FILTERS.state;
 
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
@@ -298,8 +355,8 @@ export default function StoreScreen() {
   const [hasLocationPermission, setHasLocationPermission] = useState<boolean | null>(null);
 
   const [filters, setFilters] = useState<StoreFilters>({
-    state: EMPTY_FILTERS.state,
-    city: EMPTY_FILTERS.city,
+    state: defaultState,
+    city: defaultCity,
     radiusKm: EMPTY_FILTERS.radiusKm,
     favoritesOnly: EMPTY_FILTERS.favoritesOnly,
   });
@@ -317,6 +374,74 @@ export default function StoreScreen() {
   useEffect(() => {
     storeLocationMetaRef.current = storeLocationMeta;
   }, [storeLocationMeta]);
+
+  useEffect(() => {
+    if (!resolvedUserCity) {
+      return;
+    }
+
+    setFilters((current) => {
+      if (!current.city) {
+        return {
+          ...current,
+          city: resolvedUserCity,
+        };
+      }
+
+      const currentNormalized = normalizeForComparison(current.city);
+      const fallbackNormalized = normalizeForComparison(FALLBACK_CITY);
+      const resolvedNormalized = normalizeForComparison(resolvedUserCity);
+
+      if (currentNormalized === resolvedNormalized) {
+        return current;
+      }
+
+      if (currentNormalized === fallbackNormalized) {
+        return {
+          ...current,
+          city: resolvedUserCity,
+        };
+      }
+
+      return current;
+    });
+  }, [resolvedUserCity]);
+
+  useEffect(() => {
+    if (!resolvedUserState) {
+      return;
+    }
+
+    setFilters((current) => {
+      if (!current.state) {
+        return {
+          ...current,
+          state: resolvedUserState,
+        };
+      }
+
+      const currentNormalized = normalizeStateKey(current.state);
+      const fallbackNormalized = normalizeStateKey(DEFAULT_FILTERS.state);
+      const resolvedNormalized = normalizeStateKey(resolvedUserState);
+
+      if (currentNormalized === resolvedNormalized) {
+        return current;
+      }
+
+      if (
+        fallbackNormalized &&
+        currentNormalized &&
+        currentNormalized === fallbackNormalized
+      ) {
+        return {
+          ...current,
+          state: resolvedUserState,
+        };
+      }
+
+      return current;
+    });
+  }, [resolvedUserState]);
 
 
   useEffect(() => {
@@ -337,25 +462,49 @@ export default function StoreScreen() {
         if (!granted) {
           console.warn("StoreScreen: permissao de localizacao nao concedida.");
           setUserLocation(null);
-          setFilters((current) => ({
-            state: EMPTY_FILTERS.state,
-            city: EMPTY_FILTERS.city,
-            radiusKm: EMPTY_FILTERS.radiusKm,
-            favoritesOnly: current.favoritesOnly,
-          }));
+          setFilters((current) => {
+            const nextState = current.state ?? defaultState;
+            const nextCity = current.city ?? defaultCity;
+            if (
+              nextState === current.state &&
+              nextCity === current.city &&
+              current.radiusKm === EMPTY_FILTERS.radiusKm
+            ) {
+              return current;
+            }
+            return {
+              ...current,
+              state: nextState,
+              city: nextCity,
+              radiusKm: EMPTY_FILTERS.radiusKm,
+            };
+          });
           return;
         }
 
         setFilters((current) => {
-          if (current.state || current.city || current.radiusKm !== null) {
+          const normalizedCurrentCity = current.city
+            ? normalizeForComparison(current.city)
+            : null;
+          const nextCity =
+            !current.city || normalizedCurrentCity === normalizeForComparison(FALLBACK_CITY)
+              ? defaultCity
+              : current.city;
+          const nextState = current.state ?? defaultState;
+
+          if (
+            nextState === current.state &&
+            nextCity === current.city &&
+            current.radiusKm === EMPTY_FILTERS.radiusKm
+          ) {
             return current;
           }
 
           return {
-            state: DEFAULT_FILTERS.state,
-            city: DEFAULT_FILTERS.city,
-            radiusKm: DEFAULT_FILTERS.radiusKm,
-            favoritesOnly: current.favoritesOnly,
+            ...current,
+            state: nextState,
+            city: nextCity,
+            radiusKm: EMPTY_FILTERS.radiusKm,
           };
         });
 
@@ -391,9 +540,9 @@ export default function StoreScreen() {
     : filters.state ?? "Selecionar local";
 
   const hasFilterOverrides = useMemo(() => {
-    const expectedState = hasLocationPermission ? DEFAULT_FILTERS.state : EMPTY_FILTERS.state;
-    const expectedCity = hasLocationPermission ? DEFAULT_FILTERS.city : EMPTY_FILTERS.city;
-    const expectedRadius = hasLocationPermission ? DEFAULT_FILTERS.radiusKm : EMPTY_FILTERS.radiusKm;
+    const expectedState = defaultState;
+    const expectedCity = defaultCity;
+    const expectedRadius = EMPTY_FILTERS.radiusKm;
     const expectedFavoritesOnly = EMPTY_FILTERS.favoritesOnly;
 
     return (
@@ -402,7 +551,7 @@ export default function StoreScreen() {
       (filters.radiusKm ?? null) !== expectedRadius ||
       filters.favoritesOnly !== expectedFavoritesOnly
     );
-  }, [filters, hasLocationPermission]);
+  }, [defaultCity, defaultState, filters]);
 
   const hasVisibleFilters = useMemo(
     () =>
@@ -758,7 +907,7 @@ export default function StoreScreen() {
         try {
           let coordinates = geocodedStoreCoordsRef.current[storeId];
 
-          if (!coordinates) {
+          if (!coordinates && shouldComputeDistances) {
             const { data, error } = await getAddressesStore(storeId);
 
             if (error) {
@@ -801,55 +950,64 @@ export default function StoreScreen() {
                   null,
               };
 
-              if (
-                typeof primaryAddress?.latitude === "number" &&
-                typeof primaryAddress?.longitude === "number"
-              ) {
-                const coords: Coordinates = {
-                  latitude: primaryAddress.latitude,
-                  longitude: primaryAddress.longitude,
-                };
-                coordinates = coords;
-                geocodedStoreCoordsRef.current[storeId] = coords;
-              }
+              if (shouldComputeDistances) {
+                if (
+                  typeof primaryAddress?.latitude === "number" &&
+                  typeof primaryAddress?.longitude === "number"
+                ) {
+                  const coords: Coordinates = {
+                    latitude: primaryAddress.latitude,
+                    longitude: primaryAddress.longitude,
+                  };
+                  coordinates = coords;
+                  geocodedStoreCoordsRef.current[storeId] = coords;
+                }
 
-              if (!coordinates) {
-                const addressParts = [
-                  [primaryAddress.street, primaryAddress.street_number]
-                    .filter(Boolean)
-                    .join(", ")
-                    .trim(),
-                  primaryAddress.neighborhood,
-                  primaryAddress.city,
-                  primaryAddress.state_acronym ?? primaryAddress.state,
-                  primaryAddress.country ?? "Brasil",
-                ]
-                  .filter((part: string | null | undefined) => {
-                    if (typeof part !== "string") return false;
-                    return part.trim().length > 0;
-                  })
-                  .map((part: string) => part.trim());
+                if (!coordinates) {
+                  const addressParts = [
+                    [primaryAddress.street, primaryAddress.street_number]
+                      .filter(Boolean)
+                      .join(", ")
+                      .trim(),
+                    primaryAddress.neighborhood,
+                    primaryAddress.city,
+                    primaryAddress.state_acronym ?? primaryAddress.state,
+                    primaryAddress.country ?? "Brasil",
+                  ]
+                    .filter((part: string | null | undefined) => {
+                      if (typeof part !== "string") return false;
+                      return part.trim().length > 0;
+                    })
+                    .map((part: string) => part.trim());
 
-                if (addressParts.length) {
-                  const formattedAddress = addressParts.join(", ");
+                  if (addressParts.length) {
+                    const formattedAddress = addressParts.join(", ");
 
-                  if (formattedAddress) {
-                    const geocodedResults = await geocodeAsync(formattedAddress);
+                    if (formattedAddress) {
+                      try {
+                        const geocodedResults = await geocodeAsync(formattedAddress);
 
-                    const firstValid = geocodedResults.find(
-                      (entry) =>
-                        typeof entry?.latitude === "number" &&
-                        typeof entry?.longitude === "number"
-                    );
+                        const firstValid = geocodedResults.find(
+                          (entry) =>
+                            typeof entry?.latitude === "number" &&
+                            typeof entry?.longitude === "number"
+                        );
 
-                    if (firstValid) {
-                      const coords: Coordinates = {
-                        latitude: firstValid.latitude,
-                        longitude: firstValid.longitude,
-                      };
+                        if (firstValid) {
+                          const coords: Coordinates = {
+                            latitude: firstValid.latitude,
+                            longitude: firstValid.longitude,
+                          };
 
-                      geocodedStoreCoordsRef.current[storeId] = coords;
-                      coordinates = coords;
+                          geocodedStoreCoordsRef.current[storeId] = coords;
+                          coordinates = coords;
+                        }
+                      } catch (error) {
+                        console.warn(
+                          `StoreScreen: falha ao geocodificar endereco da loja ${storeId}:`,
+                          error
+                        );
+                      }
                     }
                   }
                 }

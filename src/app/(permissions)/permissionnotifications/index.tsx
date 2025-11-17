@@ -1,7 +1,6 @@
 import PushIllustration from "@/src/assets/images/onboarding/undraw_push-notifications_5z1s.svg";
 import { createTextStyles } from "@/src/assets/styles/textStyles";
 import { Icon } from "@/src/components/common/Icon";
-import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
@@ -17,6 +16,7 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   Text,
@@ -183,13 +183,7 @@ export default function PermissionNotification() {
             disabled={isRequestingPermission}
           >
             {isRequestingPermission ? (
-              <LoadingIcon
-                autoPlay
-                loop
-                // source={loadingCart}
-                refAnimationLoading={animationLoading}
-                style={{ width: 150, height: 150 }}
-              />
+              <ActivityIndicator size={"small"} color={theme.colors.onPrimary} />
             ) : (
               <>
                 <Text style={styles.buttonText}>Permitir notificações</Text>
