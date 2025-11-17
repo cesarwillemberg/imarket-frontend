@@ -533,11 +533,40 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
 
-    if (
-      typeof requestForegroundPermissionsAsync !== "function" ||
-      typeof getCurrentPositionAsync !== "function"
-    ) {
-      console.warn("Home: APIs de localização indisponíveis");
+    const setLocationFromCoords = (coords: { latitude: number; longitude: number }) => {
+      if (!cancelled) {
+        setUserLocation({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        });
+      }
+    };
+
+    const tryNavigatorLocation = () => {
+      if (typeof navigator !== "undefined" && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setLocationFromCoords({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          (error) => {
+            console.warn("Home: localização não obtida via browser", error);
+          },
+          { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 }
+        );
+        return true;
+      }
+      return false;
+    };
+
+    const expoLocationAvailable =
+      typeof requestForegroundPermissionsAsync === "function" &&
+      typeof getCurrentPositionAsync === "function";
+
+    if (!expoLocationAvailable) {
+      tryNavigatorLocation();
       return () => {
         cancelled = true;
       };
@@ -554,14 +583,13 @@ export default function Home() {
           accuracy: LocationAccuracy.Balanced,
         });
 
-        if (!cancelled) {
-          setUserLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        }
+        setLocationFromCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
       } catch (error) {
         console.warn("Home: localização não obtida", error);
+        tryNavigatorLocation();
       }
     })();
 
