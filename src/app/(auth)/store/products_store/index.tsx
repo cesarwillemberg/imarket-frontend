@@ -4,6 +4,7 @@ import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchBar from "@/src/components/common/SearchBar";
 import { useSession } from "@/src/providers/SessionContext/Index";
+import productService from "@/src/services/products-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
@@ -333,12 +334,44 @@ const parseCurrencyInput = (value: string): number | null => {
 const formatCurrencyFromNumber = (value: number | null) =>
   value !== null ? currencyFormatter.format(value) : "";
 
+const FAVORITE_PRODUCT_ID_KEYS = [
+  "produto_id",
+  "product_id",
+  "produtoId",
+  "productId",
+  "id_produto",
+  "idProduto",
+  "id_product",
+  "idProduct",
+  "product",
+] as const;
+
+const extractFavoriteProductId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_PRODUCT_ID_KEYS) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
+};
+
 export default function StoreProductsScreen() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const router = useRouter();
 
-  const { getProductsByStoreId, getImageProduct } = useSession();
+  const { session, getProductsByStoreId, getImageProduct } = useSession();
+  const userId = session?.user?.id ?? null;
   const { storeId, storeName, onlyPromotion } = useLocalSearchParams<LocalSearchParams>();
   const animationLoading = useRef<LottieView>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -362,6 +395,39 @@ export default function StoreProductsScreen() {
   const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
+  const [favoriteProductIds, setFavoriteProductIds] = useState<Record<string, boolean>>({});
+
+  const syncFavoriteProducts = useCallback(async () => {
+    if (!userId) {
+      setFavoriteProductIds({});
+      return;
+    }
+
+    try {
+      const { data, error } = await productService.getFavoriteProductsByProfile(userId);
+      if (error) {
+        console.warn("StoreProductsScreen: falha ao buscar produtos favoritos:", error);
+        return;
+      }
+
+      const entries = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const nextFavorites: Record<string, boolean> = {};
+
+      for (const entry of entries) {
+        if (!entry || typeof entry !== "object") {
+          continue;
+        }
+        const productId = extractFavoriteProductId(entry);
+        if (productId) {
+          nextFavorites[productId] = true;
+        }
+      }
+
+      setFavoriteProductIds(nextFavorites);
+    } catch (error) {
+      console.error("StoreProductsScreen: erro inesperado ao carregar favoritos:", error);
+    }
+  }, [userId]);
 
   const loadProducts = useCallback(async () => {
     if (!storeId) {
@@ -431,6 +497,10 @@ export default function StoreProductsScreen() {
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
+
+  useEffect(() => {
+    syncFavoriteProducts();
+  }, [syncFavoriteProducts]);
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -589,6 +659,51 @@ export default function StoreProductsScreen() {
 
   const priceKeyboardType = Platform.OS === "ios" ? "number-pad" : "numeric";
 
+  const toggleFavoriteProduct = useCallback(
+    async (productId: string) => {
+      if (!productId) {
+        return;
+      }
+
+      if (!userId) {
+        Alert.alert("Conta necessaria", "Entre na sua conta para favoritar produtos.");
+        return;
+      }
+
+      let nextValue = false;
+
+      setFavoriteProductIds((current) => {
+        const currentValue = Boolean(current[productId]);
+        nextValue = !currentValue;
+        return {
+          ...current,
+          [productId]: nextValue,
+        };
+      });
+
+      try {
+        if (nextValue) {
+          const { error } = await productService.addProductToFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await productService.removeProductFromFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error("StoreProductsScreen: erro ao atualizar favorito do produto:", error);
+        setFavoriteProductIds((current) => ({
+          ...current,
+          [productId]: !nextValue,
+        }));
+      }
+    },
+    [userId]
+  );
+
   const renderProduct = ({ item }: ListRenderItemInfo<Product>) => {
     const showDiscount =
       item.originalPrice !== null &&
@@ -600,6 +715,8 @@ export default function StoreProductsScreen() {
         params: { id_product: item.id },
       });
     };
+
+    const isFavorite = Boolean(favoriteProductIds[item.id]);
 
     return (
       <TouchableOpacity
@@ -627,9 +744,29 @@ export default function StoreProductsScreen() {
         </View>
 
         <View style={styles.productInfo}>
-          <Text style={styles.productName} numberOfLines={2}>
-            {item.name}
-          </Text>
+          <View style={styles.productInfoHeader}>
+            <Text style={styles.productName} numberOfLines={2}>
+              {item.name}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => toggleFavoriteProduct(item.id)}
+              style={styles.productFavoriteButton}
+              accessibilityRole="button"
+              accessibilityLabel={`${
+                isFavorite ? "Remover" : "Adicionar"
+              } ${item.name} aos favoritos`}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              <Icon
+                type="MaterialCommunityIcons"
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={20}
+                color={theme.colors.primary}
+              />
+            </TouchableOpacity>
+          </View>
 
           {showDiscount ? (
             <Text style={styles.productOriginalPrice}>
@@ -852,6 +989,7 @@ export default function StoreProductsScreen() {
             data={filteredProducts}
             keyExtractor={(item) => item.id}
             renderItem={renderProduct}
+            extraData={favoriteProductIds}
             style={styles.productsList}
             contentContainerStyle={styles.listContent}
             ListHeaderComponent={renderListHeader}

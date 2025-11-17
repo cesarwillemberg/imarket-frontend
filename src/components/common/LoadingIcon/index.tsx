@@ -19,15 +19,13 @@ const LoadingIcon: FC<LoadingIconProps> = ({ autoPlay, loop, refAnimationLoading
     const { theme } = useTheme();
     const styles =  createStyles(theme);
     return (
-        <>
-            <LottieView
-                source={source ? source : loadingCart}
-                style={[styles.icon, style]}
-                loop={loop}
-                autoPlay={autoPlay}
-                ref={refAnimationLoading}
-            />
-        </>
+        <LottieView
+            source={source ? source : loadingCart}
+            style={[style]}
+            loop={loop}
+            autoPlay={autoPlay}
+            ref={refAnimationLoading}
+        />
     )
 }
 

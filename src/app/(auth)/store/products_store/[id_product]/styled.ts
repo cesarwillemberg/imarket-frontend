@@ -105,6 +105,12 @@ const createStyles = (theme: Theme) =>
     informationSection: {
       marginTop: theme.spacing.xl,
     },
+    productHeader: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: theme.spacing.sm,
+    },
     productName: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.xl,
@@ -129,6 +135,15 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
+    },
+    favoriteButton: {
+      // borderWidth: theme.size.xs,
+      // borderColor: theme.colors.primary,
+      // backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.full,
+      padding: theme.spacing.xs,
+      alignItems: "center",
+      justifyContent: "center",
     },
     productUnavailable: {
       fontFamily: theme.fonts.regular,
@@ -239,6 +254,7 @@ const createStyles = (theme: Theme) =>
     descriptionText: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
+      textAlign: "justify",
       color: theme.colors.text,
       lineHeight: 20,
     },
