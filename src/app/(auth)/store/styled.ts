@@ -164,7 +164,7 @@ const createStyles = (theme: Theme) =>
       flex: 1,
       marginRight: theme.spacing.sm,
       fontFamily: theme.fonts.regular,
-      fontWeight: "700",
+      fontWeight: "light",
       fontSize: theme.fontSizes.lg,
       color: theme.colors.text,
     },

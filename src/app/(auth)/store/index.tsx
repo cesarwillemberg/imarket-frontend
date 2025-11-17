@@ -229,6 +229,27 @@ const pickFallbackBrandColor = (identifier: string): string => {
   return FALLBACK_BRAND_COLORS[paletteIndex];
 };
 
+const FAVORITE_STORE_ID_KEYS = ["store_id", "id_store", "storeId", "idStore", "store"] as const;
+
+const extractFavoriteStoreId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_STORE_ID_KEYS) {
+    const rawValue = row[key];
+    if (typeof rawValue === "string" && rawValue.trim().length) {
+      return rawValue.trim();
+    }
+    if (typeof rawValue === "number" && Number.isFinite(rawValue)) {
+      return String(rawValue);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
+};
+
 
 type StoreFilters = {
   state: string | null;
@@ -237,7 +258,16 @@ type StoreFilters = {
 };
 
 export default function StoreScreen() {
-  const { getStores, getStoreRatingsAverage, getAddressesStore } = useSession();
+  const {
+    session,
+    getStores,
+    getStoreRatingsAverage,
+    getAddressesStore,
+    getFavoriteStoresByUser,
+    addStoreToFavorites,
+    removeStoreFromFavorites,
+  } = useSession();
+  const userId = session?.user?.id ?? null;
 
   const { theme } = useTheme();
   const styles = createStyles(theme);
@@ -587,38 +617,97 @@ export default function StoreScreen() {
     }
   }, [getStores, mapStoreFromApi]);
 
+  const syncFavoriteStores = useCallback(async () => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
+    if (!userId) {
+      setFavoriteStoreIds((current) => {
+        if (Object.keys(current).length === 0) {
+          return current;
+        }
+        return {};
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await getFavoriteStoresByUser(userId);
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      if (error) {
+        console.warn("StoreScreen: falha ao buscar lojas favoritas:", error);
+        return;
+      }
+
+      const rows = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+      const favoriteIds = new Set<string>();
+
+      for (const entry of rows) {
+        if (entry && typeof entry === "object") {
+          const storeId = extractFavoriteStoreId(entry);
+          if (storeId) {
+            favoriteIds.add(storeId);
+          }
+        }
+      }
+
+      setFavoriteStoreIds((current) => {
+        const next: Record<string, boolean> = { ...current };
+        let hasChanged = false;
+
+        favoriteIds.forEach((storeId) => {
+          if (next[storeId] !== true) {
+            next[storeId] = true;
+            hasChanged = true;
+          }
+        });
+
+        Object.keys(next).forEach((storeId) => {
+          if (!favoriteIds.has(storeId) && next[storeId]) {
+            next[storeId] = false;
+            hasChanged = true;
+          }
+        });
+
+        return hasChanged ? next : current;
+      });
+    } catch (error) {
+      if (isMountedRef.current) {
+        console.error("StoreScreen: erro inesperado ao buscar lojas favoritas:", error);
+      }
+    }
+  }, [getFavoriteStoresByUser, userId]);
+
   useEffect(() => {
     loadStores();
   }, [loadStores]);
 
   useEffect(() => {
+    syncFavoriteStores();
+  }, [syncFavoriteStores]);
+
+  useEffect(() => {
+    if (!stores.length) {
+      return;
+    }
+
     setFavoriteStoreIds((current) => {
-      const next: Record<string, boolean> = {};
+      const next: Record<string, boolean> = { ...current };
+      let hasChanged = false;
+
       for (const store of stores) {
-        next[store.id] = current[store.id] ?? false;
-      }
-
-      const currentKeys = Object.keys(current);
-      const nextKeys = Object.keys(next);
-
-      const hasSameKeys =
-        currentKeys.length === nextKeys.length &&
-        currentKeys.every((key) => key in next);
-
-      if (hasSameKeys) {
-        let allSame = true;
-        for (const key of nextKeys) {
-          if (current[key] !== next[key]) {
-            allSame = false;
-            break;
-          }
-        }
-        if (allSame) {
-          return current;
+        if (!Object.prototype.hasOwnProperty.call(next, store.id)) {
+          next[store.id] = false;
+          hasChanged = true;
         }
       }
 
-      return next;
+      return hasChanged ? next : current;
     });
   }, [stores]);
 
@@ -1023,12 +1112,50 @@ export default function StoreScreen() {
     });
   };
 
-  const toggleFavorite = (storeId: string) => {
-    setFavoriteStoreIds((current) => ({
-      ...current,
-      [storeId]: !current[storeId],
-    }));
-  };
+  const toggleFavorite = useCallback(
+    async (storeId: string) => {
+      if (!storeId) {
+        return;
+      }
+
+      if (!userId) {
+        console.warn("StoreScreen: usuario nao autenticado ao modificar favoritos de loja.");
+        return;
+      }
+
+      let nextValue = false;
+
+      setFavoriteStoreIds((current) => {
+        const currentValue = Boolean(current[storeId]);
+        nextValue = !currentValue;
+        return {
+          ...current,
+          [storeId]: nextValue,
+        };
+      });
+
+      try {
+        if (nextValue) {
+          const { error } = await addStoreToFavorites(userId, storeId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await removeStoreFromFavorites(userId, storeId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error("StoreScreen: erro ao atualizar favorito da loja:", error);
+        setFavoriteStoreIds((current) => ({
+          ...current,
+          [storeId]: !nextValue,
+        }));
+      }
+    },
+    [addStoreToFavorites, removeStoreFromFavorites, userId]
+  );
 
   const handleApplyFilters = (nextFilters: StoreFilters) => {
     setFilters(nextFilters);
@@ -1374,6 +1501,7 @@ export default function StoreScreen() {
             refreshing={isLoadingStores}
             onRefresh={() => {
               loadStores();
+              syncFavoriteStores();
             }}
           />
         </View>
