@@ -133,6 +133,10 @@ interface SessionContextProps {
     cart_id: string;
     produto_id: string;
   }) => Promise<{ data: any; error: any }>;
+  addStoreToFavorites: (userId: string, storeId: string) => Promise<{ data: any; error: any }>;
+  addProductToFavorites: (userId: string, productId: string) => Promise<{ data: any; error: any }>;
+  removeStoreFromFavorites: (userId: string, storeId: string) => Promise<{ data: any; error: any }>;
+  removeProductFromFavorites: (userId: string, productId: string) => Promise<{ data: any; error: any }>;
 }
 
 const SessionContext = createContext<SessionContextProps>({
@@ -297,6 +301,18 @@ const SessionContext = createContext<SessionContextProps>({
     produto_id: string;
   }): Promise<{ data: any; error: any }> => {
     throw new Error("removeItemFromCart not implemented.");
+  },
+  addStoreToFavorites: async (_userId: string, _storeId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("addStoreToFavorites not implemented.");
+  },
+  addProductToFavorites: async (_userId: string, _productId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("addProductToFavorites not implemented.");
+  },
+  removeStoreFromFavorites: async (_userId: string, _storeId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("removeStoreFromFavorites not implemented.");
+  },
+  removeProductFromFavorites: async (_userId: string, _productId: string): Promise<{ data: any; error: any }> => {
+    throw new Error("removeProductFromFavorites not implemented.");
   },
 });
 
@@ -756,6 +772,49 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   };
 
+  const addStoreToFavorites = async (userId: string, storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.addStoreToFavorites(userId, storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao adicionar loja aos favoritos:", error);
+      return { data: null, error };
+    }
+  };
+
+  const addProductToFavorites = async (userId: string, productId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await productService.addProductToFavorites(userId, productId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao adicionar produto aos favoritos:", error);
+      return { data: null, error };
+    }
+  };
+
+  const removeStoreFromFavorites = async (userId: string, storeId: string): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await storeService.removeStoreFromFavorites(userId, storeId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao remover loja dos favoritos:", error);
+      return { data: null, error };
+    }
+  };
+
+  const removeProductFromFavorites = async (
+    userId: string,
+    productId: string
+  ): Promise<{ data: any; error: any }> => {
+    try {
+      const { data, error } = await productService.removeProductFromFavorites(userId, productId);
+      return { data, error };
+    } catch (error) {
+      console.error("SessionContext: Erro ao remover produto dos favoritos:", error);
+      return { data: null, error };
+    }
+  };
+
   return (
     <SessionContext.Provider
       value={{
@@ -794,6 +853,10 @@ export const SessionProvider: FC<{ children: ReactNode }> = ({ children }) => {
         addItemToCart,
         updateCartItemQuantity,
         removeItemFromCart,
+        addStoreToFavorites,
+        addProductToFavorites,
+        removeStoreFromFavorites,
+        removeProductFromFavorites,
       }}
     >
       {children}

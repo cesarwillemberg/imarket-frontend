@@ -132,6 +132,47 @@ const storeService = {
         }
     },
 
+    addStoreToFavorites: async (userId: string, storeId: string) => {
+        try {
+            
+            const { data, error } = await supabase
+                .from("favorite_stores")
+                .insert([{ profile_id: userId, store_id: storeId }])
+                .select()
+                .single();
+            if (error) {
+                console.error("Error adding store to favorites:", error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+
+        } catch (error) {
+            console.error("Error adding store to favorites:", error);
+            return { data: null, error };
+        }
+    },
+    removeStoreFromFavorites: async (userId: string, storeId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from("favorite_stores")
+                .delete()
+                .eq("profile_id", userId)
+                .eq("store_id", storeId)
+                .select();
+
+            if (error) {
+                console.error("Error removing store from favorites:", error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+        } catch (error) {
+            console.error("Error removing store from favorites:", error);
+            return { data: null, error };
+        }
+    },
+
 };
 
 export default storeService;

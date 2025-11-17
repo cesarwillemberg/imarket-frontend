@@ -207,14 +207,11 @@ const createStyles = (theme: Theme) =>
       width: 32,
       height: 32,
       borderRadius: theme.radius.full,
-      borderWidth: 1,
-      borderColor: theme.colors.primary,
+      // borderWidth: 1,
+      // borderColor: theme.colors.primary,
       backgroundColor: theme.colors.surface,
       alignItems: "center",
       justifyContent: "center",
-    },
-    promotionFavoriteButtonActive: {
-      backgroundColor: theme.colors.primary,
     },
     productSeller: {
       fontSize: theme.fontSizes.sm,

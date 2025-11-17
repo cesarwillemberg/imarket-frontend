@@ -505,7 +505,12 @@ export default function Home() {
     getStoreById,
     getStoreRatingsAverage,
     getAddressesStore,
+    addStoreToFavorites,
+    removeStoreFromFavorites,
+    addProductToFavorites,
+    removeProductFromFavorites,
   } = useSession();
+  const userId = session?.user?.id ?? null;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -794,29 +799,104 @@ export default function Home() {
     [router]
   );
 
-  const handleToggleStoreFavorite = useCallback((storeId: string) => {
-    setFavoriteStores((current) => {
-      const next = new Set(current);
-      if (next.has(storeId)) {
-        next.delete(storeId);
-      } else {
-        next.add(storeId);
+  const handleToggleStoreFavorite = useCallback(
+    async (storeId: string) => {
+      if (!userId) {
+        console.warn("Home: usuario nao autenticado ao modificar favorito de loja.");
+        return;
       }
-      return next;
-    });
-  }, []);
 
-  const handleTogglePromotionFavorite = useCallback((productId: string) => {
-    setFavoritePromotionProducts((current) => {
-      const next = new Set(current);
-      if (next.has(productId)) {
-        next.delete(productId);
-      } else {
-        next.add(productId);
+      let shouldFavorite = false;
+      setFavoriteStores((current) => {
+        const next = new Set(current);
+        const alreadyFavorite = next.has(storeId);
+        shouldFavorite = !alreadyFavorite;
+
+        if (alreadyFavorite) {
+          next.delete(storeId);
+        } else {
+          next.add(storeId);
+        }
+        return next;
+      });
+
+      try {
+        if (shouldFavorite) {
+          const { error } = await addStoreToFavorites(userId, storeId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await removeStoreFromFavorites(userId, storeId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (toggleError) {
+        console.error("Home: erro ao atualizar favorito de loja:", toggleError);
+        // Reverte o estado local se o backend falhar.
+        setFavoriteStores((current) => {
+          const next = new Set(current);
+          if (shouldFavorite) {
+            next.delete(storeId);
+          } else {
+            next.add(storeId);
+          }
+          return next;
+        });
       }
-      return next;
-    });
-  }, []);
+    },
+    [userId, addStoreToFavorites, removeStoreFromFavorites]
+  );
+
+  const handleTogglePromotionFavorite = useCallback(
+    async (productId: string) => {
+      if (!userId) {
+        console.warn("Home: usuario nao autenticado ao modificar favorito de produto.");
+        return;
+      }
+
+      let shouldFavorite = false;
+      setFavoritePromotionProducts((current) => {
+        const next = new Set(current);
+        const alreadyFavorite = next.has(productId);
+        shouldFavorite = !alreadyFavorite;
+
+        if (alreadyFavorite) {
+          next.delete(productId);
+        } else {
+          next.add(productId);
+        }
+        return next;
+      });
+
+      try {
+        if (shouldFavorite) {
+          const { error } = await addProductToFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await removeProductFromFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (toggleError) {
+        console.error("Home: erro ao atualizar favorito de produto:", toggleError);
+        setFavoritePromotionProducts((current) => {
+          const next = new Set(current);
+          if (shouldFavorite) {
+            next.delete(productId);
+          } else {
+            next.add(productId);
+          }
+          return next;
+        });
+      }
+    },
+    [userId, addProductToFavorites, removeProductFromFavorites]
+  );
 
   const fetchStoreCoordinates = useCallback(
     async (storeId: string): Promise<Coordinates | null> => {
@@ -959,8 +1039,8 @@ export default function Home() {
     [stores, storeDistanceOverrides]
   );
 
-  const promotionsToShow = promotions.slice(0, 4);
-  const storesToShow = storesWithComputedDistance.slice(0, 4);
+  const promotionsToShow = promotions.slice(0, 3);
+  const storesToShow = storesWithComputedDistance.slice(0, 3);
   const suggestionsToShow = otherSuggestions.slice(0, 12);
 
   const trimmedSearchTerm = searchTerm.trim();
@@ -1202,7 +1282,6 @@ export default function Home() {
                       <TouchableOpacity
                         style={[
                           styles.promotionFavoriteButton,
-                          isProductFavorite ? styles.promotionFavoriteButtonActive : null,
                         ]}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -1216,7 +1295,7 @@ export default function Home() {
                           name={isProductFavorite ? "heart" : "heart-outline"}
                           size={18}
                           color={
-                            isProductFavorite ? theme.colors.onPrimary : theme.colors.primary
+                            theme.colors.primary
                           }
                         />
                       </TouchableOpacity>

@@ -96,6 +96,47 @@ const productService = {
             console.error("Error fetching promotional products:", error);
             return { data: null, error };
         }
+    },
+
+    addProductToFavorites: async (userId: string, productId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from("favorite_products")
+                .insert([{ profile_id: userId, produto_id: productId }])
+                .select()
+                .single();
+
+            if (error) {
+                console.error("Error adding product to favorites:", error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+        } catch (error) {
+            console.error("Error adding product to favorites:", error);
+            return { data: null, error };
+        }
+    },
+
+    removeProductFromFavorites: async (userId: string, productId: string) => {
+        try {
+            const { data, error } = await supabase
+                .from("favorite_products")
+                .delete()
+                .eq("profile_id", userId)
+                .eq("produto_id", productId)
+                .select();
+
+            if (error) {
+                console.error("Error removing product from favorites:", error);
+                return { data: null, error };
+            }
+
+            return { data, error: null };
+        } catch (error) {
+            console.error("Error removing product from favorites:", error);
+            return { data: null, error };
+        }
     }
 
 
