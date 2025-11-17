@@ -1,19 +1,21 @@
+import loadingCart from "@/src/assets/animations/loading/loading-cart.json";
 import HeaderScreen from "@/src/components/common/HeaderScreen";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { geocodeAsync, getCurrentPositionAsync, LocationAccuracy, requestForegroundPermissionsAsync } from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   ImageBackground,
   ScrollView,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 // Local defaults replacing removed mockStores.ts
@@ -521,9 +523,15 @@ const mapScheduleResponseToWorkingHours = (raw: unknown): Store["workingHours"] 
 };
 
 export default function StoreProfile() {
-  const { id_store } = useLocalSearchParams<{ id_store?: string | string[] }>();
+  const { id_store, origin } = useLocalSearchParams<{ id_store?: string | string[]; origin?: string | string[] }>();
   const storeId = useMemo(() => (Array.isArray(id_store) ? id_store[0] : id_store), [id_store]);
-
+  const originSource = useMemo(() => {
+    if (Array.isArray(origin)) {
+      return origin[0] ?? null;
+    }
+    return origin ?? null;
+  }, [origin]);
+  const animationLoading = useRef<LottieView>(null);
   const {
     getStoreById,
     getStoreRatingsAverage,
@@ -1022,12 +1030,26 @@ export default function StoreProfile() {
     });
   };
 
+  const handleNavigateBack = useCallback(() => {
+    if (originSource === "home") {
+      router.replace("/(auth)/home");
+      return;
+    }
+    router.back();
+  }, [originSource, router]);
+
   if (isLoadingStore) {
     return (
       <ScreenContainer>
-        <HeaderScreen title="Loja" showButtonBack />
+        <HeaderScreen title="Loja" showButtonBack onPressBack={handleNavigateBack} />
         <View style={styles.notFoundContainer}>
-          <ActivityIndicator color={theme.colors.primary} size="large" />
+          <LoadingIcon
+            autoPlay
+            loop
+            source={loadingCart}
+            refAnimationLoading={animationLoading}
+            style={{ width: 150, height: 150 }}
+          />
           <Text style={[styles.notFoundText, { marginTop: theme.spacing.md }]}>
             Carregando informações da loja...
           </Text>
@@ -1040,7 +1062,7 @@ export default function StoreProfile() {
   if (!store) {
     return (
       <ScreenContainer>
-        <HeaderScreen title="Loja nao encontrada" showButtonBack />
+        <HeaderScreen title="Loja nao encontrada" showButtonBack onPressBack={handleNavigateBack} />
         <View style={styles.notFoundContainer}>
           <Text style={styles.notFoundText}>
             {storeLoadError ?? "Nao encontramos informações para esta loja."}
@@ -1081,7 +1103,7 @@ export default function StoreProfile() {
             <View style={styles.bannerOverlay} />
           </ImageBackground>
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleNavigateBack}
             style={styles.backButton}
             accessibilityRole="button"
             accessibilityLabel="Voltar"
@@ -1217,7 +1239,13 @@ export default function StoreProfile() {
 
           {isLoadingPromotions && !hasPromotions ? (
             <View style={styles.promoFeedbackContainer}>
-              <ActivityIndicator size="small" color={theme.colors.primary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             </View>
           ) : null}
 

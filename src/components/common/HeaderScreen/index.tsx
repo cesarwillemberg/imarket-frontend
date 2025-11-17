@@ -8,9 +8,10 @@ interface Props {
     title?: string;
     showButtonBack?: boolean;
     styleTitle?: object;
+    onPressBack?: () => void;
 }
 
-const HeaderScreen: FC<Props> = ({ title, showButtonBack, styleTitle }) => {
+const HeaderScreen: FC<Props> = ({ title, showButtonBack, styleTitle, onPressBack }) => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
     return (
@@ -21,7 +22,7 @@ const HeaderScreen: FC<Props> = ({ title, showButtonBack, styleTitle }) => {
         }}>
             <View style={[styles.container, !showButtonBack ? { justifyContent: "center" } : {}] }>
                 <View style={[styles.wrapper_back_button, !showButtonBack ? { display: "none" } : {}]}>
-                    <BackButton />
+                    <BackButton onPress={onPressBack} />
                 </View>
                 <View style={styles.wrapper_title}>
                     <Text style={[styles.title, styleTitle]}>

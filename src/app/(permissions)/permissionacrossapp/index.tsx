@@ -1,6 +1,7 @@
 import TrackingIllustration from "@/src/assets/images/onboarding/undraw_applications_h0mq.svg";
 import { createTextStyles } from "@/src/assets/styles/textStyles";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
@@ -12,20 +13,21 @@ import {
 } from "@/src/utils/permissions";
 import { useRouter } from "expo-router";
 import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
-import { useEffect, useState } from "react";
+import LottieView from "lottie-react-native";
+import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
 export default function PermissionAcrossTheApp() {
   const { theme } = useTheme();
   const styles = createStyles(theme);
+  const animationLoading = useRef<LottieView>(null);
   const textStyles = createTextStyles(theme);
   const router = useRouter();
   const { session } = useSession();
@@ -150,7 +152,13 @@ export default function PermissionAcrossTheApp() {
             disabled={isRequestingPermission}
           >
             {isRequestingPermission ? (
-              <ActivityIndicator color={theme.colors.onPrimary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                // source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             ) : (
               <>
                 <Text style={styles.buttonText}>

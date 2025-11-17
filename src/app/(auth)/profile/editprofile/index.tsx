@@ -5,6 +5,7 @@ import { useSession } from "@/src/providers/SessionContext/Index";
 import { UserInfo } from "@/src/services/auth-service";
 import { useTheme } from "@/src/themes/ThemeContext";
 import { useRouter } from "expo-router";
+import LottieView from "lottie-react-native";
 import { useEffect, useRef, useState } from "react";
 import { findNodeHandle, ScrollView, TextInput, View } from "react-native";
 import createStyles from "./styled";
@@ -14,6 +15,7 @@ export default function EditProfile() {
   const styles = createStyles(theme);
   const router = useRouter();
   const { user, getInfoUser } = useSession();
+  const animationLoading = useRef<LottieView>(null);
 
   const [userData, setUserData] = useState<UserInfo>();
 
@@ -87,7 +89,13 @@ export default function EditProfile() {
           // }
         >
           {/* {isLoading ? (
-            <ActivityIndicator size="large" color={theme.colors.primary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
           ) : (
             <> */}
               <View>

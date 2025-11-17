@@ -2,13 +2,15 @@ import createStyles from "@/src/assets/styles/tabStyles";
 import { Icon } from "@/src/components/common/Icon";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
-import { Tabs } from "expo-router";
-import { useCallback } from "react";
+import { Tabs, useRouter } from "expo-router";
+import { useCallback, useRef } from "react";
 
 export default function TabLayout() {
   const { theme } = useTheme();
   const { user, getOrCreateActiveCart } = useSession();
   const styles = createStyles(theme);
+  const router = useRouter();
+  const storeTabLastPressRef = useRef(0);
   const handleCartTabPress = useCallback(() => {
     if (!user?.id) {
       return;
@@ -18,6 +20,14 @@ export default function TabLayout() {
       console.error("TabLayout: failed to ensure active cart", error);
     });
   }, [getOrCreateActiveCart, user?.id]);
+
+  const handleStoreTabDoublePress = useCallback(() => {
+    const now = Date.now();
+    if (now - storeTabLastPressRef.current < 400) {
+      router.replace("/(auth)/store");
+    }
+    storeTabLastPressRef.current = now;
+  }, [router]);
 
   return (
     <Tabs
@@ -50,6 +60,11 @@ export default function TabLayout() {
               color={color}
             />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            handleStoreTabDoublePress();
+          },
         }}
       />
       <Tabs.Screen

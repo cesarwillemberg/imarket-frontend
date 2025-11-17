@@ -1,6 +1,7 @@
 import LocationIllustration from "@/src/assets/images/onboarding/undraw_my-location_dcug.svg";
 import { createTextStyles } from "@/src/assets/styles/textStyles";
 import { Icon } from "@/src/components/common/Icon";
+import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import { useSession } from "@/src/providers/SessionContext/Index";
 import { useTheme } from "@/src/themes/ThemeContext";
@@ -16,18 +17,20 @@ import {
   requestForegroundPermissionsAsync,
 } from "expo-location";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import LottieView from "lottie-react-native";
+import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Linking,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import createStyles from "./styled";
 
+
 export default function PermissionLocation() {
+  const animationLoading = useRef<LottieView>(null);
   const { theme } = useTheme();
   const styles = createStyles(theme);
   const textStyles = createTextStyles(theme);
@@ -165,7 +168,13 @@ export default function PermissionLocation() {
             disabled={isRequestingPermission}
           >
             {isRequestingPermission ? (
-              <ActivityIndicator color={theme.colors.onPrimary} />
+              <LoadingIcon
+                autoPlay
+                loop
+                // source={loadingCart}
+                refAnimationLoading={animationLoading}
+                style={{ width: 150, height: 150 }}
+              />
             ) : (
               <>
                 <Text style={styles.buttonText}>Acesso localização</Text>
