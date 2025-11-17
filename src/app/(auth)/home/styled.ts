@@ -203,9 +203,22 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.text,
       marginRight: theme.spacing.sm,
     },
+    promotionFavoriteButton: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.full,
+      borderWidth: 1,
+      borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    promotionFavoriteButtonActive: {
+      backgroundColor: theme.colors.primary,
+    },
     productSeller: {
       fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
+      color: theme.colors.disabled,
       marginBottom: theme.spacing.sx,
     },
     originalPrice: {
@@ -231,7 +244,7 @@ const createStyles = (theme: Theme) =>
     productCode: {
       marginTop: theme.spacing.sx,
       fontSize: theme.fontSizes.xs,
-      color: theme.colors.text,
+      color: theme.colors.disabled,
     },
     sectionDivider: {
       height: 1,
@@ -273,10 +286,29 @@ const createStyles = (theme: Theme) =>
     storeContent: {
       flex: 1,
     },
+    storeHeaderRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      columnGap: theme.spacing.sm,
+    },
     storeName: {
       fontSize: theme.fontSizes.gl,
       fontWeight: "600",
       color: theme.colors.text,
+    },
+    storeFavoriteButton: {
+      width: 32,
+      height: 32,
+      borderRadius: theme.radius.full,
+      // borderWidth: 1,
+      // borderColor: theme.colors.primary,
+      backgroundColor: theme.colors.surface,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    storeFavoriteButtonActive: {
+      backgroundColor: theme.colors.primary,
     },
     storeMetaRow: {
       flexDirection: "row",
@@ -285,7 +317,7 @@ const createStyles = (theme: Theme) =>
     },
     storeRating: {
       marginLeft: theme.spacing.sx,
-      fontWeight: "600",
+      fontWeight: "400",
       color: theme.colors.text,
     },
     storeDot: {

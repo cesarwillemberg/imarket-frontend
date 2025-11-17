@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  GestureResponderEvent,
   Image,
   LayoutChangeEvent,
   RefreshControl,
@@ -23,7 +24,9 @@ import createStyles from "./styled";
 
 type GenericRecord = Record<string, unknown>;
 type RawProduct = GenericRecord & { id?: string | number };
+type RawProductImage = GenericRecord & { id?: string | number };
 type RawStore = GenericRecord & { id?: string | number };
+type Coordinates = { latitude: number; longitude: number };
 
 type ProductCardItem = {
   id: string;
@@ -80,6 +83,11 @@ const PRODUCT_IMAGE_URL_KEYS = [
   "main_image_url",
   "public_url",
   "publicUrl",
+  "url",
+  "path",
+  "download_url",
+  "downloadUrl",
+  "uri",
 ] as const;
 
 const STORE_LOGO_KEYS = [
@@ -89,6 +97,18 @@ const STORE_LOGO_KEYS = [
   "image_url",
   "imageUrl",
   "avatar",
+  "profile_picture_url",
+  "profilePictureUrl",
+  "profile_picture",
+  "profilePicture",
+  "store_picture",
+  "storePicture",
+  "picture_url",
+  "pictureUrl",
+  "picture",
+  "photo_url",
+  "photoUrl",
+  "photo",
 ] as const;
 
 const STORE_BADGE_KEYS = [
@@ -125,6 +145,87 @@ const STORE_RATING_KEYS = [
 ] as const;
 
 const STORE_CITY_KEYS = ["city", "cidade", "municipio"] as const;
+
+const EARTH_RADIUS_KM = 6371;
+
+const calculateDistanceKm = (from: Coordinates, to: Coordinates) => {
+  const toRadians = (value: number) => (value * Math.PI) / 180;
+
+  const deltaLat = toRadians(to.latitude - from.latitude);
+  const deltaLon = toRadians(to.longitude - from.longitude);
+
+  const originLatRad = toRadians(from.latitude);
+  const targetLatRad = toRadians(to.latitude);
+
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(originLatRad) *
+      Math.cos(targetLatRad) *
+      Math.sin(deltaLon / 2) *
+      Math.sin(deltaLon / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return EARTH_RADIUS_KM * c;
+};
+
+const parseCoordinateValue = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.replace(/[^\d,.-]/g, "").replace(",", ".");
+    if (!normalized || normalized === "-" || normalized === "." || normalized === "-.") {
+      return null;
+    }
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const formatDistanceLabel = (value: number) => `${value.toFixed(2)} Km`;
+
+const buildAddressString = (address: GenericRecord | null | undefined): string | null => {
+  if (!address) {
+    return null;
+  }
+
+  const normalize = (value: unknown) => {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : null;
+    }
+    return null;
+  };
+
+  const streetName = normalize(address["street"]);
+  const streetNumber = normalize(address["street_number"] ?? address["number"]);
+
+  const parts: string[] = [];
+  const streetLabel = [streetName, streetNumber].filter(Boolean).join(", ").trim();
+  if (streetLabel.length) {
+    parts.push(streetLabel);
+  }
+
+  const maybeAdd = (value: unknown) => {
+    const normalized = normalize(value);
+    if (normalized) {
+      parts.push(normalized);
+    }
+  };
+
+  maybeAdd(address["neighborhood"] ?? address["district"]);
+  maybeAdd(address["city"]);
+  maybeAdd(address["state_acronym"] ?? address["state"] ?? address["region"]);
+
+  const country = normalize(address["country"]) ?? "Brasil";
+  if (country) {
+    parts.push(country);
+  }
+
+  return parts.length ? parts.join(", ") : null;
+};
 
 const pickFirstValue = (source: GenericRecord, keys: readonly string[]) => {
   for (const key of keys) {
@@ -210,6 +311,31 @@ const normalizeText = (value: string | null | undefined) =>
 
 const isNotNull = <T,>(value: T | null | undefined): value is T =>
   value !== null && value !== undefined;
+
+const resolveImageUrlFromRows = (rows: RawProductImage[]): string | null => {
+  for (const row of rows) {
+    const resolved = coerceString(pickFirstValue(row, PRODUCT_IMAGE_URL_KEYS));
+    if (resolved) {
+      return resolved;
+    }
+
+    const nestedImage = row["image"];
+    if (typeof nestedImage === "string") {
+      const trimmed = nestedImage.trim();
+      if (trimmed.length) {
+        return trimmed;
+      }
+    }
+  }
+  return null;
+};
+
+const resolveStoreLogoFromRecord = (record: GenericRecord | null | undefined): string | null => {
+  if (!record) {
+    return null;
+  }
+  return coerceString(pickFirstValue(record, STORE_LOGO_KEYS));
+};
 
 // Normaliza os dados do produto para evitar crashes com colunas diferentes no Supabase
 const mapProductFromApi = (raw: RawProduct): ProductCardItem | null => {
@@ -348,7 +474,7 @@ const mapStoreFromApi = (raw: RawStore): StoreCardItem | null => {
   const distanceNumber = parseNumberValue(distanceRaw);
   const distanceLabel =
     distanceNumber !== null
-      ? `${distanceNumber.toFixed(1)} Km`
+      ? `${distanceNumber.toFixed(2)} Km`
       : coerceString(distanceRaw) ?? null;
 
   return {
@@ -360,7 +486,7 @@ const mapStoreFromApi = (raw: RawStore): StoreCardItem | null => {
     rating: parseNumberValue(ratingRaw),
     distanceLabel,
     badge: coerceString(pickFirstValue(raw, STORE_BADGE_KEYS)),
-    logoUrl: coerceString(pickFirstValue(raw, STORE_LOGO_KEYS)),
+    logoUrl: resolveStoreLogoFromRecord(raw),
     city: coerceString(pickFirstValue(raw, STORE_CITY_KEYS)),
   };
 };
@@ -373,7 +499,13 @@ export default function Home() {
   const styles = createStyles(theme);
   const commonStyles = createCommonStyles(theme);
   const router = useRouter();
-  const { session } = useSession();
+  const {
+    session,
+    getImageProduct,
+    getStoreById,
+    getStoreRatingsAverage,
+    getAddressesStore,
+  } = useSession();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -382,14 +514,61 @@ export default function Home() {
   const [products, setProducts] = useState<ProductCardItem[]>([]);
   const [stores, setStores] = useState<StoreCardItem[]>([]);
   const [searchBarLayout, setSearchBarLayout] = useState<{ y: number; height: number } | null>(null);
+  const [favoriteStores, setFavoriteStores] = useState<Set<string>>(() => new Set());
+  const [favoritePromotionProducts, setFavoritePromotionProducts] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const [storeDistanceOverrides, setStoreDistanceOverrides] = useState<Record<string, string>>({});
   const notificationCount = 0;
   const animationLoading = useRef<LottieView>(null);
+  const storeCoordinatesCache = useRef<Record<string, Coordinates | null>>({});
 
   useEffect(() => {
     if (!session) {
       router.replace("/signin");
     }
   }, [session, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (
+      typeof requestForegroundPermissionsAsync !== "function" ||
+      typeof getCurrentPositionAsync !== "function"
+    ) {
+      console.warn("Home: APIs de localização indisponíveis");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    (async () => {
+      try {
+        const { status } = await requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          return;
+        }
+
+        const position = await getCurrentPositionAsync({
+          accuracy: LocationAccuracy.Balanced,
+        });
+
+        if (!cancelled) {
+          setUserLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        }
+      } catch (error) {
+        console.warn("Home: localização não obtida", error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadHomeData = useCallback(
     async (silent = false) => {
@@ -414,12 +593,132 @@ export default function Home() {
         const mappedStores = Array.isArray(storesResponse.data)
           ? storesResponse.data.map(mapStoreFromApi).filter(isNotNull)
           : [];
+        const storesWithLogos = await Promise.all(
+          mappedStores.map(async (store) => {
+            if (!store.id || store.logoUrl) {
+              return store;
+            }
+
+            try {
+              const { data, error: storeError } = await getStoreById(store.id);
+              if (storeError) {
+                console.warn("Home: falha ao carregar logo da loja", store.id, storeError);
+                return store;
+              }
+
+              const resolvedLogo = resolveStoreLogoFromRecord(
+                (data as GenericRecord | null | undefined) ?? undefined
+              );
+              if (resolvedLogo) {
+                return { ...store, logoUrl: resolvedLogo };
+              }
+              return store;
+            } catch (storeLogoException) {
+              console.warn(
+                "Home: erro inesperado ao buscar logo da loja",
+                store.id,
+                storeLogoException
+              );
+              return store;
+            }
+          })
+        );
+        const storesWithRatings = await Promise.all(
+          storesWithLogos.map(async (store) => {
+            if (!store.id) {
+              return store;
+            }
+            const hasValidRating =
+              typeof store.rating === "number" && Number.isFinite(store.rating) && store.rating >= 0;
+            if (hasValidRating) {
+              return store;
+            }
+            try {
+              const { data, error: ratingError } = await getStoreRatingsAverage(store.id);
+              if (ratingError) {
+                console.warn("Home: falha ao carregar nota da loja", store.id, ratingError);
+                return store;
+              }
+              const averageRaw = (data as GenericRecord | null | undefined)?.average;
+              const resolvedAverage =
+                typeof averageRaw === "number" && Number.isFinite(averageRaw)
+                  ? averageRaw
+                  : parseNumberValue(averageRaw);
+              if (typeof resolvedAverage === "number" && Number.isFinite(resolvedAverage)) {
+                return { ...store, rating: resolvedAverage };
+              }
+              return store;
+            } catch (ratingException) {
+              console.warn(
+                "Home: erro inesperado ao buscar nota da loja",
+                store.id,
+                ratingException
+              );
+              return store;
+            }
+          })
+        );
         const mappedProducts = Array.isArray(productsResponse.data)
           ? productsResponse.data.map(mapProductFromApi).filter(isNotNull)
           : [];
+        const productsWithImages = await Promise.all(
+          mappedProducts.map(async (product) => {
+            if (!product.id) {
+              return product;
+            }
 
-        setStores(mappedStores);
-        setProducts(mappedProducts);
+            if (product.imageUrl) {
+              return product;
+            }
+
+            try {
+              const { data, error: imageError } = await getImageProduct(product.id);
+              if (imageError) {
+                console.warn("Home: falha ao carregar imagem do produto", product.id, imageError);
+                return product;
+              }
+
+              const rows = Array.isArray(data) ? (data as RawProductImage[]) : [];
+              const resolvedImage = resolveImageUrlFromRows(rows);
+
+              if (resolvedImage && resolvedImage !== product.imageUrl) {
+                return { ...product, imageUrl: resolvedImage };
+              }
+              return product;
+            } catch (imageException) {
+              console.warn(
+                "Home: erro inesperado ao buscar imagem do produto",
+                product.id,
+                imageException
+              );
+              return product;
+            }
+          })
+        );
+
+        const storeNameById = new Map<string, string>();
+        storesWithRatings.forEach((store) => {
+          if (store.id && store.name) {
+            storeNameById.set(store.id, store.name);
+          }
+        });
+
+        const productsWithSeller = productsWithImages.map((product) => {
+          const hasSellerName = typeof product.storeName === "string" && product.storeName.trim().length;
+          if (hasSellerName || !product.storeId) {
+            return product;
+          }
+
+          const fallbackName = storeNameById.get(product.storeId);
+          if (!fallbackName) {
+            return product;
+          }
+
+          return { ...product, storeName: fallbackName };
+        });
+
+        setStores(storesWithRatings);
+        setProducts(productsWithSeller);
       } catch (fetchError) {
         console.error("Home: failed to load highlights", fetchError);
         setError("Não foi possível carregar os destaques. Deslize para atualizar.");
@@ -430,7 +729,7 @@ export default function Home() {
         setIsRefreshing(false);
       }
     },
-    []
+    [getImageProduct, getStoreById, getStoreRatingsAverage]
   );
 
   useEffect(() => {
@@ -467,6 +766,152 @@ export default function Home() {
     [router]
   );
 
+  const handleToggleStoreFavorite = useCallback((storeId: string) => {
+    setFavoriteStores((current) => {
+      const next = new Set(current);
+      if (next.has(storeId)) {
+        next.delete(storeId);
+      } else {
+        next.add(storeId);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleTogglePromotionFavorite = useCallback((productId: string) => {
+    setFavoritePromotionProducts((current) => {
+      const next = new Set(current);
+      if (next.has(productId)) {
+        next.delete(productId);
+      } else {
+        next.add(productId);
+      }
+      return next;
+    });
+  }, []);
+
+  const fetchStoreCoordinates = useCallback(
+    async (storeId: string): Promise<Coordinates | null> => {
+      if (!storeId) {
+        return null;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(storeCoordinatesCache.current, storeId)) {
+        return storeCoordinatesCache.current[storeId];
+      }
+
+      try {
+        const { data, error } = await getAddressesStore(storeId);
+        if (error) {
+          console.warn("Home: erro ao buscar endereços da loja", storeId, error);
+          storeCoordinatesCache.current[storeId] = null;
+          return null;
+        }
+
+        const rows = Array.isArray(data) ? (data as GenericRecord[]) : [];
+
+        for (const row of rows) {
+          const latitude =
+            parseCoordinateValue(
+              row["latitude"] ??
+                row["lat"] ??
+                row["latitude_decimal"] ??
+                row["latitudeDecimal"] ??
+                row["lat_decimal"]
+            ) ?? null;
+          const longitude =
+            parseCoordinateValue(
+              row["longitude"] ??
+                row["lng"] ??
+                row["lon"] ??
+                row["long"] ??
+                row["longitude_decimal"] ??
+                row["longitudeDecimal"]
+            ) ?? null;
+
+          if (latitude !== null && longitude !== null) {
+            const coords: Coordinates = { latitude, longitude };
+            storeCoordinatesCache.current[storeId] = coords;
+            return coords;
+          }
+        }
+
+        const firstAddress = rows[0] ?? null;
+        if (firstAddress && typeof geocodeAsync === "function") {
+          const formattedAddress = buildAddressString(firstAddress);
+          if (formattedAddress) {
+            try {
+              const geocodedResults = await geocodeAsync(formattedAddress);
+              const firstMatch = geocodedResults.find(
+                (entry) =>
+                  typeof entry?.latitude === "number" && typeof entry?.longitude === "number"
+              );
+              if (firstMatch) {
+                const coords: Coordinates = {
+                  latitude: firstMatch.latitude,
+                  longitude: firstMatch.longitude,
+                };
+                storeCoordinatesCache.current[storeId] = coords;
+                return coords;
+              }
+            } catch (geocodeError) {
+              console.warn("Home: erro ao geocodificar endereço da loja", storeId, geocodeError);
+            }
+          }
+        }
+
+        storeCoordinatesCache.current[storeId] = null;
+        return null;
+      } catch (error) {
+        console.warn("Home: erro inesperado ao buscar endereço da loja", storeId, error);
+        storeCoordinatesCache.current[storeId] = null;
+        return null;
+      }
+    },
+    [getAddressesStore]
+  );
+
+  useEffect(() => {
+    if (!stores.length || !userLocation) {
+      setStoreDistanceOverrides({});
+      return;
+    }
+
+    let cancelled = false;
+
+    const computeDistances = async () => {
+      const overrides: Record<string, string> = {};
+
+      await Promise.all(
+        stores.map(async (store) => {
+          if (!store.id) {
+            return;
+          }
+          try {
+            const coords = await fetchStoreCoordinates(store.id);
+            if (!coords) {
+              return;
+            }
+            const distance = calculateDistanceKm(userLocation, coords);
+            overrides[store.id] = formatDistanceLabel(distance);
+          } catch (error) {
+            console.warn("Home: erro ao calcular distância da loja", store.id, error);
+          }
+        })
+      );
+
+      if (!cancelled) {
+        setStoreDistanceOverrides(overrides);
+      }
+    };
+
+    computeDistances().catch((error) => console.warn("Home: falha geral ao calcular distâncias", error));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [stores, userLocation, fetchStoreCoordinates]);
+
   const promotions = useMemo(
     () => products.filter((product) => product.inPromotion),
     [products]
@@ -476,9 +921,19 @@ export default function Home() {
     [products]
   );
 
-  const promotionsToShow = promotions.slice(0, 3);
-  const storesToShow = stores.slice(0, 3);
-  const suggestionsToShow = otherSuggestions.slice(0, 9);
+  const storesWithComputedDistance = useMemo(
+    () =>
+      stores.map((store) =>
+        storeDistanceOverrides[store.id]
+          ? { ...store, distanceLabel: storeDistanceOverrides[store.id] }
+          : store
+      ),
+    [stores, storeDistanceOverrides]
+  );
+
+  const promotionsToShow = promotions.slice(0, 4);
+  const storesToShow = storesWithComputedDistance.slice(0, 4);
+  const suggestionsToShow = otherSuggestions.slice(0, 12);
 
   const trimmedSearchTerm = searchTerm.trim();
 
@@ -494,7 +949,7 @@ export default function Home() {
 
     const matches = (text: string | null) => normalizeText(text).includes(normalizedQuery);
 
-    const storeMatches: SearchResultItem[] = stores
+    const storeMatches: SearchResultItem[] = storesWithComputedDistance
       .filter(
         (item) =>
           matches(item.name) ||
@@ -523,7 +978,7 @@ export default function Home() {
       }));
 
     return [...storeMatches, ...productMatches].slice(0, 8);
-  }, [normalizedQuery, products, stores]);
+  }, [normalizedQuery, products, storesWithComputedDistance]);
 
   const handleSearchResultPress = useCallback(
     (item: SearchResultItem) => {
@@ -611,7 +1066,7 @@ export default function Home() {
                       <Image
                         source={{ uri: item.imageUrl }}
                         style={styles.searchResultImage}
-                        resizeMode="cover"
+                        resizeMode="contain"
                       />
                     ) : (
                       <View style={styles.searchResultFallback}>
@@ -684,6 +1139,7 @@ export default function Home() {
             promotionsToShow.map((product) => {
               const formattedPrice = formatPrice(product.price);
               const formattedOriginalPrice = formatPrice(product.originalPrice);
+              const isProductFavorite = favoritePromotionProducts.has(product.id);
               return (
                 <TouchableOpacity
                   key={product.id}
@@ -715,16 +1171,31 @@ export default function Home() {
                       <Text style={styles.promotionName} numberOfLines={2}>
                         {product.name}
                       </Text>
-                      <Icon
-                        type="MaterialCommunityIcons"
-                        name="heart-outline"
-                        size={20}
-                        color={theme.colors.primary}
-                      />
+                      <TouchableOpacity
+                        style={[
+                          styles.promotionFavoriteButton,
+                          isProductFavorite ? styles.promotionFavoriteButtonActive : null,
+                        ]}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        onPress={(event: GestureResponderEvent) => {
+                          event.stopPropagation();
+                          handleTogglePromotionFavorite(product.id);
+                        }}
+                      >
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name={isProductFavorite ? "heart" : "heart-outline"}
+                          size={18}
+                          color={
+                            isProductFavorite ? theme.colors.onPrimary : theme.colors.primary
+                          }
+                        />
+                      </TouchableOpacity>
                     </View>
 
                     <Text style={styles.productSeller}>
-                      Vendido por {product.storeName ?? "não informado"}
+                      Vendido por:  <Text style={{fontWeight: "600"}}>{product.storeName ?? "não informado"}</Text>
                     </Text>
                     {formattedOriginalPrice ? (
                       <Text style={styles.originalPrice}>De {formattedOriginalPrice}</Text>
@@ -752,56 +1223,80 @@ export default function Home() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mercados em destaque:</Text>
           {storesToShow.length ? (
-            storesToShow.map((store) => (
-              <TouchableOpacity
-                key={store.id}
-                style={styles.storeCard}
-                onPress={() => handleStorePress(store.id)}
-                activeOpacity={0.85}
-              >
-                <View style={styles.storeLogoWrapper}>
-                  {store.logoUrl ? (
-                    <Image source={{ uri: store.logoUrl }} style={styles.storeLogo} resizeMode="cover" />
-                  ) : (
-                    <View style={styles.logoFallback}>
-                      <Text style={styles.logoFallbackText}>{store.name.charAt(0).toUpperCase()}</Text>
+            storesToShow.map((store) => {
+              const isFavorite = favoriteStores.has(store.id);
+              return (
+                <TouchableOpacity
+                  key={store.id}
+                  style={styles.storeCard}
+                  onPress={() => handleStorePress(store.id)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.storeLogoWrapper}>
+                    {store.logoUrl ? (
+                      <Image source={{ uri: store.logoUrl }} style={styles.storeLogo} resizeMode="contain" />
+                    ) : (
+                      <View style={styles.logoFallback}>
+                        <Text style={styles.logoFallbackText}>{store.name.charAt(0).toUpperCase()}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.storeContent}>
+                    <View style={styles.storeHeaderRow}>
+                      <Text style={styles.storeName} numberOfLines={1}>
+                        {store.name}
+                      </Text>
+                      <TouchableOpacity
+                        style={[
+                          styles.storeFavoriteButton,
+                          isFavorite ? styles.storeFavoriteButtonActive : null,
+                        ]}
+                        activeOpacity={0.7}
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        onPress={(event: GestureResponderEvent) => {
+                          event.stopPropagation();
+                          handleToggleStoreFavorite(store.id);
+                        }}
+                      >
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name={isFavorite ? "heart" : "heart-outline"}
+                          size={20}
+                          color={isFavorite ? theme.colors.onPrimary : theme.colors.primary}
+                        />
+                      </TouchableOpacity>
                     </View>
-                  )}
-                </View>
-                <View style={styles.storeContent}>
-                  <Text style={styles.storeName} numberOfLines={1}>
-                    {store.name}
-                  </Text>
-                  <View style={styles.storeMetaRow}>
-                    <Icon
-                      type="MaterialCommunityIcons"
-                      name="star"
-                      size={16}
-                      color={theme.colors.star}
-                    />
-                    <Text style={styles.storeRating}>
-                      {store.rating !== null ? store.rating.toFixed(1).replace(".", ",") : "--"}
-                    </Text>
-                    <Text style={styles.storeDot}>•</Text>
-                    <Text style={styles.storeCategory}>{store.category ?? "Mercado"}</Text>
-                    {store.distanceLabel ? (
-                      <>
-                        <Text style={styles.storeDot}>•</Text>
-                        <Text style={styles.storeDistance}>{store.distanceLabel}</Text>
-                      </>
+                    <View style={styles.storeMetaRow}>
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="star"
+                        size={16}
+                        color={theme.colors.star}
+                      />
+                      <Text style={styles.storeRating}>
+                        {store.rating !== null ? store.rating.toFixed(2).replace(".", ",") : "--"}
+                      </Text>
+                      <Text style={styles.storeDot}>•</Text>
+                      <Text style={styles.storeCategory}>{store.category ?? "Mercado"}</Text>
+                      {store.distanceLabel ? (
+                        <>
+                      <Text style={styles.storeDot}>•</Text>
+                      <Text style={styles.storeDistance}>{store.distanceLabel}</Text>
+                        </>
+                      ) : null}
+                    </View>
+                    {store.city ? <Text style={styles.storeCity}>{store.city}</Text> : null}
+                    {store.badge ? (
+                      <View style={styles.storeBadge}>
+                        <Text style={styles.storeBadgeText} numberOfLines={1}>
+                          {store.badge}
+                        </Text>
+                      </View>
                     ) : null}
                   </View>
-                  {store.city ? <Text style={styles.storeCity}>{store.city}</Text> : null}
-                  {store.badge ? (
-                    <View style={styles.storeBadge}>
-                      <Text style={styles.storeBadgeText} numberOfLines={1}>
-                        {store.badge}
-                      </Text>
-                    </View>
-                  ) : null}
-                </View>
-              </TouchableOpacity>
-            ))
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <Text style={styles.emptyText}>
               Ainda não temos mercados em destaque para exibir.
@@ -862,3 +1357,5 @@ export default function Home() {
     </ScreenContainer>
   );
 }
+
+
