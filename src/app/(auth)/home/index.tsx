@@ -1447,9 +1447,19 @@ export default function Home() {
                       </TouchableOpacity>
                     </View>
 
-                    <Text style={styles.productSeller}>
-                      Vendido por:  <Text style={{fontWeight: "600"}}>{product.storeName ?? "não informado"}</Text>
-                    </Text>
+                    <View style={styles.productSellerRow}>
+                      {product.storeId ? (
+                        <TouchableOpacity
+                          onPress={() => handleStorePress(product.storeId)}
+                          style={styles.productSellerButton}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.productSellerLabel}>Vendido por: {product.storeName ?? "não informado"}</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <Text style={styles.productSellerValue}>{product.storeName ?? "não informado"}</Text>
+                      )}
+                    </View>
                     {formattedOriginalPrice ? (
                       <Text style={styles.originalPrice}>De {formattedOriginalPrice}</Text>
                     ) : null}
@@ -1640,7 +1650,7 @@ export default function Home() {
                       {item.name}
                     </Text>
                     {formattedPrice ? (
-                      <Text style={styles.suggestionPrice}>Por {formattedPrice}</Text>
+                      <Text style={styles.suggestionPrice}>Por {formattedPrice} <Text style={styles.unitLabel2}>{item.unit}</Text></Text>
                     ) : (
                       <Text style={styles.unavailablePrice}>Preço indisponível</Text>
                     )}

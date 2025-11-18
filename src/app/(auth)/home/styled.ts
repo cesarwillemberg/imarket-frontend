@@ -158,7 +158,8 @@ const createStyles = (theme: Theme) =>
     },
     sectionTitle: {
       fontSize: theme.fontSizes.gl,
-      fontWeight: "600",
+      fontWeight: "regular",
+      textDecorationLine: "underline",
       color: theme.colors.primary,
     },
     promotionCard: {
@@ -216,10 +217,31 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    productSeller: {
+    productSellerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      columnGap: theme.spacing.sx,
+      rowGap: theme.spacing.sx,
+      marginBottom: theme.spacing.sx,
+    },
+    productSellerLabel: {
       fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
-      marginBottom: theme.spacing.sx,
+      textDecorationLine: "underline",
+    },
+    productSellerButton: {
+      paddingVertical: theme.spacing.sx,
+    },
+    productSellerButtonText: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+      fontWeight: "600",
+    },
+    productSellerValue: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+      fontWeight: "600",
     },
     originalPrice: {
       color: theme.colors.disabled,
@@ -234,6 +256,10 @@ const createStyles = (theme: Theme) =>
     },
     unitLabel: {
       fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    unitLabel2: {
+      fontSize: theme.fontSizes.xs,
       color: theme.colors.text,
     },
     unavailablePrice: {
@@ -368,7 +394,7 @@ const createStyles = (theme: Theme) =>
       marginTop: theme.spacing.md,
     },
     suggestionCard: {
-      width: "30%",
+      width: "32%",
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
@@ -393,7 +419,7 @@ const createStyles = (theme: Theme) =>
     suggestionPrice: {
       marginTop: theme.spacing.sx,
       fontSize: theme.fontSizes.sm,
-      fontWeight: "600",
+      fontWeight: "normal",
       color: theme.colors.primary,
     },
     emptyText: {
