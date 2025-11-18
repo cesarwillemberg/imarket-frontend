@@ -52,6 +52,7 @@ const createStyles = (theme: Theme) =>
       backgroundColor: theme.colors.primary,
       paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.xxl,
+      width: 300,
       borderRadius: theme.radius.lg,
       flexDirection: "row",
       alignItems: "center",
