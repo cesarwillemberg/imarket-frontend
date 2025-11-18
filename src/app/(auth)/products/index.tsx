@@ -123,13 +123,23 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 type ProductCardProps = {
   item: ProductListItem;
   onPress: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
+  isFavorite: boolean;
   styles: ReturnType<typeof createStyles>;
   primaryColor: string;
   disabledColor: string;
 };
 
 const ProductCard = memo(
-  ({ item, onPress, styles, primaryColor, disabledColor }: ProductCardProps) => {
+  ({
+    item,
+    onPress,
+    onToggleFavorite,
+    isFavorite,
+    styles,
+    primaryColor,
+    disabledColor,
+  }: ProductCardProps) => {
     const formattedPrice = item.price !== null ? currencyFormatter.format(item.price) : null;
     const formattedOriginalPrice =
       item.originalPrice !== null ? currencyFormatter.format(item.originalPrice) : null;
@@ -138,6 +148,10 @@ const ProductCard = memo(
     const handleNavigate = useCallback(() => {
       onPress(item.id);
     }, [item.id, onPress]);
+
+    const handleFavoritePress = useCallback(() => {
+      onToggleFavorite(item.id);
+    }, [item.id, onToggleFavorite]);
 
     return (
       <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
@@ -156,6 +170,23 @@ const ProductCard = memo(
             <Text style={styles.cardTitle} numberOfLines={2}>
               {item.name}
             </Text>
+            <TouchableOpacity
+              onPress={handleFavoritePress}
+              style={styles.cardFavoriteButton}
+              accessibilityLabel={
+                isFavorite ? "Remover produto dos favoritos" : "Adicionar produto aos favoritos"
+              }
+              accessibilityRole="button"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              <Icon
+                type="MaterialCommunityIcons"
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={20}
+                color={isFavorite ? primaryColor : disabledColor}
+              />
+            </TouchableOpacity>
           </View>
 
           {item.category ? (
@@ -186,6 +217,8 @@ const ProductCard = memo(
   },
   (prev, next) =>
     prev.item === next.item &&
+    prev.isFavorite === next.isFavorite &&
+    prev.onToggleFavorite === next.onToggleFavorite &&
     prev.styles === next.styles &&
     prev.primaryColor === next.primaryColor &&
     prev.disabledColor === next.disabledColor
@@ -702,6 +735,8 @@ export default function Products() {
     session,
     getFavoriteStoresByUser,
     getFavoriteProductsByUser,
+    addProductToFavorites,
+    removeProductFromFavorites,
   } = useSession();
   const userId = session?.user?.id ?? null;
 
@@ -803,6 +838,55 @@ export default function Products() {
   useEffect(() => {
     syncFavorites();
   }, [syncFavorites]);
+
+  const handleToggleFavoriteProduct = useCallback(
+    async (productId: string) => {
+      if (!productId) return;
+      if (!userId) {
+        console.warn("Products: usuario nao autenticado ao modificar favorito de produto.");
+        return;
+      }
+
+      let nextValue = false;
+      setFavoriteProductIds((current) => {
+        const alreadyFavorite = current.has(productId);
+        nextValue = !alreadyFavorite;
+        const next = new Set(current);
+        if (nextValue) {
+          next.add(productId);
+        } else {
+          next.delete(productId);
+        }
+        return next;
+      });
+
+      try {
+        if (nextValue) {
+          const { error } = await addProductToFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await removeProductFromFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (toggleError) {
+        console.error("Products: erro ao atualizar favorito de produto:", toggleError);
+        setFavoriteProductIds((current) => {
+          const next = new Set(current);
+          if (nextValue) {
+            next.delete(productId);
+          } else {
+            next.add(productId);
+          }
+          return next;
+        });
+      }
+    },
+    [addProductToFavorites, removeProductFromFavorites, userId]
+  );
 
   // Consider as "active" only user-controlled filters.
   // State is locked to RS by default, so it should NOT count as an active filter.
@@ -1128,15 +1212,24 @@ export default function Products() {
       setProducts([]);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   }, [fetchProductImage, fetchStoreName]);
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
     setIsRefreshing(true);
-    loadProducts({ silent: true });
-    syncFavorites();
-  }, [loadProducts, syncFavorites]);
+    try {
+      await loadProducts({ silent: true });
+      await syncFavorites();
+    } catch (refreshError) {
+      console.warn("Products: erro ao recarregar lista:", refreshError);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadProducts, syncFavorites]);
 
   useEffect(() => {
     loadProducts();
@@ -1537,29 +1630,24 @@ export default function Products() {
       <ProductCard
         item={item}
         onPress={onNavigate}
+        onToggleFavorite={handleToggleFavoriteProduct}
+        isFavorite={favoriteProductIds.has(item.id)}
         styles={styles}
         primaryColor={theme.colors.primary}
         disabledColor={theme.colors.disabled}
       />
     ),
-    [onNavigate, styles, theme.colors.primary, theme.colors.disabled]
+    [
+      favoriteProductIds,
+      handleToggleFavoriteProduct,
+      onNavigate,
+      styles,
+      theme.colors.disabled,
+      theme.colors.primary,
+    ]
   );
 
   const renderEmptyState = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.feedbackWrapper}>
-          <LoadingIcon
-            autoPlay
-            loop
-            source={loadingCart}
-            refAnimationLoading={animationLoading}
-            style={{ width: 150, height: 150 }}
-          />
-        </View>
-      );
-    }
-
     if (error) {
       return (
         <View style={styles.feedbackWrapper}>
@@ -1594,28 +1682,44 @@ export default function Products() {
       <ScreenContainer style={styles.container}>
         <HeaderScreen title="Produtos" />
         <View style={styles.content}>
-          <FlatList
-            data={filteredProducts}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProductItem}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            windowSize={7}
-            removeClippedSubviews
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={renderListHeader}
-            ListEmptyComponent={renderEmptyState}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                tintColor={theme.colors.primary}
-              />
-            }
-            ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
-            showsVerticalScrollIndicator={false}
-          />
+          {isLoading ? (
+            <>
+              {renderListHeader()}
+              <View style={styles.loadingWrapper}>
+                <LoadingIcon
+                  autoPlay
+                  loop
+                  source={loadingCart}
+                  refAnimationLoading={animationLoading}
+                  style={{ width: 150, height: 150 }}
+                />
+              </View>
+            </>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              extraData={favoriteProductIds}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProductItem}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              windowSize={7}
+              removeClippedSubviews
+              contentContainerStyle={styles.listContent}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={renderEmptyState}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={theme.colors.primary}
+                />
+              }
+              ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
       </ScreenContainer>
 

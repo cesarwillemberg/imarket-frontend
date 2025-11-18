@@ -157,12 +157,6 @@ const productService = {
             return { data: null, error };
         }
     }
-
-
-
-
-
-
 }
 
 

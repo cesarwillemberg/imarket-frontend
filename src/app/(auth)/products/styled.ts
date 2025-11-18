@@ -135,6 +135,12 @@ const createStyles = (theme: Theme) =>
       justifyContent: "space-between",
       gap: theme.spacing.sm,
     },
+    cardFavoriteButton: {
+      padding: theme.spacing.xs,
+      marginLeft: theme.spacing.xs,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.surface,
+    },
     cardTitle: {
       flex: 1,
       fontFamily: theme.fonts.regular,
@@ -206,6 +212,11 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
       color: theme.colors.primary,
+    },
+    loadingWrapper: {
+      paddingVertical: theme.spacing.lg,
+      alignItems: "center",
+      justifyContent: "center",
     },
     filterModalOverlay: {
       flex: 1,
