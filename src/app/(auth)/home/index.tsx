@@ -576,6 +576,7 @@ export default function Home() {
     Record<string, { label: string; value: number }>
   >({});
   const [isComputingStoreDistances, setIsComputingStoreDistances] = useState(false);
+  const [hasFinishedInitialLoad, setHasFinishedInitialLoad] = useState(false);
   const notificationCount = 0;
   const animationLoading = useRef<LottieView>(null);
   const storeCoordinatesCache = useRef<Record<string, Coordinates | null>>({});
@@ -1133,6 +1134,12 @@ export default function Home() {
     };
   }, [stores, userLocation, fetchStoreCoordinates]);
 
+  useEffect(() => {
+    if (!hasFinishedInitialLoad && !isLoading && !isComputingStoreDistances) {
+      setHasFinishedInitialLoad(true);
+    }
+  }, [hasFinishedInitialLoad, isLoading, isComputingStoreDistances]);
+
   const promotions = useMemo(
     () => products.filter((product) => product.inPromotion),
     [products]
@@ -1250,7 +1257,9 @@ export default function Home() {
     ? searchBarLayout.y + searchBarLayout.height + theme.spacing.sm
     : null;
 
-  if (isLoading) {
+  const shouldShowInitialLoading = !hasFinishedInitialLoad;
+
+  if (shouldShowInitialLoading) {
     return (
       <ScreenContainer style={styles.container}>
         <View style={commonStyles.centeredContainer}>
@@ -1485,7 +1494,12 @@ export default function Home() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mercados mais Próximos:</Text>
-          {storesToShow.length ? (
+          {isComputingStoreDistances ? (
+            <View style={commonStyles.centeredContainer}>
+              <LoadingIcon autoPlay loop style={{ width: 80, height: 80 }}  />
+              <Text style={styles.loadingText}>Buscando mercados próximos a você...</Text>
+            </View>
+          ) : storesToShow.length ? (
             storesToShow.map((store) => {
               const isFavorite = favoriteStores.has(store.id);
               const override = storeDistanceOverrides[store.id];
