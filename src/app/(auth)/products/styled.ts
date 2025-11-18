@@ -273,6 +273,54 @@ const createStyles = (theme: Theme) =>
       color: theme.colors.onPrimary,
       fontWeight: "600",
     },
+    favoriteFilterWrapper: {
+      marginTop: theme.spacing.lg,
+      marginBottom: theme.spacing.md,
+      gap: theme.spacing.xs,
+    },
+    favoriteFilterTitle: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.md,
+      color: theme.colors.text,
+      fontWeight: "600",
+      textDecorationLine: "underline",
+    },
+    favoriteTogglePill: {
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      borderRadius: theme.radius.full,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      backgroundColor: theme.colors.surface,
+    },
+    favoriteTogglePillActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    favoriteToggleCheckbox: {
+      width: 22,
+      height: 22,
+      borderRadius: theme.radius.sm,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      marginRight: theme.spacing.sm,
+      backgroundColor: theme.colors.surface,
+    },
+    favoriteToggleCheckboxActive: {
+      backgroundColor: theme.colors.primary,
+    },
+    favoriteToggleLabel: {
+      fontFamily: theme.fonts.regular,
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+    },
+    favoriteToggleLabelActive: {
+      color: theme.colors.onPrimary,
+      fontWeight: "600",
+    },
     filterSection: {
       marginVertical: theme.spacing.lg,
     },
@@ -280,7 +328,7 @@ const createStyles = (theme: Theme) =>
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,
       color: theme.colors.text,
-      fontWeight: "bold",
+      fontWeight: "regular",
       marginBottom: theme.spacing.sm,
       textDecorationLine: "underline"
     },
