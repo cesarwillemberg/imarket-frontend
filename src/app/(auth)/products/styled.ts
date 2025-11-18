@@ -235,9 +235,6 @@ const createStyles = (theme: Theme) =>
       paddingVertical: theme.spacing.lg,
       paddingHorizontal: theme.spacing.lg,
     },
-    filterModalContent: {
-      paddingBottom: theme.spacing.md,
-    },
     filterModalTitle: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.gl,

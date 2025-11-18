@@ -25,6 +25,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import createStyles from "./styled";
 
 type RawProduct = Record<string, unknown> & { id?: string };
@@ -729,6 +730,7 @@ const mapProduct = (raw: RawProduct): ProductListItem | null => {
 
 export default function Products() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
   const {
@@ -1731,10 +1733,17 @@ export default function Products() {
       >
         <View style={styles.filterModalOverlay}>
           <Pressable style={styles.filterModalBackdrop} onPress={handleCancelFilters} />
-          <View style={styles.filterModalCard}>
+          <View
+            style={[
+              styles.filterModalCard,
+              { paddingBottom: theme.spacing.lg + insets.bottom },
+            ]}
+          >
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.filterModalContent}
+              contentContainerStyle={[
+                { paddingBottom: insets.bottom },
+              ]}
               keyboardShouldPersistTaps="handled"
             >
               <Text style={styles.filterModalTitle}>Filtros</Text>
@@ -2041,7 +2050,12 @@ export default function Products() {
       >
         <View style={styles.filterModalOverlay}>
           <Pressable style={styles.filterModalBackdrop} onPress={() => setIsCitySelectorVisible(false)} />
-          <View style={[styles.filterModalCard, { maxHeight: 420 }]}>
+          <View
+            style={[
+              styles.filterModalCard,
+              { maxHeight: 420, paddingBottom: theme.spacing.lg + insets.bottom },
+            ]}
+          >
             <View style={{ padding: theme.spacing.sm }}>
               <Text style={styles.filterSectionTitle}>Selecionar cidade</Text>
               <View
