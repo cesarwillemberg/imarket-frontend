@@ -73,6 +73,37 @@ const PRODUCT_IMAGE_URL_KEYS = [
   "uri",
 ] as const;
 
+const FAVORITE_PRODUCT_ID_KEYS = [
+  "produto_id",
+  "product_id",
+  "produtoId",
+  "productId",
+  "id_produto",
+  "idProduto",
+  "id_product",
+  "idProduct",
+  "product",
+] as const;
+
+const extractFavoriteProductId = (row: Record<string, unknown>): string | null => {
+  for (const key of FAVORITE_PRODUCT_ID_KEYS) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim().length) {
+      return value.trim();
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+
+  const fallbackId = row?.id;
+  if (typeof fallbackId === "string" && fallbackId.trim().length) {
+    return fallbackId.trim();
+  }
+
+  return null;
+};
+
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -387,6 +418,8 @@ export default function ProductDetails() {
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoriteUpdating, setIsFavoriteUpdating] = useState(false);
 
   const resolveImages = useCallback(
     (imageRows: RawProductImage[] | null | undefined, fallbackImage: string | null) => {
@@ -505,6 +538,45 @@ export default function ProductDetails() {
     loadProduct();
   }, [loadProduct]);
 
+  useEffect(() => {
+    if (!productId || !user?.id) {
+      setIsFavorite(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncFavoriteStatus = async () => {
+      try {
+        const { data, error } = await productService.getFavoriteProductsByProfile(user.id);
+        if (cancelled) {
+          return;
+        }
+        if (error) {
+          console.warn("ProductDetails: falha ao carregar favoritos:", error);
+          return;
+        }
+
+        const entries = Array.isArray(data) ? (data as Record<string, unknown>[]) : [];
+        const hasFavorite = entries.some(
+          (entry) =>
+            entry && typeof entry === "object" && extractFavoriteProductId(entry) === productId
+        );
+        setIsFavorite(hasFavorite);
+      } catch (favoriteError) {
+        if (!cancelled) {
+          console.error("ProductDetails: erro inesperado ao buscar favoritos:", favoriteError);
+        }
+      }
+    };
+
+    syncFavoriteStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, user?.id]);
+
   const hasImages = images.length > 0;
   const currentImage = hasImages ? images[Math.min(activeImage, images.length - 1)] : null;
 
@@ -521,6 +593,50 @@ export default function ProductDetails() {
     if (images.length < 2) return;
     setActiveImage((current) => (current + 1) % images.length);
   };
+
+  const handleToggleFavorite = useCallback(async () => {
+    const resolvedProductId = product?.id ?? productId;
+
+    if (!resolvedProductId) {
+      return;
+    }
+
+    if (!user?.id) {
+      Alert.alert("Sessao necessaria", "Entre em sua conta para favoritar produtos.");
+      return;
+    }
+
+    if (isFavoriteUpdating) {
+      return;
+    }
+
+    const nextValue = !isFavorite;
+    setIsFavorite(nextValue);
+    setIsFavoriteUpdating(true);
+
+    try {
+      if (nextValue) {
+        const { error } = await productService.addProductToFavorites(user.id, resolvedProductId);
+        if (error) {
+          throw error;
+        }
+      } else {
+        const { error } = await productService.removeProductFromFavorites(
+          user.id,
+          resolvedProductId
+        );
+        if (error) {
+          throw error;
+        }
+      }
+    } catch (favoriteError) {
+      console.error("ProductDetails: erro ao atualizar favorito:", favoriteError);
+      setIsFavorite((current) => !current);
+      Alert.alert("Erro", "Nao foi possivel atualizar o favorito. Tente novamente.");
+    } finally {
+      setIsFavoriteUpdating(false);
+    }
+  }, [isFavorite, isFavoriteUpdating, product?.id, productId, user?.id]);
 
   const incrementQuantity = () => {
     setQuantity((current) => current + 1);
@@ -744,7 +860,34 @@ export default function ProductDetails() {
         ) : null}
 
         <View style={styles.informationSection}>
-          <Text style={styles.productName}>{product.name}</Text>
+          <View style={styles.productHeader}>
+            <Text style={styles.productName}>{product.name}</Text>
+            <TouchableOpacity
+              onPress={handleToggleFavorite}
+              style={[
+                styles.favoriteButton,
+                isFavoriteUpdating && styles.favoriteButtonDisabled,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={`${
+                isFavorite ? "Remover" : "Adicionar"
+              } ${product.name} aos favoritos`}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+              disabled={isFavoriteUpdating}
+            >
+              {isFavoriteUpdating ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name={isFavorite ? "heart" : "heart-outline"}
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
 
           {showDiscount ? (
             <Text style={styles.productOriginalPrice}>
