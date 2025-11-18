@@ -146,6 +146,9 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
+    favoriteButtonDisabled: {
+      opacity: 0.6,
+    },
     productUnavailable: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.md,

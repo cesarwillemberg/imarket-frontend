@@ -864,7 +864,7 @@ export default function ProductDetails() {
         </View>
 
         <View style={styles.descriptionSection}>
-          <Text style={styles.descriptionTitle}>Sobre</Text>
+          <Text style={styles.descriptionTitle}>Sobre:</Text>
           <Text style={styles.descriptionText}>
             {product.description ?? "Este produto ainda nao possui descricao cadastrada."}
           </Text>

@@ -239,6 +239,7 @@ const createStyles = (theme: Theme) =>
     descriptionText: {
       fontFamily: theme.fonts.regular,
       fontSize: theme.fontSizes.sm,
+      textAlign: "justify",
       color: theme.colors.text,
       lineHeight: 20,
     },
