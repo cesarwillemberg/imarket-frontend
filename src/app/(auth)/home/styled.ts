@@ -253,37 +253,37 @@ const createStyles = (theme: Theme) =>
     },
     storeCard: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       backgroundColor: theme.colors.surface,
+      borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
-      borderWidth: 1,
-      borderRadius: theme.radius.xxl,
+      borderRadius: theme.radius.xl,
       padding: theme.spacing.md,
       marginTop: theme.spacing.md,
     },
-    storeLogoWrapper: {
-      width: 54,
-      height: 54,
+    storeAvatar: {
+      width: 58,
+      height: 58,
       borderRadius: theme.radius.full,
-      overflow: "hidden",
-      marginRight: theme.spacing.md,
-    },
-    storeLogo: {
-      width: "100%",
-      height: "100%",
-    },
-    logoFallback: {
-      flex: 1,
       alignItems: "center",
       justifyContent: "center",
+      marginRight: theme.spacing.md,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
       backgroundColor: theme.colors.secondary,
     },
-    logoFallbackText: {
-      fontSize: theme.fontSizes.lg,
+    storeAvatarImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: theme.radius.full,
+      resizeMode: "contain",
+    },
+    storeAvatarInitials: {
+      fontSize: theme.fontSizes.sm,
       fontWeight: "700",
       color: theme.colors.primary,
     },
-    storeContent: {
+    storeDetails: {
       flex: 1,
     },
     storeHeaderRow: {
@@ -291,8 +291,11 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "space-between",
       columnGap: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
     },
     storeName: {
+      flex: 1,
+      marginRight: theme.spacing.sm,
       fontSize: theme.fontSizes.gl,
       fontWeight: "600",
       color: theme.colors.text,
@@ -301,31 +304,33 @@ const createStyles = (theme: Theme) =>
       width: 32,
       height: 32,
       borderRadius: theme.radius.full,
-      // borderWidth: 1,
-      // borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surface,
       alignItems: "center",
       justifyContent: "center",
+      backgroundColor: theme.colors.surface,
     },
     storeMetaRow: {
       flexDirection: "row",
       alignItems: "center",
       marginTop: theme.spacing.xs,
+      flexWrap: "wrap",
+      gap: theme.spacing.xs,
     },
-    storeRating: {
-      marginLeft: theme.spacing.sx,
-      fontWeight: "400",
-      color: theme.colors.text,
+    storeMetaItem: {
+      flexDirection: "row",
+      alignItems: "center",
     },
-    storeDot: {
-      marginHorizontal: theme.spacing.sx,
-      color: theme.colors.disabled,
-    },
-    storeCategory: {
+    storeMetaText: {
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
     },
-    storeDistance: {
+    storeMetaTextWithIcon: {
+      marginLeft: theme.spacing.xs,
+    },
+    storeMetaSeparator: {
+      color: theme.colors.disabled,
+      fontSize: theme.fontSizes.sm,
+    },
+    storeCategory: {
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
     },

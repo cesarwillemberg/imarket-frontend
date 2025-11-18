@@ -534,6 +534,7 @@ export default function Home() {
   const [storeDistanceOverrides, setStoreDistanceOverrides] = useState<
     Record<string, { label: string; value: number }>
   >({});
+  const [isComputingStoreDistances, setIsComputingStoreDistances] = useState(false);
   const notificationCount = 0;
   const animationLoading = useRef<LottieView>(null);
   const storeCoordinatesCache = useRef<Record<string, Coordinates | null>>({});
@@ -1045,10 +1046,12 @@ export default function Home() {
   useEffect(() => {
     if (!stores.length || !userLocation) {
       setStoreDistanceOverrides({});
+      setIsComputingStoreDistances(false);
       return;
     }
 
     let cancelled = false;
+    setIsComputingStoreDistances(true);
 
     const computeDistances = async () => {
       const overrides: Record<string, { label: string; value: number }> = {};
@@ -1073,10 +1076,16 @@ export default function Home() {
 
       if (!cancelled) {
         setStoreDistanceOverrides(overrides);
+        setIsComputingStoreDistances(false);
       }
     };
 
-    computeDistances().catch((error) => console.warn("Home: falha geral ao calcular distâncias", error));
+    computeDistances().catch((error) => {
+      console.warn("Home: falha geral ao calcular distâncias", error);
+      if (!cancelled) {
+        setIsComputingStoreDistances(false);
+      }
+    });
 
     return () => {
       cancelled = true;
@@ -1428,6 +1437,29 @@ export default function Home() {
           {storesToShow.length ? (
             storesToShow.map((store) => {
               const isFavorite = favoriteStores.has(store.id);
+              const override = storeDistanceOverrides[store.id];
+              const distanceValue =
+                typeof override?.value === "number" && Number.isFinite(override.value)
+                  ? override.value
+                  : null;
+              const distanceLabel =
+                distanceValue !== null
+                  ? `${distanceValue.toFixed(2)} km`
+                  : isComputingStoreDistances
+                  ? "Calculando..."
+                  : store.distanceLabel ?? "Distância indisponível";
+              const ratingLabel =
+                typeof store.rating === "number" && Number.isFinite(store.rating)
+                  ? store.rating.toFixed(2).replace(".", ",")
+                  : "--";
+              const initials = store.name
+                .split(" ")
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((word) => word[0])
+                .join("")
+                .toUpperCase();
+
               return (
                 <TouchableOpacity
                   key={store.id}
@@ -1435,30 +1467,28 @@ export default function Home() {
                   onPress={() => handleStorePress(store.id)}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.storeLogoWrapper}>
+                  <View style={styles.storeAvatar}>
                     {store.logoUrl ? (
-                      <Image source={{ uri: store.logoUrl }} style={styles.storeLogo} resizeMode="contain" />
+                      <Image source={{ uri: store.logoUrl }} style={styles.storeAvatarImage} />
                     ) : (
-                      <View style={styles.logoFallback}>
-                        <Text style={styles.logoFallbackText}>{store.name.charAt(0).toUpperCase()}</Text>
-                      </View>
+                      <Text style={styles.storeAvatarInitials}>{initials}</Text>
                     )}
                   </View>
-                  <View style={styles.storeContent}>
+                  <View style={styles.storeDetails}>
                     <View style={styles.storeHeaderRow}>
                       <Text style={styles.storeName} numberOfLines={1}>
                         {store.name}
                       </Text>
                       <TouchableOpacity
-                        style={[
-                          styles.storeFavoriteButton,
-                        ]}
+                        style={styles.storeFavoriteButton}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={(event: GestureResponderEvent) => {
                           event.stopPropagation();
                           handleToggleStoreFavorite(store.id);
                         }}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Favoritar ${store.name}`}
                       >
                         <Icon
                           type="MaterialCommunityIcons"
@@ -1468,26 +1498,37 @@ export default function Home() {
                         />
                       </TouchableOpacity>
                     </View>
+
                     <View style={styles.storeMetaRow}>
-                      <Icon
-                        type="MaterialCommunityIcons"
-                        name="star"
-                        size={16}
-                        color={theme.colors.star}
-                      />
-                      <Text style={styles.storeRating}>
-                        {store.rating !== null ? store.rating.toFixed(2).replace(".", ",") : "--"}
-                      </Text>
-                      <Text style={styles.storeDot}>•</Text>
-                      <Text style={styles.storeCategory}>{store.category ?? "Mercado"}</Text>
-                      {store.distanceLabel ? (
-                        <>
-                      <Text style={styles.storeDot}>•</Text>
-                      <Text style={styles.storeDistance}>{store.distanceLabel}</Text>
-                        </>
-                      ) : null}
+                      <View style={styles.storeMetaItem}>
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name="star"
+                          size={16}
+                          color={theme.colors.star}
+                        />
+                        <Text style={[styles.storeMetaText, styles.storeMetaTextWithIcon]}>
+                          {ratingLabel}
+                        </Text>
+                      </View>
+                      <Text style={styles.storeMetaSeparator}>•</Text>
+                      <Text style={styles.storeMetaText}>{store.category ?? "Mercado"}</Text>
+                      <Text style={styles.storeMetaSeparator}>•</Text>
+                      <View style={styles.storeMetaItem}>
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name="map-marker"
+                          size={16}
+                          color={theme.colors.primary}
+                        />
+                        <Text style={[styles.storeMetaText, styles.storeMetaTextWithIcon]}>
+                          {distanceLabel}
+                        </Text>
+                      </View>
                     </View>
+
                     {store.city ? <Text style={styles.storeCity}>{store.city}</Text> : null}
+
                     {store.badge ? (
                       <View style={styles.storeBadge}>
                         <Text style={styles.storeBadgeText} numberOfLines={1}>
