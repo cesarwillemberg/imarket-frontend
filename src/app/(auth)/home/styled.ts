@@ -286,7 +286,7 @@ const createStyles = (theme: Theme) =>
     storeDetails: {
       flex: 1,
     },
-    storeHeaderRow: {
+    cardHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
@@ -300,7 +300,7 @@ const createStyles = (theme: Theme) =>
       fontWeight: "600",
       color: theme.colors.text,
     },
-    storeFavoriteButton: {
+    favoriteButton: {
       width: 32,
       height: 32,
       borderRadius: theme.radius.full,
@@ -308,47 +308,58 @@ const createStyles = (theme: Theme) =>
       justifyContent: "center",
       backgroundColor: theme.colors.surface,
     },
-    storeMetaRow: {
+    statusBadge: {
+      alignSelf: "flex-start",
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      backgroundColor: theme.colors.danger,
+      marginBottom: theme.spacing.xs,
+    },
+    statusBadgeText: {
+      fontSize: theme.fontSizes.xs,
+      color: theme.colors.onPrimary,
+      fontWeight: "600",
+    },
+    metaRow: {
       flexDirection: "row",
       alignItems: "center",
       marginTop: theme.spacing.xs,
       flexWrap: "wrap",
       gap: theme.spacing.xs,
     },
-    storeMetaItem: {
+    metaItem: {
       flexDirection: "row",
       alignItems: "center",
     },
-    storeMetaText: {
+    metaText: {
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
     },
-    storeMetaTextWithIcon: {
+    metaTextWithIcon: {
       marginLeft: theme.spacing.xs,
     },
-    storeMetaSeparator: {
-      color: theme.colors.disabled,
-      fontSize: theme.fontSizes.sm,
+    metaSeparator: {
+      width: 4,
+      height: 4,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.disabled,
+      marginHorizontal: theme.spacing.xs,
     },
-    storeCategory: {
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
-    },
-    storeCity: {
-      marginTop: theme.spacing.xs,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.disabled,
-    },
-    storeBadge: {
+    promoPill: {
       marginTop: theme.spacing.sm,
-      backgroundColor: theme.colors.secondary,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.sx,
-      borderRadius: theme.radius.lg,
+      alignSelf: "flex-start",
+      backgroundColor: "#DFF6E2",
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      flexDirection: "row",
+      alignItems: "center",
+      columnGap: theme.spacing.xs,
     },
-    storeBadgeText: {
-      fontSize: theme.fontSizes.xs,
-      color: theme.colors.primary,
+    promoText: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.success,
     },
     suggestionGrid: {
       flexDirection: "row",

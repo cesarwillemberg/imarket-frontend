@@ -7,6 +7,12 @@ import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
+import {
+  geocodeAsync,
+  getCurrentPositionAsync,
+  LocationAccuracy,
+  requestForegroundPermissionsAsync,
+} from "expo-location";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -52,6 +58,9 @@ type StoreCardItem = {
   badge: string | null;
   logoUrl: string | null;
   city: string | null;
+  brandColor: string | null;
+  isOpen: boolean | null;
+  promotion: string | null;
 };
 
 type SearchResultItem = {
@@ -123,6 +132,27 @@ const STORE_BADGE_KEYS = [
   "shipping_message",
 ] as const;
 
+const STORE_BRAND_COLOR_KEYS = [
+  "brand_color",
+  "brandColor",
+  "accent_color",
+  "accentColor",
+  "primary_color",
+  "primaryColor",
+] as const;
+
+const STORE_PROMOTION_KEYS = [
+  "promotion",
+  "promo",
+  "promotion_text",
+  "promotionText",
+  "highlight",
+  "highlight_message",
+  "highlightMessage",
+  "delivery_message",
+  "shipping_message",
+] as const;
+
 const STORE_DISTANCE_KEYS = [
   "distance",
   "distance_km",
@@ -149,6 +179,8 @@ const STORE_RATING_KEYS = [
 ] as const;
 
 const STORE_CITY_KEYS = ["city", "cidade", "municipio"] as const;
+
+const STORE_OPEN_STATUS_KEYS = ["is_open", "isOpen", "open", "status", "store_open"] as const;
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -480,6 +512,12 @@ const mapStoreFromApi = (raw: RawStore): StoreCardItem | null => {
     distanceNumber !== null
       ? `${distanceNumber.toFixed(2)} Km`
       : coerceString(distanceRaw) ?? null;
+  const badge = coerceString(pickFirstValue(raw, STORE_BADGE_KEYS));
+  const promotion =
+    coerceString(pickFirstValue(raw, STORE_PROMOTION_KEYS)) ?? badge ?? null;
+  const brandColor = coerceString(pickFirstValue(raw, STORE_BRAND_COLOR_KEYS));
+  const openRaw = pickFirstValue(raw, STORE_OPEN_STATUS_KEYS);
+  const isOpen = typeof openRaw === "undefined" ? null : parseBooleanValue(openRaw);
 
   return {
     id: String(identifier),
@@ -490,9 +528,12 @@ const mapStoreFromApi = (raw: RawStore): StoreCardItem | null => {
     rating: parseNumberValue(ratingRaw),
     distanceLabel,
     distanceKm: distanceNumber,
-    badge: coerceString(pickFirstValue(raw, STORE_BADGE_KEYS)),
+    badge,
     logoUrl: resolveStoreLogoFromRecord(raw),
     city: coerceString(pickFirstValue(raw, STORE_CITY_KEYS)),
+    brandColor,
+    isOpen,
+    promotion,
   };
 };
 
@@ -1459,6 +1500,11 @@ export default function Home() {
                 .map((word) => word[0])
                 .join("")
                 .toUpperCase();
+              const storePromotion = store.promotion ?? store.badge ?? null;
+              const avatarBackground =
+                (store.brandColor && store.brandColor.trim().length ? store.brandColor : null) ??
+                theme.colors.secondary;
+              const isClosed = store.isOpen === false;
 
               return (
                 <TouchableOpacity
@@ -1467,7 +1513,7 @@ export default function Home() {
                   onPress={() => handleStorePress(store.id)}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.storeAvatar}>
+                  <View style={[styles.storeAvatar, { backgroundColor: avatarBackground }]}>
                     {store.logoUrl ? (
                       <Image source={{ uri: store.logoUrl }} style={styles.storeAvatarImage} />
                     ) : (
@@ -1475,12 +1521,12 @@ export default function Home() {
                     )}
                   </View>
                   <View style={styles.storeDetails}>
-                    <View style={styles.storeHeaderRow}>
+                    <View style={styles.cardHeader}>
                       <Text style={styles.storeName} numberOfLines={1}>
                         {store.name}
                       </Text>
                       <TouchableOpacity
-                        style={styles.storeFavoriteButton}
+                        style={styles.favoriteButton}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={(event: GestureResponderEvent) => {
@@ -1493,46 +1539,56 @@ export default function Home() {
                         <Icon
                           type="MaterialCommunityIcons"
                           name={isFavorite ? "heart" : "heart-outline"}
-                          size={20}
+                          size={18}
                           color={theme.colors.primary}
                         />
                       </TouchableOpacity>
                     </View>
 
-                    <View style={styles.storeMetaRow}>
-                      <View style={styles.storeMetaItem}>
+                    {isClosed ? (
+                      <View style={styles.statusBadge}>
+                        <Text style={styles.statusBadgeText}>Fechada</Text>
+                      </View>
+                    ) : null}
+
+                    <View style={styles.metaRow}>
+                      <View style={styles.metaItem}>
                         <Icon
                           type="MaterialCommunityIcons"
                           name="star"
                           size={16}
                           color={theme.colors.star}
                         />
-                        <Text style={[styles.storeMetaText, styles.storeMetaTextWithIcon]}>
+                        <Text style={[styles.metaText, styles.metaTextWithIcon]}>
                           {ratingLabel}
                         </Text>
                       </View>
-                      <Text style={styles.storeMetaSeparator}>•</Text>
-                      <Text style={styles.storeMetaText}>{store.category ?? "Mercado"}</Text>
-                      <Text style={styles.storeMetaSeparator}>•</Text>
-                      <View style={styles.storeMetaItem}>
+                      <View style={styles.metaSeparator} />
+                      <Text style={styles.metaText}>{store.category ?? "Mercado"}</Text>
+                      <View style={styles.metaSeparator} />
+                      <View style={styles.metaItem}>
                         <Icon
                           type="MaterialCommunityIcons"
                           name="map-marker"
                           size={16}
                           color={theme.colors.primary}
                         />
-                        <Text style={[styles.storeMetaText, styles.storeMetaTextWithIcon]}>
+                        <Text style={[styles.metaText, styles.metaTextWithIcon]}>
                           {distanceLabel}
                         </Text>
                       </View>
                     </View>
 
-                    {store.city ? <Text style={styles.storeCity}>{store.city}</Text> : null}
-
-                    {store.badge ? (
-                      <View style={styles.storeBadge}>
-                        <Text style={styles.storeBadgeText} numberOfLines={1}>
-                          {store.badge}
+                    {storePromotion ? (
+                      <View style={styles.promoPill}>
+                        <Icon
+                          type="MaterialCommunityIcons"
+                          name="tag-heart"
+                          size={16}
+                          color={theme.colors.success}
+                        />
+                        <Text style={styles.promoText} numberOfLines={1}>
+                          {storePromotion}
                         </Text>
                       </View>
                     ) : null}
