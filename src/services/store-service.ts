@@ -48,14 +48,30 @@ const storeService = {
                 .select("*")
                 .eq("store_id", storeId);
 
+            if (!error) {
+                return { data, error: null };
+            }
+
+            console.error("Error fetching addresses for store:", error);
+        } catch (error) {
+            console.error("Error fetching addresses for store:", error);
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from("store")
+                .select("id, logAddress:address_store(*)")
+                .eq("id", storeId)
+                .maybeSingle();
+
             if (error) {
-                console.error("Error fetching addresses for store:", error);
+                console.error("Error fetching addresses fallback:", error);
                 return { data: null, error };
             }
 
             return { data, error: null };
         } catch (error) {
-            console.error("Error fetching addresses for store:", error);
+            console.error("Error fetching addresses fallback:", error);
             return { data: null, error };
         }
     },
