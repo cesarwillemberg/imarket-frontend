@@ -400,7 +400,13 @@ export default function ProductStoreDetails() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
-  const { user, getOrCreateActiveCart, addItemToCart } = useSession();
+  const {
+    user,
+    getOrCreateActiveCart,
+    addItemToCart,
+    addProductToFavorites,
+    removeProductFromFavorites,
+  } = useSession();
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -410,6 +416,7 @@ export default function ProductStoreDetails() {
   const [quantity, setQuantity] = useState(1);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavoriteUpdating, setIsFavoriteUpdating] = useState(false);
 
   const resolveImages = useCallback(
     (imageRows: RawProductImage[] | null | undefined, fallbackImage: string | null) => {
@@ -707,17 +714,22 @@ export default function ProductStoreDetails() {
       return;
     }
 
+    if (isFavoriteUpdating) {
+      return;
+    }
+
     const nextValue = !isFavorite;
     setIsFavorite(nextValue);
+    setIsFavoriteUpdating(true);
 
     try {
       if (nextValue) {
-        const { error } = await productService.addProductToFavorites(user.id, resolvedProductId);
+        const { error } = await addProductToFavorites(user.id, resolvedProductId);
         if (error) {
           throw error;
         }
       } else {
-        const { error } = await productService.removeProductFromFavorites(user.id, resolvedProductId);
+        const { error } = await removeProductFromFavorites(user.id, resolvedProductId);
         if (error) {
           throw error;
         }
@@ -726,8 +738,18 @@ export default function ProductStoreDetails() {
       console.error("ProductStoreDetails: erro ao atualizar favorito:", error);
       setIsFavorite((current) => !current);
       Alert.alert("Erro", "Nao foi possivel atualizar o favorito. Tente novamente.");
+    } finally {
+      setIsFavoriteUpdating(false);
     }
-  }, [isFavorite, product?.id, productId, user?.id]);
+  }, [
+    addProductToFavorites,
+    isFavorite,
+    isFavoriteUpdating,
+    product?.id,
+    productId,
+    removeProductFromFavorites,
+    user?.id,
+  ]);
 
   const handleBuyNow = () => {
     if (!product) return;
@@ -838,20 +860,28 @@ export default function ProductStoreDetails() {
             <Text style={styles.productName}>{product.name}</Text>
             <TouchableOpacity
               onPress={handleToggleFavorite}
-              style={styles.favoriteButton}
+              style={[
+                styles.favoriteButton,
+                isFavoriteUpdating && styles.favoriteButtonDisabled,
+              ]}
               accessibilityRole="button"
               accessibilityLabel={`${
                 isFavorite ? "Remover" : "Adicionar"
               } ${product.name} aos favoritos`}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               activeOpacity={0.7}
+              disabled={isFavoriteUpdating}
             >
-              <Icon
-                type="MaterialCommunityIcons"
-                name={isFavorite ? "heart" : "heart-outline"}
-                size={20}
-                color={theme.colors.primary}
-              />
+              {isFavoriteUpdating ? (
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+              ) : (
+                <Icon
+                  type="MaterialCommunityIcons"
+                  name={isFavorite ? "heart" : "heart-outline"}
+                  size={20}
+                  color={theme.colors.primary}
+                />
+              )}
             </TouchableOpacity>
           </View>
 

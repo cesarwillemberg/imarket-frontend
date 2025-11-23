@@ -158,7 +158,8 @@ const createStyles = (theme: Theme) =>
     },
     sectionTitle: {
       fontSize: theme.fontSizes.gl,
-      fontWeight: "600",
+      fontWeight: "regular",
+      textDecorationLine: "underline",
       color: theme.colors.primary,
     },
     promotionCard: {
@@ -216,10 +217,31 @@ const createStyles = (theme: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    productSeller: {
+    productSellerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexWrap: "wrap",
+      columnGap: theme.spacing.sx,
+      rowGap: theme.spacing.sx,
+      marginBottom: theme.spacing.sx,
+    },
+    productSellerLabel: {
       fontSize: theme.fontSizes.sm,
       color: theme.colors.disabled,
-      marginBottom: theme.spacing.sx,
+      textDecorationLine: "underline",
+    },
+    productSellerButton: {
+      paddingVertical: theme.spacing.sx,
+    },
+    productSellerButtonText: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.primary,
+      fontWeight: "600",
+    },
+    productSellerValue: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+      fontWeight: "600",
     },
     originalPrice: {
       color: theme.colors.disabled,
@@ -234,6 +256,10 @@ const createStyles = (theme: Theme) =>
     },
     unitLabel: {
       fontSize: theme.fontSizes.sm,
+      color: theme.colors.text,
+    },
+    unitLabel2: {
+      fontSize: theme.fontSizes.xs,
       color: theme.colors.text,
     },
     unavailablePrice: {
@@ -253,97 +279,113 @@ const createStyles = (theme: Theme) =>
     },
     storeCard: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       backgroundColor: theme.colors.surface,
+      borderWidth: theme.size.xs,
       borderColor: theme.colors.primary,
-      borderWidth: 1,
-      borderRadius: theme.radius.xxl,
+      borderRadius: theme.radius.xl,
       padding: theme.spacing.md,
       marginTop: theme.spacing.md,
     },
-    storeLogoWrapper: {
-      width: 54,
-      height: 54,
+    storeAvatar: {
+      width: 58,
+      height: 58,
       borderRadius: theme.radius.full,
-      overflow: "hidden",
-      marginRight: theme.spacing.md,
-    },
-    storeLogo: {
-      width: "100%",
-      height: "100%",
-    },
-    logoFallback: {
-      flex: 1,
       alignItems: "center",
       justifyContent: "center",
+      marginRight: theme.spacing.md,
+      borderWidth: theme.size.xs,
+      borderColor: theme.colors.primary,
       backgroundColor: theme.colors.secondary,
     },
-    logoFallbackText: {
-      fontSize: theme.fontSizes.lg,
+    storeAvatarImage: {
+      width: "100%",
+      height: "100%",
+      borderRadius: theme.radius.full,
+      resizeMode: "contain",
+    },
+    storeAvatarInitials: {
+      fontSize: theme.fontSizes.sm,
       fontWeight: "700",
       color: theme.colors.primary,
     },
-    storeContent: {
+    storeDetails: {
       flex: 1,
     },
-    storeHeaderRow: {
+    cardHeader: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
       columnGap: theme.spacing.sm,
+      marginBottom: theme.spacing.xs,
     },
     storeName: {
+      flex: 1,
+      marginRight: theme.spacing.sm,
       fontSize: theme.fontSizes.gl,
       fontWeight: "600",
       color: theme.colors.text,
     },
-    storeFavoriteButton: {
+    favoriteButton: {
       width: 32,
       height: 32,
       borderRadius: theme.radius.full,
-      // borderWidth: 1,
-      // borderColor: theme.colors.primary,
-      backgroundColor: theme.colors.surface,
       alignItems: "center",
       justifyContent: "center",
+      backgroundColor: theme.colors.surface,
     },
-    storeMetaRow: {
+    statusBadge: {
+      alignSelf: "flex-start",
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xs,
+      backgroundColor: theme.colors.danger,
+      marginBottom: theme.spacing.xs,
+    },
+    statusBadgeText: {
+      fontSize: theme.fontSizes.xs,
+      color: theme.colors.onPrimary,
+      fontWeight: "600",
+    },
+    metaRow: {
       flexDirection: "row",
       alignItems: "center",
       marginTop: theme.spacing.xs,
+      flexWrap: "wrap",
+      gap: theme.spacing.xs,
     },
-    storeRating: {
-      marginLeft: theme.spacing.sx,
-      fontWeight: "400",
-      color: theme.colors.text,
+    metaItem: {
+      flexDirection: "row",
+      alignItems: "center",
     },
-    storeDot: {
-      marginHorizontal: theme.spacing.sx,
-      color: theme.colors.disabled,
-    },
-    storeCategory: {
+    metaText: {
       fontSize: theme.fontSizes.sm,
       color: theme.colors.text,
     },
-    storeDistance: {
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.text,
+    metaTextWithIcon: {
+      marginLeft: theme.spacing.xs,
     },
-    storeCity: {
-      marginTop: theme.spacing.xs,
-      fontSize: theme.fontSizes.sm,
-      color: theme.colors.disabled,
+    metaSeparator: {
+      width: 4,
+      height: 4,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.disabled,
+      marginHorizontal: theme.spacing.xs,
     },
-    storeBadge: {
+    promoPill: {
       marginTop: theme.spacing.sm,
-      backgroundColor: theme.colors.secondary,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.sx,
-      borderRadius: theme.radius.lg,
+      alignSelf: "flex-start",
+      backgroundColor: "#DFF6E2",
+      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      flexDirection: "row",
+      alignItems: "center",
+      columnGap: theme.spacing.xs,
     },
-    storeBadgeText: {
-      fontSize: theme.fontSizes.xs,
-      color: theme.colors.primary,
+    promoText: {
+      fontSize: theme.fontSizes.sm,
+      color: theme.colors.success,
     },
     suggestionGrid: {
       flexDirection: "row",
@@ -352,7 +394,7 @@ const createStyles = (theme: Theme) =>
       marginTop: theme.spacing.md,
     },
     suggestionCard: {
-      width: "30%",
+      width: "32%",
       backgroundColor: theme.colors.surface,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
@@ -377,7 +419,7 @@ const createStyles = (theme: Theme) =>
     suggestionPrice: {
       marginTop: theme.spacing.sx,
       fontSize: theme.fontSizes.sm,
-      fontWeight: "600",
+      fontWeight: "normal",
       color: theme.colors.primary,
     },
     emptyText: {

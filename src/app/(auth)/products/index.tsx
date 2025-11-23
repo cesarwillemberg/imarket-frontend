@@ -4,6 +4,7 @@ import { Icon } from "@/src/components/common/Icon";
 import LoadingIcon from "@/src/components/common/LoadingIcon";
 import { ScreenContainer } from "@/src/components/common/ScreenContainer";
 import SearchInputBar from "@/src/components/common/SearchBar";
+import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
@@ -24,6 +25,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import createStyles from "./styled";
 
 type RawProduct = Record<string, unknown> & { id?: string };
@@ -89,6 +91,30 @@ const PRODUCT_IMAGE_URL_KEYS = [
   "uri",
 ] as const;
 
+const FAVORITE_STORE_ID_KEYS = [
+  "store_id",
+  "id_store",
+  "storeId",
+  "idStore",
+  "market_id",
+  "marketId",
+  "loja_id",
+  "lojaId",
+  "store",
+] as const;
+
+const FAVORITE_PRODUCT_ID_KEYS = [
+  "produto_id",
+  "product_id",
+  "produtoId",
+  "productId",
+  "id_produto",
+  "idProduto",
+  "id_product",
+  "idProduct",
+  "product",
+] as const;
+
 const currencyFormatter = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
@@ -98,13 +124,23 @@ const currencyFormatter = new Intl.NumberFormat("pt-BR", {
 type ProductCardProps = {
   item: ProductListItem;
   onPress: (id: string) => void;
+  onToggleFavorite: (id: string) => void;
+  isFavorite: boolean;
   styles: ReturnType<typeof createStyles>;
   primaryColor: string;
   disabledColor: string;
 };
 
 const ProductCard = memo(
-  ({ item, onPress, styles, primaryColor, disabledColor }: ProductCardProps) => {
+  ({
+    item,
+    onPress,
+    onToggleFavorite,
+    isFavorite,
+    styles,
+    primaryColor,
+    disabledColor,
+  }: ProductCardProps) => {
     const formattedPrice = item.price !== null ? currencyFormatter.format(item.price) : null;
     const formattedOriginalPrice =
       item.originalPrice !== null ? currencyFormatter.format(item.originalPrice) : null;
@@ -113,6 +149,10 @@ const ProductCard = memo(
     const handleNavigate = useCallback(() => {
       onPress(item.id);
     }, [item.id, onPress]);
+
+    const handleFavoritePress = useCallback(() => {
+      onToggleFavorite(item.id);
+    }, [item.id, onToggleFavorite]);
 
     return (
       <TouchableOpacity style={styles.card} onPress={handleNavigate} activeOpacity={0.7}>
@@ -131,6 +171,23 @@ const ProductCard = memo(
             <Text style={styles.cardTitle} numberOfLines={2}>
               {item.name}
             </Text>
+            <TouchableOpacity
+              onPress={handleFavoritePress}
+              style={styles.cardFavoriteButton}
+              accessibilityLabel={
+                isFavorite ? "Remover produto dos favoritos" : "Adicionar produto aos favoritos"
+              }
+              accessibilityRole="button"
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              activeOpacity={0.7}
+            >
+              <Icon
+                type="MaterialCommunityIcons"
+                name={isFavorite ? "heart" : "heart-outline"}
+                size={20}
+                color={isFavorite ? primaryColor : disabledColor}
+              />
+            </TouchableOpacity>
           </View>
 
           {item.category ? (
@@ -161,13 +218,19 @@ const ProductCard = memo(
   },
   (prev, next) =>
     prev.item === next.item &&
+    prev.isFavorite === next.isFavorite &&
+    prev.onToggleFavorite === next.onToggleFavorite &&
     prev.styles === next.styles &&
     prev.primaryColor === next.primaryColor &&
     prev.disabledColor === next.disabledColor
 );
 ProductCard.displayName = "ProductCard";
 
-const pickFirstValue = (source: RawProduct | RawProductImage, keys: readonly string[]) => {
+const pickFirstValue = (
+  source: Record<string, unknown> | null | undefined,
+  keys: readonly string[]
+) => {
+  if (!source) return undefined;
   for (const key of keys) {
     if (key in source && source[key] !== undefined && source[key] !== null) {
       return source[key];
@@ -175,6 +238,32 @@ const pickFirstValue = (source: RawProduct | RawProductImage, keys: readonly str
   }
   return undefined;
 };
+
+const extractIdFromRow = (
+  row: Record<string, unknown> | null | undefined,
+  keys: readonly string[]
+): string | null => {
+  if (!row) return null;
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (trimmed.length > 0) {
+        return trimmed;
+      }
+    }
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return String(value);
+    }
+  }
+  return null;
+};
+
+const extractFavoriteStoreId = (row: Record<string, unknown> | null | undefined) =>
+  extractIdFromRow(row, FAVORITE_STORE_ID_KEYS);
+
+const extractFavoriteProductId = (row: Record<string, unknown> | null | undefined) =>
+  extractIdFromRow(row, FAVORITE_PRODUCT_ID_KEYS);
 
 const parseCurrencyValue = (value: unknown): number | null => {
   if (typeof value === "number" && Number.isFinite(value)) {
@@ -276,6 +365,8 @@ type Filters = {
   categories: FilterCategory[];
   minPrice: number | null;
   maxPrice: number | null;
+  favoriteStoresOnly: boolean;
+  favoriteProductsOnly: boolean;
   // Loja
   state: string | null;
   city: string | null;
@@ -291,6 +382,8 @@ const createDefaultFilters = (): Filters => ({
   categories: [],
   minPrice: null,
   maxPrice: null,
+  favoriteStoresOnly: false,
+  favoriteProductsOnly: false,
   // Default to Rio Grande do Sul and keep it locked in the UI
   state: "RS",
   city: null,
@@ -637,8 +730,17 @@ const mapProduct = (raw: RawProduct): ProductListItem | null => {
 
 export default function Products() {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const router = useRouter();
+  const {
+    session,
+    getFavoriteStoresByUser,
+    getFavoriteProductsByUser,
+    addProductToFavorites,
+    removeProductFromFavorites,
+  } = useSession();
+  const userId = session?.user?.id ?? null;
 
   const [products, setProducts] = useState<ProductListItem[]>([]);
   const animationLoading = useRef<LottieView>(null);
@@ -649,6 +751,8 @@ export default function Products() {
   const [filters, setFilters] = useState<Filters>(() => createDefaultFilters());
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [draftOnlyPromotion, setDraftOnlyPromotion] = useState(false);
+  const [draftFavoriteStoresOnly, setDraftFavoriteStoresOnly] = useState(false);
+  const [draftFavoriteProductsOnly, setDraftFavoriteProductsOnly] = useState(false);
   const [draftCategories, setDraftCategories] = useState<FilterCategory[]>([]);
   const [draftMinPrice, setDraftMinPrice] = useState("");
   const [draftMaxPrice, setDraftMaxPrice] = useState("");
@@ -675,11 +779,115 @@ export default function Products() {
     if (!q) return list;
     return list.filter((c) => normalizeForComparison(c).includes(q));
   }, [cityQuery]);
+  const [favoriteStoreIds, setFavoriteStoreIds] = useState<Set<string>>(() => new Set());
+  const [favoriteProductIds, setFavoriteProductIds] = useState<Set<string>>(() => new Set());
+  const syncFavorites = useCallback(async () => {
+    if (!userId) {
+      setFavoriteStoreIds(new Set());
+      setFavoriteProductIds(new Set());
+      return;
+    }
+
+    try {
+      const [storeFavoritesResponse, productFavoritesResponse] = await Promise.all([
+        getFavoriteStoresByUser(userId),
+        getFavoriteProductsByUser(userId),
+      ]);
+
+      if (storeFavoritesResponse?.error) {
+        console.warn("Products: falha ao carregar lojas favoritas:", storeFavoritesResponse.error);
+      }
+      if (productFavoritesResponse?.error) {
+        console.warn("Products: falha ao carregar produtos favoritos:", productFavoritesResponse.error);
+      }
+
+      if (Array.isArray(storeFavoritesResponse?.data)) {
+        const nextStoreIds = new Set<string>();
+        for (const row of storeFavoritesResponse.data as Record<string, unknown>[]) {
+          const storeId = extractFavoriteStoreId(row);
+          if (storeId) {
+            nextStoreIds.add(storeId);
+          }
+        }
+        setFavoriteStoreIds(nextStoreIds);
+      } else {
+        setFavoriteStoreIds(new Set());
+      }
+
+      if (Array.isArray(productFavoritesResponse?.data)) {
+        const nextProductIds = new Set<string>();
+        for (const row of productFavoritesResponse.data as Record<string, unknown>[]) {
+          const productId = extractFavoriteProductId(row);
+          if (productId) {
+            nextProductIds.add(productId);
+          }
+        }
+        setFavoriteProductIds(nextProductIds);
+      } else {
+        setFavoriteProductIds(new Set());
+      }
+    } catch (syncError) {
+      console.error("Products: erro inesperado ao carregar favoritos:", syncError);
+    }
+  }, [getFavoriteProductsByUser, getFavoriteStoresByUser, userId]);
 
   // Ensure current city is valid against list
   const safeDraftCity = useMemo(
     () => (IJUI_REGION_CITIES as readonly string[]).includes(draftCity) ? draftCity : "",
     [draftCity]
+  );
+
+  useEffect(() => {
+    syncFavorites();
+  }, [syncFavorites]);
+
+  const handleToggleFavoriteProduct = useCallback(
+    async (productId: string) => {
+      if (!productId) return;
+      if (!userId) {
+        console.warn("Products: usuario nao autenticado ao modificar favorito de produto.");
+        return;
+      }
+
+      let nextValue = false;
+      setFavoriteProductIds((current) => {
+        const alreadyFavorite = current.has(productId);
+        nextValue = !alreadyFavorite;
+        const next = new Set(current);
+        if (nextValue) {
+          next.add(productId);
+        } else {
+          next.delete(productId);
+        }
+        return next;
+      });
+
+      try {
+        if (nextValue) {
+          const { error } = await addProductToFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        } else {
+          const { error } = await removeProductFromFavorites(userId, productId);
+          if (error) {
+            throw error;
+          }
+        }
+      } catch (toggleError) {
+        console.error("Products: erro ao atualizar favorito de produto:", toggleError);
+        setFavoriteProductIds((current) => {
+          const next = new Set(current);
+          if (nextValue) {
+            next.delete(productId);
+          } else {
+            next.add(productId);
+          }
+          return next;
+        });
+      }
+    },
+    [addProductToFavorites, removeProductFromFavorites, userId]
   );
 
   // Consider as "active" only user-controlled filters.
@@ -690,7 +898,17 @@ export default function Products() {
     const hasPrice = filters.minPrice !== null || filters.maxPrice !== null;
     const hasCity = typeof filters.city === "string" && filters.city.trim().length > 0;
     const hasRadius = filters.radiusKm !== null;
-    return hasPromotion || hasCategories || hasPrice || hasCity || hasRadius;
+    const hasFavoriteStores = !!filters.favoriteStoresOnly;
+    const hasFavoriteProducts = !!filters.favoriteProductsOnly;
+    return (
+      hasPromotion ||
+      hasCategories ||
+      hasPrice ||
+      hasCity ||
+      hasRadius ||
+      hasFavoriteStores ||
+      hasFavoriteProducts
+    );
   }, [filters]);
 
   const hasVisibleFilters = hasActiveFilters;
@@ -714,6 +932,8 @@ export default function Products() {
 
   const handleFilterButtonPress = useCallback(() => {
     setDraftOnlyPromotion(filters.onlyPromotion);
+    setDraftFavoriteStoresOnly(filters.favoriteStoresOnly);
+    setDraftFavoriteProductsOnly(filters.favoriteProductsOnly);
     setDraftCategories(filters.categories);
     setDraftMinPrice(formatCurrencyFromNumber(filters.minPrice));
     setDraftMaxPrice(formatCurrencyFromNumber(filters.maxPrice));
@@ -747,6 +967,8 @@ export default function Products() {
 
     setFilters({
       onlyPromotion: draftOnlyPromotion,
+      favoriteStoresOnly: draftFavoriteStoresOnly,
+      favoriteProductsOnly: draftFavoriteProductsOnly,
       categories: [...draftCategories],
       minPrice: nextMinPrice,
       maxPrice: nextMaxPrice,
@@ -755,11 +977,24 @@ export default function Products() {
       radiusKm: draftRadiusEnabled ? draftRadiusKm : null,
     });
     setIsFilterModalVisible(false);
-  }, [draftCategories, draftMaxPrice, draftMinPrice, draftOnlyPromotion, draftState, draftCity, draftRadiusKm, draftRadiusEnabled]);
+  }, [
+    draftCategories,
+    draftMaxPrice,
+    draftMinPrice,
+    draftOnlyPromotion,
+    draftFavoriteStoresOnly,
+    draftFavoriteProductsOnly,
+    draftState,
+    draftCity,
+    draftRadiusKm,
+    draftRadiusEnabled,
+  ]);
 
   const handleClearFilters = useCallback(() => {
     setFilters(createDefaultFilters());
     setDraftOnlyPromotion(false);
+    setDraftFavoriteStoresOnly(false);
+    setDraftFavoriteProductsOnly(false);
     setDraftCategories([]);
     setDraftMinPrice("");
     setDraftMaxPrice("");
@@ -782,6 +1017,20 @@ export default function Products() {
     setFilters((current) => ({
       ...current,
       onlyPromotion: false,
+    }));
+  }, []);
+
+  const handleRemoveFavoriteStoresFilter = useCallback(() => {
+    setFilters((current) => ({
+      ...current,
+      favoriteStoresOnly: false,
+    }));
+  }, []);
+
+  const handleRemoveFavoriteProductsFilter = useCallback(() => {
+    setFilters((current) => ({
+      ...current,
+      favoriteProductsOnly: false,
     }));
   }, []);
 
@@ -965,14 +1214,24 @@ export default function Products() {
       setProducts([]);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   }, [fetchProductImage, fetchStoreName]);
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
+    if (isRefreshing) {
+      return;
+    }
+
     setIsRefreshing(true);
-    loadProducts({ silent: true });
-  }, [loadProducts]);
+    try {
+      await loadProducts({ silent: true });
+      await syncFavorites();
+    } catch (refreshError) {
+      console.warn("Products: erro ao recarregar lista:", refreshError);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing, loadProducts, syncFavorites]);
 
   useEffect(() => {
     loadProducts();
@@ -1096,6 +1355,19 @@ export default function Products() {
         if (!(typeof distance === "number") || distance > filters.radiusKm) return false;
       }
 
+      if (filters.favoriteStoresOnly) {
+        if (!product.storeId) {
+          return false;
+        }
+        if (!favoriteStoreIds.has(product.storeId)) {
+          return false;
+        }
+      }
+
+      if (filters.favoriteProductsOnly && !favoriteProductIds.has(product.id)) {
+        return false;
+      }
+
       if (filters.categories.length) {
         const matchesCategory = filters.categories.some((category) => {
           if (category === "Outros") {
@@ -1128,7 +1400,7 @@ export default function Products() {
 
       return true;
     });
-  }, [filters, products, searchTerm, storeDistances, storeLocationMeta]);
+  }, [favoriteProductIds, favoriteStoreIds, filters, products, searchTerm, storeDistances, storeLocationMeta]);
 
   const renderListHeader = useCallback(() => {
     const filterIconColor = theme.colors.primary;
@@ -1210,11 +1482,63 @@ export default function Products() {
                 </View>
               ) : null}
 
+              {filters.favoriteStoresOnly ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>
+                    <Icon 
+                      name={"heart"} 
+                      type="fontawesome" 
+                      color={theme.colors.primary} 
+                      size={16} 
+                    /> Lojas favoritas
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleRemoveFavoriteStoresFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               {filters.onlyPromotion ? (
                 <View style={styles.filterChip}>
                   <Text style={styles.filterChipText}>Em Promoção</Text>
                   <TouchableOpacity
                     onPress={handleRemovePromotionFilter}
+                    style={styles.filterChipRemove}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  >
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="close-circle"
+                      size={16}
+                      color={theme.colors.primary}
+                    />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
+              {filters.favoriteProductsOnly ? (
+                <View style={styles.filterChip}>
+                  <Text style={styles.filterChipText}>
+                    <Icon 
+                      name={"heart"} 
+                      type="fontawesome" 
+                      color={theme.colors.primary} 
+                      size={16} 
+                    /> Produtos favoritos
+                  </Text>
+                  <TouchableOpacity
+                    onPress={handleRemoveFavoriteProductsFilter}
                     style={styles.filterChipRemove}
                     activeOpacity={0.7}
                     hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
@@ -1273,6 +1597,8 @@ export default function Products() {
     );
   }, [
     filters.categories,
+    filters.favoriteProductsOnly,
+    filters.favoriteStoresOnly,
     filters.onlyPromotion,
     filters.city,
     filters.state,
@@ -1280,9 +1606,11 @@ export default function Products() {
     handleClearFilters,
     handleFilterButtonPress,
     handleRemoveCategoryFilter,
+    handleRemoveFavoriteProductsFilter,
+    handleRemoveFavoriteStoresFilter,
+    handleRemoveLocationFilter,
     handleRemovePriceFilter,
     handleRemovePromotionFilter,
-  handleRemoveLocationFilter,
     handleRemoveRadiusFilter,
     hasVisibleFilters,
     priceRangeLabel,
@@ -1304,29 +1632,24 @@ export default function Products() {
       <ProductCard
         item={item}
         onPress={onNavigate}
+        onToggleFavorite={handleToggleFavoriteProduct}
+        isFavorite={favoriteProductIds.has(item.id)}
         styles={styles}
         primaryColor={theme.colors.primary}
         disabledColor={theme.colors.disabled}
       />
     ),
-    [onNavigate, styles, theme.colors.primary, theme.colors.disabled]
+    [
+      favoriteProductIds,
+      handleToggleFavoriteProduct,
+      onNavigate,
+      styles,
+      theme.colors.disabled,
+      theme.colors.primary,
+    ]
   );
 
   const renderEmptyState = () => {
-    if (isLoading) {
-      return (
-        <View style={styles.feedbackWrapper}>
-          <LoadingIcon
-            autoPlay
-            loop
-            source={loadingCart}
-            refAnimationLoading={animationLoading}
-            style={{ width: 150, height: 150 }}
-          />
-        </View>
-      );
-    }
-
     if (error) {
       return (
         <View style={styles.feedbackWrapper}>
@@ -1361,28 +1684,44 @@ export default function Products() {
       <ScreenContainer style={styles.container}>
         <HeaderScreen title="Produtos" />
         <View style={styles.content}>
-          <FlatList
-            data={filteredProducts}
-            keyExtractor={(item) => item.id}
-            renderItem={renderProductItem}
-            initialNumToRender={10}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={50}
-            windowSize={7}
-            removeClippedSubviews
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={renderListHeader}
-            ListEmptyComponent={renderEmptyState}
-            refreshControl={
-              <RefreshControl
-                refreshing={isRefreshing}
-                onRefresh={handleRefresh}
-                tintColor={theme.colors.primary}
-              />
-            }
-            ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
-            showsVerticalScrollIndicator={false}
-          />
+          {isLoading ? (
+            <>
+              {renderListHeader()}
+              <View style={styles.loadingWrapper}>
+                <LoadingIcon
+                  autoPlay
+                  loop
+                  source={loadingCart}
+                  refAnimationLoading={animationLoading}
+                  style={{ width: 150, height: 150 }}
+                />
+              </View>
+            </>
+          ) : (
+            <FlatList
+              data={filteredProducts}
+              extraData={favoriteProductIds}
+              keyExtractor={(item) => item.id}
+              renderItem={renderProductItem}
+              initialNumToRender={10}
+              maxToRenderPerBatch={10}
+              updateCellsBatchingPeriod={50}
+              windowSize={7}
+              removeClippedSubviews
+              contentContainerStyle={styles.listContent}
+              ListHeaderComponent={renderListHeader}
+              ListEmptyComponent={renderEmptyState}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshing}
+                  onRefresh={handleRefresh}
+                  tintColor={theme.colors.primary}
+                />
+              }
+              ItemSeparatorComponent={() => <View style={styles.listSeparator} />}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
         </View>
       </ScreenContainer>
 
@@ -1394,17 +1733,24 @@ export default function Products() {
       >
         <View style={styles.filterModalOverlay}>
           <Pressable style={styles.filterModalBackdrop} onPress={handleCancelFilters} />
-          <View style={styles.filterModalCard}>
+          <View
+            style={[
+              styles.filterModalCard,
+              { paddingBottom: theme.spacing.lg + insets.bottom },
+            ]}
+          >
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.filterModalContent}
+              contentContainerStyle={[
+                { paddingBottom: insets.bottom },
+              ]}
               keyboardShouldPersistTaps="handled"
             >
               <Text style={styles.filterModalTitle}>Filtros</Text>
 
               {/* Filtros Lojas */}
               <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Filtros de Lojas</Text>
+                <Text style={styles.filterSectionTitle}>Filtros de Lojas: </Text>
 
                 <View style={{ gap: theme.spacing.sm }}>
                   <View style={{ flexDirection: "row", gap: theme.spacing.sm }}>
@@ -1487,19 +1833,88 @@ export default function Products() {
                         <Text style={styles.sliderValueUnlimited}>Sem limite definido</Text>
                       </View>
                     ) : null}
-                  </View>
                 </View>
               </View>
+            </View>
 
-              <Text style={styles.filterSectionTitle}>Filtros de Produtos</Text>
+            <View style={styles.favoriteFilterWrapper}>
+              <Text style={styles.favoriteFilterTitle}>Filtros de Favoritos:</Text>
               <TouchableOpacity
-                onPress={() => setDraftOnlyPromotion((current) => !current)}
                 style={[
-                  styles.filterCheckboxRow,
-                  draftOnlyPromotion && styles.filterCheckboxRowActive,
+                  styles.favoriteTogglePill,
+                  draftFavoriteStoresOnly && styles.favoriteTogglePillActive,
                 ]}
+                onPress={() => setDraftFavoriteStoresOnly((prev) => !prev)}
                 activeOpacity={0.7}
               >
+                <View
+                  style={[
+                    styles.favoriteToggleCheckbox,
+                    draftFavoriteStoresOnly && styles.favoriteToggleCheckboxActive,
+                  ]}
+                >
+                  {draftFavoriteStoresOnly ? (
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="check"
+                      size={16}
+                      color={theme.colors.onPrimary}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.favoriteToggleLabel,
+                    draftFavoriteStoresOnly && styles.favoriteToggleLabelActive,
+                  ]}
+                >
+                  Mostrar apenas lojas favoritas
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.favoriteTogglePill,
+                  draftFavoriteProductsOnly && styles.favoriteTogglePillActive,
+                ]}
+                onPress={() => setDraftFavoriteProductsOnly((prev) => !prev)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[
+                    styles.favoriteToggleCheckbox,
+                    draftFavoriteProductsOnly && styles.favoriteToggleCheckboxActive,
+                  ]}
+                >
+                  {draftFavoriteProductsOnly ? (
+                    <Icon
+                      type="MaterialCommunityIcons"
+                      name="check"
+                      size={16}
+                      color={theme.colors.onPrimary}
+                    />
+                  ) : null}
+                </View>
+                <Text
+                  style={[
+                    styles.favoriteToggleLabel,
+                    draftFavoriteProductsOnly && styles.favoriteToggleLabelActive,
+                  ]}
+                >
+                  Mostrar apenas produtos favoritos
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.filterSectionTitle}>Filtros de Produtos:</Text>
+            <TouchableOpacity
+              onPress={() => setDraftOnlyPromotion((current) => !current)}
+              style={[
+                styles.filterCheckboxRow,
+                draftOnlyPromotion && styles.filterCheckboxRowActive,
+              ]}
+              activeOpacity={0.7}
+            >
                 <View
                   style={[
                     styles.filterCheckbox,
@@ -1520,13 +1935,13 @@ export default function Products() {
                     styles.filterCheckboxLabel,
                     draftOnlyPromotion && styles.filterCheckboxLabelActive,
                   ]}
-                >
-                  Em Promoção
-                </Text>
-              </TouchableOpacity>
+              >
+                Em Promoção
+              </Text>
+            </TouchableOpacity>
 
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Categorias</Text>
+            <View style={styles.filterSection}>
+                <Text style={styles.filterSectionTitle}>Filtros de Categorias:</Text>
 
                 <View style={styles.categoriesGrid}>
                   {FILTER_CATEGORIES.map((category) => {
@@ -1571,7 +1986,7 @@ export default function Products() {
               </View>
 
               <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Filtro por preco</Text>
+                <Text style={styles.filterSectionTitle}>Filtros de preço:</Text>
                 <View style={styles.priceInputsRow}>
                   <View style={styles.priceInputWrapper}>
                     <Text style={styles.priceInputLabel}>De:</Text>
@@ -1635,7 +2050,12 @@ export default function Products() {
       >
         <View style={styles.filterModalOverlay}>
           <Pressable style={styles.filterModalBackdrop} onPress={() => setIsCitySelectorVisible(false)} />
-          <View style={[styles.filterModalCard, { maxHeight: 420 }]}>
+          <View
+            style={[
+              styles.filterModalCard,
+              { maxHeight: 420, paddingBottom: theme.spacing.lg + insets.bottom },
+            ]}
+          >
             <View style={{ padding: theme.spacing.sm }}>
               <Text style={styles.filterSectionTitle}>Selecionar cidade</Text>
               <View

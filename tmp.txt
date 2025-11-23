@@ -7,12 +7,6 @@ import { useSession } from "@/src/providers/SessionContext/Index";
 import productService from "@/src/services/products-service";
 import storeService from "@/src/services/store-service";
 import { useTheme } from "@/src/themes/ThemeContext";
-import {
-  geocodeAsync,
-  getCurrentPositionAsync,
-  LocationAccuracy,
-  requestForegroundPermissionsAsync,
-} from "expo-location";
 import { useRouter } from "expo-router";
 import LottieView from "lottie-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -58,9 +52,6 @@ type StoreCardItem = {
   badge: string | null;
   logoUrl: string | null;
   city: string | null;
-  brandColor: string | null;
-  isOpen: boolean | null;
-  promotion: string | null;
 };
 
 type SearchResultItem = {
@@ -132,27 +123,6 @@ const STORE_BADGE_KEYS = [
   "shipping_message",
 ] as const;
 
-const STORE_BRAND_COLOR_KEYS = [
-  "brand_color",
-  "brandColor",
-  "accent_color",
-  "accentColor",
-  "primary_color",
-  "primaryColor",
-] as const;
-
-const STORE_PROMOTION_KEYS = [
-  "promotion",
-  "promo",
-  "promotion_text",
-  "promotionText",
-  "highlight",
-  "highlight_message",
-  "highlightMessage",
-  "delivery_message",
-  "shipping_message",
-] as const;
-
 const STORE_DISTANCE_KEYS = [
   "distance",
   "distance_km",
@@ -179,8 +149,6 @@ const STORE_RATING_KEYS = [
 ] as const;
 
 const STORE_CITY_KEYS = ["city", "cidade", "municipio"] as const;
-
-const STORE_OPEN_STATUS_KEYS = ["is_open", "isOpen", "open", "status", "store_open"] as const;
 
 const EARTH_RADIUS_KM = 6371;
 
@@ -512,12 +480,6 @@ const mapStoreFromApi = (raw: RawStore): StoreCardItem | null => {
     distanceNumber !== null
       ? `${distanceNumber.toFixed(2)} Km`
       : coerceString(distanceRaw) ?? null;
-  const badge = coerceString(pickFirstValue(raw, STORE_BADGE_KEYS));
-  const promotion =
-    coerceString(pickFirstValue(raw, STORE_PROMOTION_KEYS)) ?? badge ?? null;
-  const brandColor = coerceString(pickFirstValue(raw, STORE_BRAND_COLOR_KEYS));
-  const openRaw = pickFirstValue(raw, STORE_OPEN_STATUS_KEYS);
-  const isOpen = typeof openRaw === "undefined" ? null : parseBooleanValue(openRaw);
 
   return {
     id: String(identifier),
@@ -528,12 +490,9 @@ const mapStoreFromApi = (raw: RawStore): StoreCardItem | null => {
     rating: parseNumberValue(ratingRaw),
     distanceLabel,
     distanceKm: distanceNumber,
-    badge,
+    badge: coerceString(pickFirstValue(raw, STORE_BADGE_KEYS)),
     logoUrl: resolveStoreLogoFromRecord(raw),
     city: coerceString(pickFirstValue(raw, STORE_CITY_KEYS)),
-    brandColor,
-    isOpen,
-    promotion,
   };
 };
 
@@ -575,8 +534,6 @@ export default function Home() {
   const [storeDistanceOverrides, setStoreDistanceOverrides] = useState<
     Record<string, { label: string; value: number }>
   >({});
-  const [isComputingStoreDistances, setIsComputingStoreDistances] = useState(false);
-  const [hasFinishedInitialLoad, setHasFinishedInitialLoad] = useState(false);
   const notificationCount = 0;
   const animationLoading = useRef<LottieView>(null);
   const storeCoordinatesCache = useRef<Record<string, Coordinates | null>>({});
@@ -1088,12 +1045,10 @@ export default function Home() {
   useEffect(() => {
     if (!stores.length || !userLocation) {
       setStoreDistanceOverrides({});
-      setIsComputingStoreDistances(false);
       return;
     }
 
     let cancelled = false;
-    setIsComputingStoreDistances(true);
 
     const computeDistances = async () => {
       const overrides: Record<string, { label: string; value: number }> = {};
@@ -1118,27 +1073,15 @@ export default function Home() {
 
       if (!cancelled) {
         setStoreDistanceOverrides(overrides);
-        setIsComputingStoreDistances(false);
       }
     };
 
-    computeDistances().catch((error) => {
-      console.warn("Home: falha geral ao calcular distâncias", error);
-      if (!cancelled) {
-        setIsComputingStoreDistances(false);
-      }
-    });
+    computeDistances().catch((error) => console.warn("Home: falha geral ao calcular distâncias", error));
 
     return () => {
       cancelled = true;
     };
   }, [stores, userLocation, fetchStoreCoordinates]);
-
-  useEffect(() => {
-    if (!hasFinishedInitialLoad && !isLoading && !isComputingStoreDistances) {
-      setHasFinishedInitialLoad(true);
-    }
-  }, [hasFinishedInitialLoad, isLoading, isComputingStoreDistances]);
 
   const promotions = useMemo(
     () => products.filter((product) => product.inPromotion),
@@ -1257,9 +1200,7 @@ export default function Home() {
     ? searchBarLayout.y + searchBarLayout.height + theme.spacing.sm
     : null;
 
-  const shouldShowInitialLoading = !hasFinishedInitialLoad;
-
-  if (shouldShowInitialLoading) {
+  if (isLoading) {
     return (
       <ScreenContainer style={styles.container}>
         <View style={commonStyles.centeredContainer}>
@@ -1456,19 +1397,9 @@ export default function Home() {
                       </TouchableOpacity>
                     </View>
 
-                    <View style={styles.productSellerRow}>
-                      {product.storeId ? (
-                        <TouchableOpacity
-                          onPress={() => handleStorePress(product.storeId)}
-                          style={styles.productSellerButton}
-                          activeOpacity={0.8}
-                        >
-                          <Text style={styles.productSellerLabel}>Vendido por: {product.storeName ?? "não informado"}</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <Text style={styles.productSellerValue}>{product.storeName ?? "não informado"}</Text>
-                      )}
-                    </View>
+                    <Text style={styles.productSeller}>
+                      Vendido por:  <Text style={{fontWeight: "600"}}>{product.storeName ?? "não informado"}</Text>
+                    </Text>
                     {formattedOriginalPrice ? (
                       <Text style={styles.originalPrice}>De {formattedOriginalPrice}</Text>
                     ) : null}
@@ -1494,42 +1425,9 @@ export default function Home() {
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Mercados mais Próximos:</Text>
-          {isComputingStoreDistances ? (
-            <View style={commonStyles.centeredContainer}>
-              <LoadingIcon autoPlay loop style={{ width: 80, height: 80 }}  />
-              <Text style={styles.loadingText}>Buscando mercados próximos a você...</Text>
-            </View>
-          ) : storesToShow.length ? (
+          {storesToShow.length ? (
             storesToShow.map((store) => {
               const isFavorite = favoriteStores.has(store.id);
-              const override = storeDistanceOverrides[store.id];
-              const distanceValue =
-                typeof override?.value === "number" && Number.isFinite(override.value)
-                  ? override.value
-                  : null;
-              const distanceLabel =
-                distanceValue !== null
-                  ? `${distanceValue.toFixed(2)} km`
-                  : isComputingStoreDistances
-                  ? "Calculando..."
-                  : store.distanceLabel ?? "Distância indisponível";
-              const ratingLabel =
-                typeof store.rating === "number" && Number.isFinite(store.rating)
-                  ? store.rating.toFixed(2).replace(".", ",")
-                  : "--";
-              const initials = store.name
-                .split(" ")
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((word) => word[0])
-                .join("")
-                .toUpperCase();
-              const storePromotion = store.promotion ?? store.badge ?? null;
-              const avatarBackground =
-                (store.brandColor && store.brandColor.trim().length ? store.brandColor : null) ??
-                theme.colors.secondary;
-              const isClosed = store.isOpen === false;
-
               return (
                 <TouchableOpacity
                   key={store.id}
@@ -1537,82 +1435,63 @@ export default function Home() {
                   onPress={() => handleStorePress(store.id)}
                   activeOpacity={0.85}
                 >
-                  <View style={[styles.storeAvatar, { backgroundColor: avatarBackground }]}>
+                  <View style={styles.storeLogoWrapper}>
                     {store.logoUrl ? (
-                      <Image source={{ uri: store.logoUrl }} style={styles.storeAvatarImage} />
+                      <Image source={{ uri: store.logoUrl }} style={styles.storeLogo} resizeMode="contain" />
                     ) : (
-                      <Text style={styles.storeAvatarInitials}>{initials}</Text>
+                      <View style={styles.logoFallback}>
+                        <Text style={styles.logoFallbackText}>{store.name.charAt(0).toUpperCase()}</Text>
+                      </View>
                     )}
                   </View>
-                  <View style={styles.storeDetails}>
-                    <View style={styles.cardHeader}>
+                  <View style={styles.storeContent}>
+                    <View style={styles.storeHeaderRow}>
                       <Text style={styles.storeName} numberOfLines={1}>
                         {store.name}
                       </Text>
                       <TouchableOpacity
-                        style={styles.favoriteButton}
+                        style={[
+                          styles.storeFavoriteButton,
+                        ]}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                         onPress={(event: GestureResponderEvent) => {
                           event.stopPropagation();
                           handleToggleStoreFavorite(store.id);
                         }}
-                        accessibilityRole="button"
-                        accessibilityLabel={`Favoritar ${store.name}`}
                       >
                         <Icon
                           type="MaterialCommunityIcons"
                           name={isFavorite ? "heart" : "heart-outline"}
-                          size={18}
+                          size={20}
                           color={theme.colors.primary}
                         />
                       </TouchableOpacity>
                     </View>
-
-                    {isClosed ? (
-                      <View style={styles.statusBadge}>
-                        <Text style={styles.statusBadgeText}>Fechada</Text>
-                      </View>
-                    ) : null}
-
-                    <View style={styles.metaRow}>
-                      <View style={styles.metaItem}>
-                        <Icon
-                          type="MaterialCommunityIcons"
-                          name="star"
-                          size={16}
-                          color={theme.colors.star}
-                        />
-                        <Text style={[styles.metaText, styles.metaTextWithIcon]}>
-                          {ratingLabel}
-                        </Text>
-                      </View>
-                      <View style={styles.metaSeparator} />
-                      <Text style={styles.metaText}>{store.category ?? "Mercado"}</Text>
-                      <View style={styles.metaSeparator} />
-                      <View style={styles.metaItem}>
-                        <Icon
-                          type="MaterialCommunityIcons"
-                          name="map-marker"
-                          size={16}
-                          color={theme.colors.primary}
-                        />
-                        <Text style={[styles.metaText, styles.metaTextWithIcon]}>
-                          {distanceLabel}
-                        </Text>
-                      </View>
+                    <View style={styles.storeMetaRow}>
+                      <Icon
+                        type="MaterialCommunityIcons"
+                        name="star"
+                        size={16}
+                        color={theme.colors.star}
+                      />
+                      <Text style={styles.storeRating}>
+                        {store.rating !== null ? store.rating.toFixed(2).replace(".", ",") : "--"}
+                      </Text>
+                      <Text style={styles.storeDot}>•</Text>
+                      <Text style={styles.storeCategory}>{store.category ?? "Mercado"}</Text>
+                      {store.distanceLabel ? (
+                        <>
+                      <Text style={styles.storeDot}>•</Text>
+                      <Text style={styles.storeDistance}>{store.distanceLabel}</Text>
+                        </>
+                      ) : null}
                     </View>
-
-                    {storePromotion ? (
-                      <View style={styles.promoPill}>
-                        <Icon
-                          type="MaterialCommunityIcons"
-                          name="tag-heart"
-                          size={16}
-                          color={theme.colors.success}
-                        />
-                        <Text style={styles.promoText} numberOfLines={1}>
-                          {storePromotion}
+                    {store.city ? <Text style={styles.storeCity}>{store.city}</Text> : null}
+                    {store.badge ? (
+                      <View style={styles.storeBadge}>
+                        <Text style={styles.storeBadgeText} numberOfLines={1}>
+                          {store.badge}
                         </Text>
                       </View>
                     ) : null}
@@ -1664,7 +1543,7 @@ export default function Home() {
                       {item.name}
                     </Text>
                     {formattedPrice ? (
-                      <Text style={styles.suggestionPrice}>Por {formattedPrice} <Text style={styles.unitLabel2}>{item.unit}</Text></Text>
+                      <Text style={styles.suggestionPrice}>Por {formattedPrice}</Text>
                     ) : (
                       <Text style={styles.unavailablePrice}>Preço indisponível</Text>
                     )}
