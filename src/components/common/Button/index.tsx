@@ -3,12 +3,12 @@ import { useTheme } from "@/src/themes/ThemeContext";
 import LottieView from "lottie-react-native";
 import { FC, useRef } from "react";
 import {
+  ActivityIndicator,
   Text,
   TextStyle,
   TouchableOpacity,
   ViewStyle
 } from "react-native";
-import LoadingIcon from "../LoadingIcon";
 import createStyles from "./styled";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "danger" | "success";
@@ -71,13 +71,7 @@ export const Button: FC<Props> = ({
       ]}
     >
       {loading && 
-        <LoadingIcon
-            autoPlay
-            loop
-            // source={loadingCart}
-            refAnimationLoading={animationLoading}
-            style={{ width: 150, height: 150 }}
-          />
+        <ActivityIndicator size="small" color={textColor} />
       }
       {!loading && (
         <Text style={[styles.text, { color: textColor }, textStyle]}>
