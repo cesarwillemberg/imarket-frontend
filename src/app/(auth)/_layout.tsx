@@ -11,6 +11,9 @@ export default function TabLayout() {
   const styles = createStyles(theme);
   const router = useRouter();
   const storeTabLastPressRef = useRef(0);
+  const profileTabLastPressRef = useRef(0);
+  const homeTabLastPressRef = useRef(0);
+  const productsTabLastPressRef = useRef(0);
   const handleCartTabPress = useCallback(() => {
     if (!user?.id) {
       return;
@@ -29,6 +32,30 @@ export default function TabLayout() {
     storeTabLastPressRef.current = now;
   }, [router]);
 
+  const handleProfileTabDoublePress = useCallback(() => {
+    const now = Date.now();
+    if (now - profileTabLastPressRef.current < 400) {
+      router.replace("/(auth)/profile");
+    }
+    profileTabLastPressRef.current = now;
+  }, [router]);
+
+  const handleHomeTabDoublePress = useCallback(() => {
+    const now = Date.now();
+    if (now - homeTabLastPressRef.current < 400) {
+      router.replace("/(auth)/home");
+    }
+    homeTabLastPressRef.current = now;
+  }, [router]);
+
+  const handleProductsTabDoublePress = useCallback(() => {
+    const now = Date.now();
+    if (now - productsTabLastPressRef.current < 400) {
+      router.replace("/(auth)/products");
+    }
+    productsTabLastPressRef.current = now;
+  }, [router]);
+
   return (
     <Tabs
       screenOptions={{
@@ -45,6 +72,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Icon type="feather" size={28} name="home" color={color} />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            handleHomeTabDoublePress();
+          },
         }}
       />
       <Tabs.Screen
@@ -102,6 +134,11 @@ export default function TabLayout() {
             <Icon type="feather" size={28} name="tag" color={color} />
           ),
         }}
+        listeners={{
+          tabPress: () => {
+            handleProductsTabDoublePress();
+          },
+        }}
       />
       <Tabs.Screen
         name="profile"
@@ -111,6 +148,11 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => (
             <Icon type="feather" size={28} name="user" color={color} />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            handleProfileTabDoublePress();
+          },
         }}
       />
     </Tabs>

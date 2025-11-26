@@ -494,11 +494,12 @@ const ReviewConfirmOrder = () => {
   const deliveryDateRaw = getSingleParam(params.deliveryDate);
   const deliveryStartTimeRaw = getSingleParam(params.deliveryStartTime);
   const deliveryEndTimeRaw = getSingleParam(params.deliveryEndTime);
+  const deliveryWindowRaw = getSingleParam(params.deliveryWindow);
   const deliveryDate = formatDateLabel(deliveryDateRaw) || "15/12/2025";
   const deliveryStartTimeLabel = formatTimeLabel(deliveryStartTimeRaw);
   const deliveryEndTimeLabel = formatTimeLabel(deliveryEndTimeRaw);
   const deliveryInterval =
-    getSingleParam(params.deliveryWindow) ||
+    deliveryWindowRaw ||
     (deliveryStartTimeLabel && deliveryEndTimeLabel
       ? `${deliveryStartTimeLabel} até ${deliveryEndTimeLabel}`
       : "13:30 até 14:30");
@@ -512,6 +513,27 @@ const ReviewConfirmOrder = () => {
   const disableConfirmParam = parseBooleanParam(params.disableConfirm);
   const deliveryNotes = deliveryComplement;
   const isConfirmDisabled = disableConfirmParam || isProcessingOrder;
+
+  const sharedNavigationParams = useMemo(
+    () => ({
+      productTotal: productTotal.toFixed(2),
+      shippingFee: shippingFee.toFixed(2),
+      total: totalToPay.toFixed(2),
+      deliveryDate: deliveryDateRaw ?? undefined,
+      deliveryStartTime: deliveryStartTimeRaw ?? undefined,
+      deliveryEndTime: deliveryEndTimeRaw ?? undefined,
+      deliveryWindow: deliveryWindowRaw ?? undefined,
+    }),
+    [
+      deliveryDateRaw,
+      deliveryEndTimeRaw,
+      deliveryStartTimeRaw,
+      deliveryWindowRaw,
+      productTotal,
+      shippingFee,
+      totalToPay,
+    ]
+  );
 
   const sections = useMemo<SectionCardDefinition[]>(() => {
     const sectionList: SectionCardDefinition[] = [
@@ -528,7 +550,10 @@ const ReviewConfirmOrder = () => {
           "Alterar dados de faturamento",
         onPress: () => {
           if (billingEditPath) {
-            router.push(billingEditPath as never);
+            router.push({
+              pathname: billingEditPath as never,
+              params: sharedNavigationParams,
+            } as never);
             return;
           }
           Alert.alert(
@@ -554,7 +579,11 @@ const ReviewConfirmOrder = () => {
         actionLabel:
           getSingleParam(params.deliveryEditLabel) ||
           "Alterar dados de entrega",
-        onPress: () => router.push(deliveryEditPath as never),
+        onPress: () =>
+          router.push({
+            pathname: deliveryEditPath as never,
+            params: sharedNavigationParams,
+          } as never),
       },
         {
           key: "payment",
@@ -564,7 +593,11 @@ const ReviewConfirmOrder = () => {
           actionLabel:
             getSingleParam(params.paymentEditLabel) ||
             "Alterar forma de pagamento",
-          onPress: () => router.push(paymentEditPath as never),
+          onPress: () =>
+            router.push({
+              pathname: paymentEditPath as never,
+              params: sharedNavigationParams,
+            } as never),
       },
     ];
 
@@ -578,6 +611,7 @@ const ReviewConfirmOrder = () => {
     deliveryDate,
     deliveryEditPath,
     deliveryInterval,
+    sharedNavigationParams,
     currencyFormatter,
     params.billingEditLabel,
       params.deliveryEditLabel,
